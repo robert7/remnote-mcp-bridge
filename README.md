@@ -39,6 +39,7 @@ in RemNote:
 - Select the downloaded zip file
 
 Or for development:
+
 ```bash
 git clone https://github.com/quentintou/remnote-mcp-bridge.git
 cd remnote-mcp-bridge
@@ -55,6 +56,7 @@ npm install -g remnote-mcp-server
 ```
 
 Or clone and run locally:
+
 ```bash
 git clone https://github.com/quentintou/remnote-mcp-server.git
 cd remnote-mcp-server
@@ -67,6 +69,7 @@ npm start
 #### For Claude Desktop
 
 Add to your `claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
@@ -81,6 +84,7 @@ Add to your `claude_desktop_config.json`:
 #### For Claude Code CLI
 
 Add to your MCP settings:
+
 ```json
 {
   "remnote": {
