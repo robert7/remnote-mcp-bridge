@@ -1,17 +1,19 @@
 # RemNote MCP Bridge
 
-Connect RemNote to AI assistants (Claude, GPT, etc.) via the **Model Context Protocol (MCP)**. This plugin enables bidirectional communication, allowing AI to read and write directly to your RemNote knowledge base.
+Connect RemNote to AI assistants (Claude, GPT, etc.) via the **Model Context Protocol (MCP)**. This plugin enables
+bidirectional communication, allowing AI to read and write directly to your RemNote knowledge base.
 
-![Status](https://img.shields.io/badge/status-beta-yellow)
-![License](https://img.shields.io/badge/license-MIT-blue)
+![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## What is MCP?
 
-[Model Context Protocol](https://modelcontextprotocol.io/) is an open standard by Anthropic that allows AI assistants to interact with external tools and data sources. With this plugin, your AI assistant becomes a true PKM companion.
+[Model Context Protocol](https://modelcontextprotocol.io/) is an open standard by Anthropic that allows AI assistants
+to interact with external tools and data sources. With this plugin, your AI assistant becomes a true PKM companion.
 
 ## Features
 
 ### Core Capabilities
+
 - **Create Notes** - AI can create new notes with titles, content, and tags
 - **Search Knowledge Base** - Full-text search across all your Rems
 - **Read Notes** - Access note content and hierarchical children
@@ -19,6 +21,7 @@ Connect RemNote to AI assistants (Claude, GPT, etc.) via the **Model Context Pro
 - **Daily Journal** - Append entries to today's daily document
 
 ### Plugin Features
+
 - **Auto-tagging** - Automatically tag notes created via MCP (configurable)
 - **Session Statistics** - Track created/updated/journal entries/searches
 - **Action History** - View last 10 MCP actions with timestamps
@@ -29,7 +32,9 @@ Connect RemNote to AI assistants (Claude, GPT, etc.) via the **Model Context Pro
 
 ### 1. Install the RemNote Plugin
 
-Download `PluginZip.zip` from [Releases](https://github.com/quentintou/remnote-mcp-bridge/releases) and install it in RemNote:
+Download `PluginZip.zip` from [Releases](https://github.com/quentintou/remnote-mcp-bridge/releases) and install it
+in RemNote:
+
 - Go to **Settings > Plugins > Install from zip**
 - Select the downloaded zip file
 
@@ -60,6 +65,7 @@ npm start
 ### 3. Configure Your AI Assistant
 
 #### For Claude Desktop
+
 Add to your `claude_desktop_config.json`:
 ```json
 {
@@ -73,6 +79,7 @@ Add to your `claude_desktop_config.json`:
 ```
 
 #### For Claude Code CLI
+
 Add to your MCP settings:
 ```json
 {
@@ -160,16 +167,19 @@ npm run build
 ## Troubleshooting
 
 ### Plugin shows "Disconnected"
+
 - Ensure the MCP server is running (`remnote-mcp-server`)
 - Check the WebSocket URL in settings (default: `ws://127.0.0.1:3002`)
 - Look for errors in RemNote's developer console (Cmd+Option+I)
 
 ### "Invalid event setCustomCSS" errors
+
 - These are cosmetic errors from development mode
 - They don't affect functionality
 - They won't appear in production builds
 
 ### Notes not appearing
+
 - Check if a default parent ID is set (might be creating under a specific Rem)
 - Verify the auto-tag setting isn't filtering your view
 
