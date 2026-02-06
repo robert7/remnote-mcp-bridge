@@ -26,7 +26,8 @@ to interact with external tools and data sources. With this plugin, your AI assi
 - **Session Statistics** - Track created/updated/journal entries/searches
 - **Action History** - View last 10 MCP actions with timestamps
 - **Configurable Settings** - Customize behavior through RemNote settings
-- **Real-time Status** - Connection status indicator in sidebar widget
+- **Real-time Status** - Connection status indicator in popup control panel
+- **Command Palette Access** - Open control panel via Ctrl-K → "Open MCP Bridge Control Panel"
 
 ## Installation
 
@@ -119,12 +120,24 @@ Once connected, your AI assistant can use these tools:
 | `remnote_append_journal` | Add an entry to today's daily document |
 | `remnote_status` | Check connection status |
 
-## Example Usage
+## Usage
+
+### Opening the Control Panel
+
+1. Press **Ctrl-K** (or Cmd-K on macOS) to open RemNote's command palette
+2. Search for **"Open MCP Bridge Control Panel"**
+3. The popup will display:
+   - Connection status (Connected/Disconnected/Connecting)
+   - Session statistics (notes created, updated, journal entries, searches)
+   - Recent action history
+   - Real-time logs
+
+### Example AI Interactions
 
 Once everything is connected, you can ask your AI assistant things like:
 
 - *"Create a note about the meeting we just had"*
-- *"Search my notes for information about project X"*
+- *"Search my notes in RemNote for information about AI coding"*
 - *"Add a journal entry: Finished the MCP integration today!"*
 - *"Find all my notes tagged with 'Ideas' and summarize them"*
 - *"Update my 'Reading List' note with this new book"*

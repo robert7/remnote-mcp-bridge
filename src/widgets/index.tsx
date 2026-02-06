@@ -2,7 +2,7 @@
  * RemNote MCP Bridge Plugin
  *
  * Entry point for the RemNote plugin that connects to the MCP server.
- * This file only registers the widget - the actual widget is in right_sidebar.tsx
+ * This file only registers the widget - the actual widget is in mcp_bridge_popup.tsx
  */
 
 import { declareIndexPlugin, type ReactRNPlugin, WidgetLocation } from '@remnote/plugin-sdk';
@@ -67,16 +67,24 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   console.log('[MCP Bridge] Settings registered');
 
-  // Register the sidebar widget
-  await plugin.app.registerWidget('right_sidebar', WidgetLocation.RightSidebar, {
+  // Register as popup widget instead of sidebar
+  await plugin.app.registerWidget('mcp_bridge_popup', WidgetLocation.Popup, {
     dimensions: {
-      width: 300,
-      height: '100%'
-    },
-    widgetTabIcon: 'https://claude.ai/favicon.ico'
+      height: 'auto',
+      width: '600px'
+    }
   });
 
-  console.log('[MCP Bridge] Widget registered successfully');
+  // Register command to open the widget
+  await plugin.app.registerCommand({
+    id: 'open-mcp-bridge-popup',
+    name: 'Open MCP Bridge Control Panel',
+    action: async () => {
+      await plugin.widget.openPopup('mcp_bridge_popup');
+    }
+  });
+
+  console.log('[MCP Bridge] Command registered: Open MCP Bridge Control Panel');
 }
 
 async function onDeactivate(_: ReactRNPlugin) {

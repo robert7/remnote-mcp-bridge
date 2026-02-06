@@ -1,7 +1,8 @@
 /**
  * MCP Bridge Widget
  *
- * Separate widget file that renders in the right sidebar.
+ * Popup widget that displays connection status, stats, and logs.
+ * Opens via command palette (Ctrl-K): "Open MCP Bridge Control Panel"
  * Uses renderWidget() as required by RemNote plugin SDK.
  */
 
