@@ -234,7 +234,7 @@ describe('Widget Registration (index.tsx)', () => {
       );
 
       // Test command action
-      const registeredCommand = registerCommandSpy.mock.calls[1][0];
+      const registeredCommand = registerCommandSpy.mock.calls[0][0];
       await registeredCommand.action();
       expect(mockPlugin.window!.openWidgetInRightSidebar).toHaveBeenCalledWith('mcp_bridge');
     });
