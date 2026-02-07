@@ -130,11 +130,11 @@ Once connected, your AI assistant can use these tools:
 
 Once everything is connected, you can ask your AI assistant things like:
 
-- *"Create a note about the meeting we just had"*
-- *"Search my notes in RemNote for information about AI coding"*
-- *"Add a journal entry: Finished the MCP integration today!"*
-- *"Find all my notes tagged with 'Ideas' and summarize them"*
-- *"Update my 'Reading List' note with this new book"*
+- *Create a note about the meeting we just had*
+- *Search my notes in RemNote for information about AI coding*
+- *Add a journal entry: Finished the MCP integration today!*
+- *Find all my notes tagged with 'Ideas' and summarize them*
+- *Update my 'Reading List' note with this new book*
 
 ## Architecture
 
