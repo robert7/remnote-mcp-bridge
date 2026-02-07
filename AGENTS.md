@@ -137,9 +137,87 @@ console (Cmd+Option+I on macOS) to view logs and debug.
   production)
 - Connection failures: Verify MCP server is running and WebSocket URL is correct
 - Widget not appearing: Check widget registration in `index.tsx` and RemNote's plugin settings
+- MCP server connection issues: Check MCP logs at `~/.claude/debug/mcp-*.log`
+- Port conflicts: Use `lsof -i :3002` to check if port is already in use
 
 **Production Builds:** The build process validates the plugin manifest, bundles all assets, extracts CSS, and creates
 a zip file. The zip structure must match RemNote's plugin format (validated by `npx remnote-plugin validate`).
+
+## Testing and Code Quality
+
+While this plugin doesn't have the extensive test suite that the MCP server has, code quality is maintained through:
+
+### Build Validation
+
+```bash
+# Type checking (must pass before commits)
+npm run check-types
+
+# Production build with validation
+npm run build
+```
+
+The production build includes:
+- TypeScript compilation with strict mode
+- Plugin manifest validation via `npx remnote-plugin validate`
+- Asset bundling and optimization
+- Final zip creation
+
+### Development Workflow
+
+1. Make changes to `src/*` files
+2. Run `npm run check-types` to verify TypeScript correctness
+3. Test in development mode (`npm run dev`) with RemNote
+4. Build for production to validate plugin structure
+5. Test the production build in RemNote
+
+**IMPORTANT:** Always run type checking before committing changes. TypeScript strict mode catches potential runtime errors.
+
+## Claude Code Configuration
+
+The MCP server that this plugin connects to is configured in Claude Code via `~/.claude.json`.
+
+### Configuration Format
+
+MCP servers are configured under the `mcpServers` key within project-specific sections:
+
+```json
+{
+  "projects": {
+    "/Users/username/path/to/project": {
+      "mcpServers": {
+        "remnote": {
+          "type": "stdio",
+          "command": "remnote-mcp-server",
+          "args": [],
+          "env": {
+            "REMNOTE_WS_PORT": "3002"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Important notes:**
+- **Global availability:** Use your home directory path to make RemNote tools available in all projects
+- **Project-specific:** Use specific project paths to limit availability
+- **Old format deprecated:** The separate `~/.claude/.mcp.json` file is no longer used
+- **Restart required:** Claude Code must be restarted after configuration changes
+
+### Troubleshooting MCP Configuration
+
+**Configuration not loading:**
+1. Verify configuration is in `~/.claude.json` (NOT `~/.claude/.mcp.json`)
+2. Check project path matches exactly (use `pwd` to verify)
+3. Restart Claude Code completely
+4. Check MCP logs: `~/.claude/debug/mcp-*.log`
+
+**Server not starting:**
+1. Verify `remnote-mcp-server` is installed globally: `which remnote-mcp-server`
+2. Check Node.js is accessible in Claude Code's environment
+3. Review MCP logs for startup errors
 
 ## RemNote-Specific Concepts
 
