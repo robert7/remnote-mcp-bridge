@@ -46,20 +46,27 @@ to interact with external tools and data sources. With this plugin, your AI assi
 
 ### 1. Install the RemNote Plugin (This Repository)
 
-Download `PluginZip.zip` from [Releases](https://github.com/robert7/remnote-mcp-bridge/releases) and install it
-in RemNote:
+**Currently, this plugin is only available for local development installation.** Future releases may be published to RemNote's plugin marketplace.
 
-- Go to **Settings > Plugins > Install from zip**
-- Select the downloaded zip file
+**Development Installation:**
 
-Or for development:
+1. Clone and build the plugin:
+   ```bash
+   git clone https://github.com/robert7/remnote-mcp-bridge.git
+   cd remnote-mcp-bridge
+   npm install
+   npm run dev
+   ```
 
-```bash
-git clone https://github.com/robert7/remnote-mcp-bridge.git
-cd remnote-mcp-bridge
-npm install
-npm run dev
-```
+2. In RemNote:
+   - Go to **Settings > Plugins**
+   - Click **"Develop from localhost"**
+   - Click **"Develop"**
+   - The MCP Bridge plugin will now be active
+
+3. Access the control panel:
+   - Press **Ctrl-K** (or Cmd-K on macOS) to open RemNote's command palette
+   - Search for **"Open MCP Bridge Control Panel"**
 
 ### 2. Install the MCP Server
 
