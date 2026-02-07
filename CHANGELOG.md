@@ -35,12 +35,17 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Added "Important Limitations" section explaining 1:1:1 relationship constraint
   - Improved architecture explanation including stdio transport details
   - Updated repository references from `quentintou` to `robert7`
-- Updated AGENTS.md for developers
-  - Added "Testing and Code Quality" section with build validation guidance
-  - Added "Claude Code Configuration" section with `~/.claude.json` format examples
-  - Enhanced "Common Issues" section with MCP server troubleshooting
-  - Added reference to MCP log locations (`~/.claude/debug/mcp-*.log`)
-  - Documented deprecated `~/.claude/.mcp.json` format
+- Revised AGENTS.md (CLAUDE.md) to follow non-redundancy principle
+  - Removed code-redundant implementation details (~150 lines)
+  - Focused on design rationale (WHY) instead of implementation details (WHAT/HOW)
+  - Simplified "Code Architecture" to "Architecture Notes" with rationale only
+  - Simplified "Build System Architecture" to "Build System Notes" with design decisions
+  - Removed redundant "Settings Access Pattern", "WebSocket Protocol" structure, and "RemNote Plugin SDK" sections
+  - Streamlined "Development Commands" and "Dependencies & Tooling" sections
+  - Consolidated "Development Notes" and "Production Builds" into "Common Issues"
+  - Revised "Testing and Code Quality" to explain WHY minimal runtime tests
+  - Preserved all MANDATORY/CRITICAL sections and troubleshooting content
+  - Added rationale for dual widget bundles, exponential backoff, and content-to-child-Rems conversion
 
 ## [1.1.0] - 2025-02-07
 

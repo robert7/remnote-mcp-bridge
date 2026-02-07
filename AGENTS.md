@@ -87,160 +87,72 @@ This file contains critical principles for writing maintainable documentation, i
 ## Development Commands
 
 ```bash
-# Development mode with hot reload (starts dev server on :8080)
-npm run dev
-
-# Production build (validates plugin, builds, creates PluginZip.zip)
-npm run build
-
-# Type checking only (no build)
-npm run check-types
+npm run dev          # Development mode with hot reload (:8080)
+npm run build        # Production build (validates, bundles, creates zip)
+npm run check-types  # TypeScript type checking only
 ```
 
-## Build System Architecture
+See `package.json` for complete script definitions.
 
-**Webpack Configuration:**
+## Build System Notes
 
-- Uses `esbuild-loader` for fast TypeScript compilation (target: ES2020)
-- Creates **dual entry points** for each widget file in `src/widgets/**/*.tsx`:
-  - `widgetname.js` - Standard widget bundle
-  - `widgetname-sandbox.js` - Sandboxed version for RemNote's widget isolation
-- Development: Uses `style-loader` for hot CSS reloading
-- Production: Extracts CSS to separate files via `MiniCssExtractPlugin`
-- React Fast Refresh enabled in development mode
+**Why esbuild-loader?** Fast TypeScript compilation without separate tsc step.
 
-**Key Build Details:**
+**Why dual entry points?** Each widget in `src/widgets/**/*.tsx` generates both `widgetname.js` and `widgetname-sandbox.js` to support RemNote's widget isolation model.
 
-- Plugin validation runs before production builds via `npx remnote-plugin validate`
-- Assets copied from `public/` and `README.md` to `dist/`
-- Final output zipped to `PluginZip.zip` for RemNote installation
-- Dev server runs on port 8080 with hot reload and CORS headers
+**Target:** ES2020 (RemNote compatibility requirement)
 
-## Code Architecture
+See `webpack.config.js` for build configuration details.
 
-**Entry Point:** `src/widgets/index.tsx`
+## Architecture Notes
 
-- Registers plugin settings (auto-tag, journal prefix, WebSocket URL, etc.)
-- Registers the right sidebar widget
-- Minimal logic - actual widget implementation is separate
+**Why dual widget bundles?** RemNote's security model requires both standard and sandboxed versions of each widget for isolated execution contexts.
 
-**Main UI:** `src/widgets/right_sidebar.tsx`
+**Why exponential backoff in WebSocket client?** Prevents thundering herd during MCP server restarts. Uses jitter to distribute reconnection attempts.
 
-- Connection status display, session statistics, action history
-- Initializes and manages WebSocket client lifecycle
-- Renders UI components using RemNote's widget rendering system
+**Why convert content to child Rems?** (in `rem-adapter.ts`) Maintains RemNote's hierarchical structure, supports rich formatting per line, and enables independent tagging of content blocks.
 
-**WebSocket Layer:** `src/bridge/websocket-client.ts`
-
-- Bidirectional WebSocket communication with MCP server
-- Automatic reconnection with exponential backoff (max 10 attempts)
-- Heartbeat handling (ping/pong)
-- Request/response correlation via message IDs
-- Status callbacks: 'disconnected' | 'connecting' | 'connected'
-
-**RemNote API Adapter:** `src/api/rem-adapter.ts`
-
-- Wraps RemNote Plugin SDK with MCP-compatible interface
-- Implements MCP actions: create_note, search, read_note, update_note, append_journal
-- Handles auto-tagging, journal prefixes, timestamps based on settings
-- Uses RemNote SDK methods: `createRem()`, `findMany()`, `findOne()`, etc.
-
-**Settings:** `src/settings.ts`
-
-- Centralized constants for setting IDs and defaults
-- Settings control auto-tagging, journal formatting, WebSocket URL, default parent Rem
+**Key files:**
+- `src/widgets/index.tsx` - Plugin entry point
+- `src/widgets/right_sidebar.tsx` - Main UI widget
+- `src/bridge/websocket-client.ts` - WebSocket client with reconnection logic
+- `src/api/rem-adapter.ts` - MCP-to-RemNote SDK adapter
+- `src/settings.ts` - Plugin settings constants
 
 ## Key Technical Patterns
 
-**Widget Registration:** RemNote plugins use a widget-based architecture. Each widget in `src/widgets/` is automatically
-discovered and bundled with both standard and sandboxed versions. Widgets must be explicitly registered in the plugin's
-`onActivate` function.
-
-**RemNote Plugin SDK:**
-
-- Access via `plugin` parameter in activation callbacks
-- Settings: `plugin.settings.registerBooleanSetting()`, `plugin.settings.registerStringSetting()`
-- Rem API: `plugin.rem.findOne()`, `plugin.rem.createRem()`, etc.
-- Widget API: `plugin.app.registerWidget()`
-
-**WebSocket Protocol:** Messages are JSON with structure:
-
-```typescript
-// Request from server
-{ id: string, action: string, payload: Record<string, unknown> }
-
-// Response to server
-{ id: string, result?: unknown, error?: string }
-
-// Heartbeat
-{ type: 'ping' } / { type: 'pong' }
-```
-
-**Settings Access Pattern:**
-
-```typescript
-const autoTagEnabled = await plugin.settings.getSetting(SETTING_AUTO_TAG_ENABLED);
-```
+**Widget Registration:** RemNote plugins use a widget-based architecture. Each widget in `src/widgets/` is automatically discovered and bundled with both standard and sandboxed versions. Widgets must be explicitly registered in the plugin's `onActivate` function.
 
 ## Dependencies & Tooling
 
-- **@remnote/plugin-sdk** - RemNote's official plugin development SDK
-- **React 17** - UI framework (RemNote uses React 17, not React 18)
-- **TypeScript** - Typed codebase with strict configuration
-- **Tailwind CSS** - Utility-first styling (configured via PostCSS)
-- **webpack + esbuild-loader** - Fast build pipeline
+- **@remnote/plugin-sdk** - RemNote's official plugin SDK
+- **React 17** - RemNote requires React 17 (not React 18)
+- **TypeScript** - Strict mode enabled
+- **Tailwind CSS** - Configured via PostCSS
+- **webpack + esbuild-loader** - Build pipeline
 
-## Development Notes
+See `package.json` for complete dependency list.
 
-**Hot Reload:** In dev mode, webpack-dev-server runs on port 8080. Changes to `src/*` trigger hot reload via React Fast
-Refresh. CSS changes are injected without page reload.
+## Common Issues
 
-**Plugin Testing:** RemNote loads the plugin from the dev server URL when in development mode. Use RemNote's developer
-console (Cmd+Option+I on macOS) to view logs and debug.
-
-**Common Issues:**
-
-- "Invalid event setCustomCSS" errors in development are cosmetic and don't affect functionality (won't appear in
-  production)
+- "Invalid event setCustomCSS" errors in development are cosmetic and don't affect functionality (won't appear in production)
 - Connection failures: Verify MCP server is running and WebSocket URL is correct
 - Widget not appearing: Check widget registration in `index.tsx` and RemNote's plugin settings
 - MCP server connection issues: Check MCP logs at `~/.claude/debug/mcp-*.log`
 - Port conflicts: Use `lsof -i :3002` to check if port is already in use
 
-**Production Builds:** The build process validates the plugin manifest, bundles all assets, extracts CSS, and creates
-a zip file. The zip structure must match RemNote's plugin format (validated by `npx remnote-plugin validate`).
-
 ## Testing and Code Quality
 
-While this plugin doesn't have the extensive test suite that the MCP server has, code quality is maintained through:
+This plugin maintains code quality through build-time validation rather than extensive runtime tests.
 
-### Build Validation
+**Validation workflow:**
+1. TypeScript strict mode type checking (`npm run check-types`)
+2. Plugin manifest validation (`npx remnote-plugin validate`)
+3. Manual testing in RemNote (dev mode and production build)
 
-```bash
-# Type checking (must pass before commits)
-npm run check-types
+**Why minimal runtime tests?** The plugin is a thin bridge between MCP and RemNote SDK. Most logic is SDK method calls, which RemNote tests. Manual testing in RemNote catches integration issues more effectively than mocking the SDK.
 
-# Production build with validation
-npm run build
-```
-
-The production build includes:
-
-- TypeScript compilation with strict mode
-- Plugin manifest validation via `npx remnote-plugin validate`
-- Asset bundling and optimization
-- Final zip creation
-
-### Development Workflow
-
-1. Make changes to `src/*` files
-2. Run `npm run check-types` to verify TypeScript correctness
-3. Test in development mode (`npm run dev`) with RemNote
-4. Build for production to validate plugin structure
-5. Test the production build in RemNote
-
-**IMPORTANT:** Always run type checking before committing changes. TypeScript strict mode catches potential runtime
-errors.
+**IMPORTANT:** Always run type checking before committing changes.
 
 ## Claude Code Configuration
 
