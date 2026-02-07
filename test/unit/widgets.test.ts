@@ -36,6 +36,7 @@ describe('Widget Registration (index.tsx)', () => {
       app: {
         registerWidget: registerWidgetSpy,
         registerCommand: registerCommandSpy,
+        toast: vi.fn(async () => {}),
       } as unknown as ReactRNPlugin['app'],
       widget: {
         openPopup: vi.fn(async () => {}),
@@ -193,6 +194,7 @@ describe('Widget Registration (index.tsx)', () => {
   describe('Command registration', () => {
     it('should register open popup command', async () => {
       const commandAction = vi.fn(async () => {
+        await mockPlugin.app!.toast!('Opening MCP Bridge Control Panel...');
         await mockPlugin.widget!.openPopup!('mcp_bridge');
       });
 
@@ -212,11 +214,13 @@ describe('Widget Registration (index.tsx)', () => {
       // Test command action
       const registeredCommand = registerCommandSpy.mock.calls[0][0];
       await registeredCommand.action();
+      expect(mockPlugin.app!.toast).toHaveBeenCalledWith('Opening MCP Bridge Control Panel...');
       expect(mockPlugin.widget!.openPopup).toHaveBeenCalledWith('mcp_bridge');
     });
 
     it('should register open sidebar command', async () => {
       const commandAction = vi.fn(async () => {
+        await mockPlugin.app!.toast!('Opening MCP Bridge Control Panel...');
         await mockPlugin.window!.openWidgetInRightSidebar!('mcp_bridge');
       });
 
@@ -236,6 +240,7 @@ describe('Widget Registration (index.tsx)', () => {
       // Test command action
       const registeredCommand = registerCommandSpy.mock.calls[0][0];
       await registeredCommand.action();
+      expect(mockPlugin.app!.toast).toHaveBeenCalledWith('Opening MCP Bridge Control Panel...');
       expect(mockPlugin.window!.openWidgetInRightSidebar).toHaveBeenCalledWith('mcp_bridge');
     });
   });

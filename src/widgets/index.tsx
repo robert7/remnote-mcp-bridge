@@ -86,6 +86,7 @@ async function onActivate(plugin: ReactRNPlugin) {
     id: 'open-mcp-bridge-popup',
     name: 'Open MCP Bridge Control Panel',
     action: async () => {
+      await plugin.app.toast('Opening MCP Bridge Control Panel...');
       await plugin.widget.openPopup('mcp_bridge');
     },
   });
@@ -97,6 +98,7 @@ async function onActivate(plugin: ReactRNPlugin) {
     id: 'open-mcp-bridge-sidebar',
     name: 'Open MCP Bridge Control Panel in Sidebar',
     action: async () => {
+      await plugin.app.toast('Opening MCP Bridge Control Panel...');
       await plugin.window.openWidgetInRightSidebar('mcp_bridge');
     },
   });
