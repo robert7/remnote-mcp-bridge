@@ -46,7 +46,7 @@ export class WebSocketClient {
       initialReconnectDelay: config.initialReconnectDelay ?? 1000,
       maxReconnectDelay: config.maxReconnectDelay ?? 30000,
       onStatusChange: config.onStatusChange,
-      onLog: config.onLog
+      onLog: config.onLog,
     };
   }
 
@@ -121,7 +121,7 @@ export class WebSocketClient {
           const result = await this.messageHandler(request);
           const response: BridgeResponse = {
             id: request.id,
-            result
+            result,
           };
           this.ws?.send(JSON.stringify(response));
           this.log(`Completed: ${request.action}`);
@@ -129,7 +129,7 @@ export class WebSocketClient {
           const errorMessage = error instanceof Error ? error.message : String(error);
           const response: BridgeResponse = {
             id: request.id,
-            error: errorMessage
+            error: errorMessage,
           };
           this.ws?.send(JSON.stringify(response));
           this.log(`Failed: ${request.action} - ${errorMessage}`, 'error');
@@ -159,7 +159,9 @@ export class WebSocketClient {
     const delay = baseDelay + jitter;
 
     this.reconnectAttempts++;
-    this.log(`Reconnecting in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`);
+    this.log(
+      `Reconnecting in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`
+    );
 
     this.reconnectTimeout = setTimeout(() => {
       this.connect();

@@ -7,6 +7,24 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Testing infrastructure
+  - Comprehensive test suite with 78 tests covering all core modules
+  - Unit tests for WebSocket client, RemAdapter, settings, and widget registration
+  - Test coverage at 96.84% (lines), 86.13% (branches), 96.55% (functions)
+  - Automated code quality checks via `code-quality.sh` script
+  - GitHub Actions CI workflow for continuous integration
+  - Test utilities: mocks, fixtures, and helpers for async operations
+  - Coverage badges in README (CI status and Codecov)
+
+- Code quality tooling
+  - ESLint configuration with TypeScript support
+  - Prettier code formatting with project standards
+  - Vitest testing framework with happy-dom for React component testing
+  - NPM scripts for testing, linting, formatting, and coverage
+  - Automated quality gates: typecheck, lint, format check, tests, coverage
+
 ### Changed
 
 - Documentation improvements

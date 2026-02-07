@@ -3,11 +3,7 @@
  * Wraps the RemNote Plugin SDK with correct method signatures for v0.0.46+
  */
 
-import {
-  ReactRNPlugin,
-  RichTextInterface,
-  PluginRem
-} from '@remnote/plugin-sdk';
+import { ReactRNPlugin, RichTextInterface, Rem } from '@remnote/plugin-sdk';
 import { MCPSettings } from '../settings';
 
 export interface CreateNoteParams {
@@ -57,7 +53,10 @@ export interface SearchResultItem {
 export class RemAdapter {
   private settings: MCPSettings;
 
-  constructor(private plugin: ReactRNPlugin, settings?: Partial<MCPSettings>) {
+  constructor(
+    private plugin: ReactRNPlugin,
+    settings?: Partial<MCPSettings>
+  ) {
     // Default settings
     this.settings = {
       autoTagEnabled: true,
@@ -66,7 +65,7 @@ export class RemAdapter {
       journalTimestamp: true,
       wsUrl: 'ws://127.0.0.1:3002',
       defaultParentId: '',
-      ...settings
+      ...settings,
     };
   }
 
@@ -114,7 +113,7 @@ export class RemAdapter {
   /**
    * Add a tag to a Rem (helper function)
    */
-  private async addTagToRem(rem: PluginRem, tagName: string): Promise<void> {
+  private async addTagToRem(rem: Rem, tagName: string): Promise<void> {
     const tagRem = await this.plugin.rem.findByName([tagName], null);
     if (tagRem) {
       await rem.addTag(tagRem._id);
@@ -238,7 +237,7 @@ export class RemAdapter {
       const item: SearchResultItem = {
         remId: rem._id,
         title,
-        preview
+        preview,
       };
 
       if (params.includeContent) {
@@ -281,14 +280,14 @@ export class RemAdapter {
       remId: rem._id,
       title,
       content: title,
-      children
+      children,
     };
   }
 
   /**
    * Recursively get children of a Rem
    */
-  private async getChildrenRecursive(rem: PluginRem, depth: number): Promise<NoteChild[]> {
+  private async getChildrenRecursive(rem: Rem, depth: number): Promise<NoteChild[]> {
     if (depth <= 0) return [];
 
     const children = await rem.getChildrenRem();
@@ -304,7 +303,7 @@ export class RemAdapter {
       result.push({
         remId: child._id,
         text,
-        children: grandchildren
+        children: grandchildren,
       });
     }
 
@@ -371,7 +370,7 @@ export class RemAdapter {
     return {
       connected: true,
       pluginVersion: '1.1.0',
-      knowledgeBaseId: undefined
+      knowledgeBaseId: undefined,
     };
   }
 }

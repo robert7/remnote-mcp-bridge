@@ -6,11 +6,7 @@
  * Uses renderWidget() as required by RemNote plugin SDK.
  */
 
-import {
-  renderWidget,
-  usePlugin,
-  useTracker
-} from '@remnote/plugin-sdk';
+import { renderWidget, usePlugin, useTracker, ReactRNPlugin } from '@remnote/plugin-sdk';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { WebSocketClient, ConnectionStatus, BridgeRequest } from '../bridge/websocket-client';
 import { RemAdapter } from '../api/rem-adapter';
@@ -22,7 +18,7 @@ import {
   SETTING_WS_URL,
   SETTING_DEFAULT_PARENT,
   DEFAULT_WS_URL,
-  MCPSettings
+  MCPSettings,
 } from '../settings';
 
 // Log entry type
@@ -53,22 +49,39 @@ function MCPBridgeWidget() {
   const plugin = usePlugin();
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [stats, setStats] = useState<SessionStats>({ created: 0, updated: 0, journal: 0, searches: 0 });
+  const [stats, setStats] = useState<SessionStats>({
+    created: 0,
+    updated: 0,
+    journal: 0,
+    searches: 0,
+  });
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const wsClientRef = useRef<WebSocketClient | null>(null);
   const remAdapterRef = useRef<RemAdapter | null>(null);
 
   // Read settings from RemNote
-  const autoTagEnabled = useTracker(() => plugin.settings.getSetting<boolean>(SETTING_AUTO_TAG_ENABLED), []);
+  const autoTagEnabled = useTracker(
+    () => plugin.settings.getSetting<boolean>(SETTING_AUTO_TAG_ENABLED),
+    []
+  );
   const autoTag = useTracker(() => plugin.settings.getSetting<string>(SETTING_AUTO_TAG), []);
-  const journalPrefix = useTracker(() => plugin.settings.getSetting<string>(SETTING_JOURNAL_PREFIX), []);
-  const journalTimestamp = useTracker(() => plugin.settings.getSetting<boolean>(SETTING_JOURNAL_TIMESTAMP), []);
+  const journalPrefix = useTracker(
+    () => plugin.settings.getSetting<string>(SETTING_JOURNAL_PREFIX),
+    []
+  );
+  const journalTimestamp = useTracker(
+    () => plugin.settings.getSetting<boolean>(SETTING_JOURNAL_TIMESTAMP),
+    []
+  );
   const wsUrl = useTracker(() => plugin.settings.getSetting<string>(SETTING_WS_URL), []);
-  const defaultParentId = useTracker(() => plugin.settings.getSetting<string>(SETTING_DEFAULT_PARENT), []);
+  const defaultParentId = useTracker(
+    () => plugin.settings.getSetting<string>(SETTING_DEFAULT_PARENT),
+    []
+  );
 
   // Add log helper
   const addLog = useCallback((message: string, level: LogEntry['level'] = 'info') => {
-    setLogs(prev => {
+    setLogs((prev) => {
       const newLogs = [...prev, { timestamp: new Date(), message, level }];
       // Keep only last 50 logs
       return newLogs.slice(-50);
@@ -76,13 +89,16 @@ function MCPBridgeWidget() {
   }, []);
 
   // Add history entry helper
-  const addHistoryEntry = useCallback((action: HistoryEntry['action'], title: string, remId?: string) => {
-    setHistory(prev => {
-      const newHistory = [{ timestamp: new Date(), action, title, remId }, ...prev];
-      // Keep only last 10 entries
-      return newHistory.slice(0, 10);
-    });
-  }, []);
+  const addHistoryEntry = useCallback(
+    (action: HistoryEntry['action'], title: string, remId?: string) => {
+      setHistory((prev) => {
+        const newHistory = [{ timestamp: new Date(), action, title, remId }, ...prev];
+        // Keep only last 10 entries
+        return newHistory.slice(0, 10);
+      });
+    },
+    []
+  );
 
   // Initialize RemAdapter with settings
   useEffect(() => {
@@ -93,91 +109,103 @@ function MCPBridgeWidget() {
         journalPrefix: journalPrefix ?? '[Claude]',
         journalTimestamp: journalTimestamp ?? true,
         wsUrl: wsUrl ?? DEFAULT_WS_URL,
-        defaultParentId: defaultParentId ?? ''
+        defaultParentId: defaultParentId ?? '',
       };
 
       if (remAdapterRef.current) {
         remAdapterRef.current.updateSettings(settings);
       } else {
-        remAdapterRef.current = new RemAdapter(plugin as any, settings);
+        remAdapterRef.current = new RemAdapter(plugin as ReactRNPlugin, settings);
         addLog('RemAdapter initialized', 'success');
       }
     }
-  }, [plugin, addLog, autoTagEnabled, autoTag, journalPrefix, journalTimestamp, wsUrl, defaultParentId]);
+  }, [
+    plugin,
+    addLog,
+    autoTagEnabled,
+    autoTag,
+    journalPrefix,
+    journalTimestamp,
+    wsUrl,
+    defaultParentId,
+  ]);
 
   // Handle incoming requests from MCP server
-  const handleRequest = useCallback(async (request: BridgeRequest): Promise<unknown> => {
-    const adapter = remAdapterRef.current;
-    if (!adapter) {
-      throw new Error('RemAdapter not initialized');
-    }
-
-    const payload = request.payload;
-    addLog(`Received action: ${request.action}`, 'info');
-
-    switch (request.action) {
-      case 'create_note': {
-        const result = await adapter.createNote({
-          title: payload.title as string,
-          content: payload.content as string | undefined,
-          parentId: payload.parentId as string | undefined,
-          tags: payload.tags as string[] | undefined
-        });
-        setStats(prev => ({ ...prev, created: prev.created + 1 }));
-        addHistoryEntry('create', result.title, result.remId);
-        return result;
+  const handleRequest = useCallback(
+    async (request: BridgeRequest): Promise<unknown> => {
+      const adapter = remAdapterRef.current;
+      if (!adapter) {
+        throw new Error('RemAdapter not initialized');
       }
 
-      case 'append_journal': {
-        const result = await adapter.appendJournal({
-          content: payload.content as string,
-          timestamp: payload.timestamp as boolean | undefined
-        });
-        setStats(prev => ({ ...prev, journal: prev.journal + 1 }));
-        addHistoryEntry('journal', 'Journal entry', result.remId);
-        return result;
+      const payload = request.payload;
+      addLog(`Received action: ${request.action}`, 'info');
+
+      switch (request.action) {
+        case 'create_note': {
+          const result = await adapter.createNote({
+            title: payload.title as string,
+            content: payload.content as string | undefined,
+            parentId: payload.parentId as string | undefined,
+            tags: payload.tags as string[] | undefined,
+          });
+          setStats((prev) => ({ ...prev, created: prev.created + 1 }));
+          addHistoryEntry('create', result.title, result.remId);
+          return result;
+        }
+
+        case 'append_journal': {
+          const result = await adapter.appendJournal({
+            content: payload.content as string,
+            timestamp: payload.timestamp as boolean | undefined,
+          });
+          setStats((prev) => ({ ...prev, journal: prev.journal + 1 }));
+          addHistoryEntry('journal', 'Journal entry', result.remId);
+          return result;
+        }
+
+        case 'search': {
+          const result = await adapter.search({
+            query: payload.query as string,
+            limit: payload.limit as number | undefined,
+            includeContent: payload.includeContent as boolean | undefined,
+          });
+          setStats((prev) => ({ ...prev, searches: prev.searches + 1 }));
+          addHistoryEntry('search', `Search: "${payload.query}"`);
+          return result;
+        }
+
+        case 'read_note': {
+          const result = await adapter.readNote({
+            remId: payload.remId as string,
+            depth: payload.depth as number | undefined,
+          });
+          addHistoryEntry('read', result.title, result.remId);
+          return result;
+        }
+
+        case 'update_note': {
+          const result = await adapter.updateNote({
+            remId: payload.remId as string,
+            title: payload.title as string | undefined,
+            appendContent: payload.appendContent as string | undefined,
+            addTags: payload.addTags as string[] | undefined,
+            removeTags: payload.removeTags as string[] | undefined,
+          });
+          setStats((prev) => ({ ...prev, updated: prev.updated + 1 }));
+          addHistoryEntry('update', (payload.title as string) || 'Note updated', result.remId);
+          return result;
+        }
+
+        case 'get_status':
+          return await adapter.getStatus();
+
+        default:
+          throw new Error(`Unknown action: ${request.action}`);
       }
-
-      case 'search': {
-        const result = await adapter.search({
-          query: payload.query as string,
-          limit: payload.limit as number | undefined,
-          includeContent: payload.includeContent as boolean | undefined
-        });
-        setStats(prev => ({ ...prev, searches: prev.searches + 1 }));
-        addHistoryEntry('search', `Search: "${payload.query}"`);
-        return result;
-      }
-
-      case 'read_note': {
-        const result = await adapter.readNote({
-          remId: payload.remId as string,
-          depth: payload.depth as number | undefined
-        });
-        addHistoryEntry('read', result.title, result.remId);
-        return result;
-      }
-
-      case 'update_note': {
-        const result = await adapter.updateNote({
-          remId: payload.remId as string,
-          title: payload.title as string | undefined,
-          appendContent: payload.appendContent as string | undefined,
-          addTags: payload.addTags as string[] | undefined,
-          removeTags: payload.removeTags as string[] | undefined
-        });
-        setStats(prev => ({ ...prev, updated: prev.updated + 1 }));
-        addHistoryEntry('update', payload.title as string || 'Note updated', result.remId);
-        return result;
-      }
-
-      case 'get_status':
-        return await adapter.getStatus();
-
-      default:
-        throw new Error(`Unknown action: ${request.action}`);
-    }
-  }, [addLog, addHistoryEntry]);
+    },
+    [addLog, addHistoryEntry]
+  );
 
   // Initialize WebSocket connection with dynamic URL
   const currentWsUrl = wsUrl ?? DEFAULT_WS_URL;
@@ -198,7 +226,7 @@ function MCPBridgeWidget() {
       },
       onLog: (message, level) => {
         addLog(message, level);
-      }
+      },
     });
 
     client.setMessageHandler(handleRequest);
@@ -225,7 +253,7 @@ function MCPBridgeWidget() {
     connected: { color: '#22c55e', bg: '#dcfce7', icon: '●', text: 'Connected' },
     connecting: { color: '#f59e0b', bg: '#fef3c7', icon: '◐', text: 'Connecting...' },
     disconnected: { color: '#ef4444', bg: '#fee2e2', icon: '○', text: 'Disconnected' },
-    error: { color: '#ef4444', bg: '#fee2e2', icon: '✕', text: 'Error' }
+    error: { color: '#ef4444', bg: '#fee2e2', icon: '✕', text: 'Error' },
   };
 
   const currentStatus = statusConfig[status];
@@ -236,30 +264,34 @@ function MCPBridgeWidget() {
     update: '~',
     journal: '#',
     search: '?',
-    read: '>'
+    read: '>',
   };
 
   return (
     <div style={{ padding: '12px', fontFamily: 'system-ui, sans-serif', fontSize: '13px' }}>
       {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: '12px'
-      }}>
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>MCP Bridge</h3>
-        <div style={{
+      <div
+        style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '4px 8px',
-          borderRadius: '12px',
-          backgroundColor: currentStatus.bg,
-          color: currentStatus.color,
-          fontSize: '12px',
-          fontWeight: 500
-        }}>
+          justifyContent: 'space-between',
+          marginBottom: '12px',
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>MCP Bridge</h3>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 8px',
+            borderRadius: '12px',
+            backgroundColor: currentStatus.bg,
+            color: currentStatus.color,
+            fontSize: '12px',
+            fontWeight: 500,
+          }}
+        >
           <span>{currentStatus.icon}</span>
           <span>{currentStatus.text}</span>
         </div>
@@ -277,7 +309,7 @@ function MCPBridgeWidget() {
             borderRadius: '6px',
             backgroundColor: '#f9fafb',
             cursor: 'pointer',
-            fontSize: '12px'
+            fontSize: '12px',
           }}
         >
           Reconnect
@@ -285,13 +317,15 @@ function MCPBridgeWidget() {
       )}
 
       {/* Stats Section */}
-      <div style={{
-        marginBottom: '12px',
-        padding: '10px',
-        border: '1px solid #e5e7eb',
-        borderRadius: '6px',
-        backgroundColor: '#f9fafb'
-      }}>
+      <div
+        style={{
+          marginBottom: '12px',
+          padding: '10px',
+          border: '1px solid #e5e7eb',
+          borderRadius: '6px',
+          backgroundColor: '#f9fafb',
+        }}
+      >
         <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '8px', color: '#6b7280' }}>
           SESSION STATS
         </div>
@@ -317,19 +351,23 @@ function MCPBridgeWidget() {
 
       {/* History Section */}
       {history.length > 0 && (
-        <div style={{
-          marginBottom: '12px',
-          border: '1px solid #e5e7eb',
-          borderRadius: '6px',
-          backgroundColor: '#f9fafb'
-        }}>
-          <div style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            padding: '8px 10px',
-            borderBottom: '1px solid #e5e7eb',
-            color: '#6b7280'
-          }}>
+        <div
+          style={{
+            marginBottom: '12px',
+            border: '1px solid #e5e7eb',
+            borderRadius: '6px',
+            backgroundColor: '#f9fafb',
+          }}
+        >
+          <div
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '8px 10px',
+              borderBottom: '1px solid #e5e7eb',
+              color: '#6b7280',
+            }}
+          >
             RECENT ACTIONS
           </div>
           <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
@@ -342,29 +380,39 @@ function MCPBridgeWidget() {
                   fontSize: '11px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px'
+                  gap: '8px',
                 }}
               >
-                <span style={{
-                  color: entry.action === 'create' ? '#22c55e' :
-                         entry.action === 'update' ? '#3b82f6' :
-                         entry.action === 'journal' ? '#8b5cf6' :
-                         entry.action === 'search' ? '#f59e0b' : '#6b7280',
-                  fontWeight: 600,
-                  width: '12px'
-                }}>
+                <span
+                  style={{
+                    color:
+                      entry.action === 'create'
+                        ? '#22c55e'
+                        : entry.action === 'update'
+                          ? '#3b82f6'
+                          : entry.action === 'journal'
+                            ? '#8b5cf6'
+                            : entry.action === 'search'
+                              ? '#f59e0b'
+                              : '#6b7280',
+                    fontWeight: 600,
+                    width: '12px',
+                  }}
+                >
                   {actionIcons[entry.action]}
                 </span>
                 <span style={{ color: '#9ca3af', flexShrink: 0 }}>
                   {entry.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
-                <span style={{
-                  flex: 1,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  color: '#374151'
-                }}>
+                <span
+                  style={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    color: '#374151',
+                  }}
+                >
                   {entry.title}
                 </span>
               </div>
@@ -374,18 +422,22 @@ function MCPBridgeWidget() {
       )}
 
       {/* Logs Section */}
-      <div style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: '6px',
-        backgroundColor: '#f9fafb'
-      }}>
-        <div style={{
-          fontSize: '11px',
-          fontWeight: 600,
-          padding: '8px 10px',
-          borderBottom: '1px solid #e5e7eb',
-          color: '#6b7280'
-        }}>
+      <div
+        style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: '6px',
+          backgroundColor: '#f9fafb',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            padding: '8px 10px',
+            borderBottom: '1px solid #e5e7eb',
+            color: '#6b7280',
+          }}
+        >
           LOGS
         </div>
         <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
@@ -394,28 +446,42 @@ function MCPBridgeWidget() {
               No logs yet
             </div>
           ) : (
-            logs.slice().reverse().map((log, index) => (
-              <div
-                key={index}
-                style={{
-                  padding: '6px 10px',
-                  borderBottom: index < logs.length - 1 ? '1px solid #e5e7eb' : 'none',
-                  fontSize: '11px'
-                }}
-              >
-                <span style={{ color: '#9ca3af' }}>
-                  {log.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </span>
-                <span style={{
-                  marginLeft: '8px',
-                  color: log.level === 'error' ? '#ef4444' :
-                         log.level === 'success' ? '#22c55e' :
-                         log.level === 'warn' ? '#f59e0b' : '#374151'
-                }}>
-                  {log.message}
-                </span>
-              </div>
-            ))
+            logs
+              .slice()
+              .reverse()
+              .map((log, index) => (
+                <div
+                  key={index}
+                  style={{
+                    padding: '6px 10px',
+                    borderBottom: index < logs.length - 1 ? '1px solid #e5e7eb' : 'none',
+                    fontSize: '11px',
+                  }}
+                >
+                  <span style={{ color: '#9ca3af' }}>
+                    {log.timestamp.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })}
+                  </span>
+                  <span
+                    style={{
+                      marginLeft: '8px',
+                      color:
+                        log.level === 'error'
+                          ? '#ef4444'
+                          : log.level === 'success'
+                            ? '#22c55e'
+                            : log.level === 'warn'
+                              ? '#f59e0b'
+                              : '#374151',
+                    }}
+                  >
+                    {log.message}
+                  </span>
+                </div>
+              ))
           )}
         </div>
       </div>

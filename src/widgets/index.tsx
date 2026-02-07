@@ -71,8 +71,8 @@ async function onActivate(plugin: ReactRNPlugin) {
   await plugin.app.registerWidget('mcp_bridge_popup', WidgetLocation.Popup, {
     dimensions: {
       height: 'auto',
-      width: '600px'
-    }
+      width: '600px',
+    },
   });
 
   // Register command to open the widget
@@ -81,7 +81,7 @@ async function onActivate(plugin: ReactRNPlugin) {
     name: 'Open MCP Bridge Control Panel',
     action: async () => {
       await plugin.widget.openPopup('mcp_bridge_popup');
-    }
+    },
   });
 
   console.log('[MCP Bridge] Command registered: Open MCP Bridge Control Panel');
