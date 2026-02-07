@@ -35,10 +35,21 @@ See **.agents/dev-requirements.md** for detailed guidelines on:
 
 **If you skip any of these steps, the task is INCOMPLETE.**
 
+## MANDATORY: Documentation Change Requirements
+
+**Before making ANY documentation change, you MUST read .agents/dev-documentation.md** for documentation standards and guidelines.
+
+**ALL documentation changes MUST be documented in CHANGELOG.md** - this includes updates to:
+
+- Documentation files in `docs/` and `.agents/`
+- README.md and other markdown files
+- Docstrings and code comments (when updated without functional changes)
+
+**No exceptions** - if you update documentation, you update CHANGELOG.md.
+
 ## CRITICAL: ExecPlans
 
-When writing complex features or significant refactors, use an ExecPlan (as described in .agents/PLANS.md) from design
-to implementation.
+When writing complex features or significant refactors, use an ExecPlan (as described in .agents/PLANS.md) from design to implementation.
 
 ## CRITICAL: Git Commit Policy
 
