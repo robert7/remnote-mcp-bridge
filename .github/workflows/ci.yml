@@ -25,12 +25,3 @@ jobs:
 
       - name: Run code quality checks
         run: ./code-quality.sh
-
-      - name: Upload coverage to Codecov
-        if: success()
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/lcov.info
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
