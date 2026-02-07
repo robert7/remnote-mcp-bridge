@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI Agents when working with code in this repository.
 
 ## Project Overview
 
@@ -11,7 +11,7 @@ server and RemNote's Plugin SDK.
 **Architecture Flow:**
 
 ```text
-AI Assistant ↔ MCP Server (WebSocket) ↔ This Plugin ↔ RemNote SDK ↔ RemNote KB
+AI Assistant (e.g. Claude Code) ↔ MCP Server (stdio, WebSocket) ↔ This Plugin ↔ RemNote SDK ↔ RemNote KB
 ```
 
 The plugin receives MCP actions via WebSocket (default: ws://127.0.0.1:3002), executes them against the RemNote API, and
@@ -158,6 +158,7 @@ npm run build
 ```
 
 The production build includes:
+
 - TypeScript compilation with strict mode
 - Plugin manifest validation via `npx remnote-plugin validate`
 - Asset bundling and optimization
@@ -171,7 +172,8 @@ The production build includes:
 4. Build for production to validate plugin structure
 5. Test the production build in RemNote
 
-**IMPORTANT:** Always run type checking before committing changes. TypeScript strict mode catches potential runtime errors.
+**IMPORTANT:** Always run type checking before committing changes. TypeScript strict mode catches potential runtime
+errors.
 
 ## Claude Code Configuration
 
@@ -201,6 +203,7 @@ MCP servers are configured under the `mcpServers` key within project-specific se
 ```
 
 **Important notes:**
+
 - **Global availability:** Use your home directory path to make RemNote tools available in all projects
 - **Project-specific:** Use specific project paths to limit availability
 - **Old format deprecated:** The separate `~/.claude/.mcp.json` file is no longer used
@@ -209,12 +212,14 @@ MCP servers are configured under the `mcpServers` key within project-specific se
 ### Troubleshooting MCP Configuration
 
 **Configuration not loading:**
+
 1. Verify configuration is in `~/.claude.json` (NOT `~/.claude/.mcp.json`)
 2. Check project path matches exactly (use `pwd` to verify)
 3. Restart Claude Code completely
 4. Check MCP logs: `~/.claude/debug/mcp-*.log`
 
 **Server not starting:**
+
 1. Verify `remnote-mcp-server` is installed globally: `which remnote-mcp-server`
 2. Check Node.js is accessible in Claude Code's environment
 3. Review MCP logs for startup errors
