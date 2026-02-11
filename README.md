@@ -4,8 +4,8 @@ A RemNote plugin that enables AI assistants to interact with your RemNote knowle
 Protocol (MCP).
 
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
-![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
-[![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
+![CI](https://github.com/quentintou/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/quentintou/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/quentintou/remnote-mcp-bridge)
 
 ## Two-Component Architecture
 
@@ -76,7 +76,7 @@ to RemNote's plugin marketplace.
 
 1. Clone and build the plugin:
    ```bash
-   git clone https://github.com/robert7/remnote-mcp-bridge.git
+   git clone https://github.com/quentintou/remnote-mcp-bridge.git
    cd remnote-mcp-bridge
    npm install
    npm run dev
