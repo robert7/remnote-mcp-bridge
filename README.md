@@ -156,6 +156,8 @@ The MCP Bridge Control Panel can be opened in two ways:
 
 #### Sidebar Mode (Persistent Access)
 
+> **DIDN'T WORK FOR ME** - if it doesn't work for you, use **popup mode** for now. Future updates may improve sidebar functionality.
+
 1. Press **Ctrl-K** (or Cmd-K on macOS) to open RemNote's command palette
 2. Search for **"Open MCP Bridge Control Panel in Sidebar"**
 3. The widget opens in RemNote's right sidebar
