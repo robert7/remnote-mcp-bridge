@@ -1,7 +1,9 @@
-# RemNote MCP Bridge
+# RemNote MCP Bridge Plus
 
-A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context
-Protocol (MCP).
+A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context Protocol (MCP).
+
+> Improved and renamed fork of original plugin
+> [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
 
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
