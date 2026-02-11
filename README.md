@@ -2,19 +2,19 @@
 
 A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context Protocol (MCP).
 
-> Improved and renamed fork of original plugin
-> [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
-
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
 [![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
+
+> Improved and renamed fork of original plugin
+> [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
 
 ## Two-Component Architecture
 
 This system consists of **two separate components** that work together:
 
-1. **RemNote MCP Bridge** (this repository) - A RemNote plugin that runs in your browser and exposes RemNote API
-   functionality via WebSocket
+1. **RemNote MCP Bridge** (this repository) - A RemNote plugin that runs in your browser or RemNote desktop app
+   and exposes RemNote API functionality via WebSocket
 2. **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)** - A standalone server that connects your AI
    assistant to the bridge using MCP protocol
 
