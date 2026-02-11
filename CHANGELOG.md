@@ -7,12 +7,21 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+
+- Corrected "Important Limitations" section in README.md
+  - Fixed incorrect statement about 1:1:1 relationship limiting to one AI agent
+  - Clarified that multiple AI agents CAN connect to the MCP server simultaneously
+  - Explained that the limitation is single RemNote plugin connection, not AI agent count
+  - Updated to reflect MCP server's HTTP Streamable transport supporting multiple concurrent sessions
+  - Updated documentation link from `#important-limitations` to `#multi-agent-support`
+
 ## [0.3.2] - 2026-02-11
 
 ### Changed
 
-- Updated manifest, modified plugin name to "MCP Bridge Plus", to make it distinct from
-  the original version by Quentin Tousart
+- Updated manifest, modified plugin name to "MCP Bridge Plus", to make it distinct from the original version by Quentin
+  Tousart
 
 ## [0.3.1] - 2026-02-11
 

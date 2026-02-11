@@ -1,6 +1,7 @@
 # RemNote MCP Bridge Plus
 
-A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context Protocol (MCP).
+A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context
+Protocol (MCP).
 
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
@@ -13,8 +14,8 @@ A RemNote plugin that enables AI assistants to interact with your RemNote knowle
 
 This system consists of **two separate components** that work together:
 
-1. **RemNote MCP Bridge** (this repository) - A RemNote plugin that runs in your browser or RemNote desktop app
-   and exposes RemNote API functionality via WebSocket
+1. **RemNote MCP Bridge** (this repository) - A RemNote plugin that runs in your browser or RemNote desktop app and
+   exposes RemNote API functionality via WebSocket
 2. **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)** - A standalone server that connects your AI
    assistant to the bridge using MCP protocol
 
@@ -109,13 +110,16 @@ repository](https://github.com/robert7/remnote-mcp-server)**.
 
 ## Important Limitations
 
-The system enforces a **1:1:1 relationship**: one AI agent ↔ one MCP server instance ↔ one RemNote plugin connection.
+**Multiple AI agents can connect to the MCP server simultaneously**, but the system enforces a **single RemNote plugin
+connection**. This means:
 
-**You cannot use multiple AI agents with the same RemNote knowledge base simultaneously.** Only one AI assistant can
-be connected at a time.
+- Multiple AI assistants (e.g., multiple Claude Code sessions) can access the same RemNote knowledge base concurrently
+- The MCP server uses HTTP Streamable transport, supporting multiple concurrent client sessions
+- However, only one RemNote app instance can be connected at a time via the WebSocket bridge
+- This is a RemNote plugin limitation, not an MCP server limitation
 
-For technical details about these limitations and alternative approaches, see the **[RemNote MCP Server
-documentation](https://github.com/robert7/remnote-mcp-server#important-limitations)**.
+For technical details about multi-agent support and connection architecture, see the **[RemNote MCP Server
+documentation](https://github.com/robert7/remnote-mcp-server#multi-agent-support)**.
 
 ## Configuration
 
