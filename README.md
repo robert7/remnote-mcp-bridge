@@ -181,7 +181,7 @@ Once everything is connected, you can ask your AI assistant things like:
 ## Architecture
 
 ```text
-AI Assistant (Claude Code/Desktop) ↔ MCP Server (stdio) ↔ WebSocket :3002 ↔ RemNote Plugin (this repo) ↔ RemNote SDK
+AI Assistant (Claude Code/Desktop) ↔ MCP Server (HTTP) ↔ WebSocket :3002 ↔ RemNote Plugin (this repo) ↔ RemNote SDK
 ```
 
 **Component roles:**
