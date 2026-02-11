@@ -7,6 +7,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-11
+
 ### Added
 
 - New command: "Open MCP Bridge Control Panel in Sidebar"

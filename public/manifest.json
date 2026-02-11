@@ -6,7 +6,7 @@
   "description": "Connect RemNote to AI assistants (Claude, GPT, etc.) via MCP. Create, search, read, and update notes directly from your AI.",
   "version": {
     "major": 0,
-    "minor": 2,
+    "minor": 3,
     "patch": 0
   },
   "repoUrl": "https://github.com/robert7/remnote-mcp-bridge",
