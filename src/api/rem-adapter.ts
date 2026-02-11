@@ -6,6 +6,9 @@
 import { ReactRNPlugin, RichTextInterface, Rem } from '@remnote/plugin-sdk';
 import { MCPSettings } from '../settings';
 
+// Build-time constant injected by webpack DefinePlugin
+declare const __PLUGIN_VERSION__: string;
+
 export interface CreateNoteParams {
   title: string;
   content?: string;
@@ -369,7 +372,7 @@ export class RemAdapter {
   }> {
     return {
       connected: true,
-      pluginVersion: '1.1.0',
+      pluginVersion: __PLUGIN_VERSION__,
       knowledgeBaseId: undefined,
     };
   }

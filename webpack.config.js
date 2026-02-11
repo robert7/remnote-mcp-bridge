@@ -4,11 +4,12 @@ var path = require('path');
 
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { ESBuildMinifyPlugin } = require('esbuild-loader');
-const { ProvidePlugin, BannerPlugin } = require('webpack');
+const { ProvidePlugin, BannerPlugin, DefinePlugin } = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 
 const CopyPlugin = require('copy-webpack-plugin');
+const { version } = require('./package.json');
 
 const isProd = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProd;
@@ -60,6 +61,9 @@ const config = {
     ],
   },
   plugins: [
+    new DefinePlugin({
+      __PLUGIN_VERSION__: JSON.stringify(version),
+    }),
     isDevelopment
       ? undefined
       : new MiniCssExtractPlugin({

@@ -7,8 +7,18 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Consolidated version management to use single source of truth
+  - Version now injected at build time from `package.json` via webpack DefinePlugin
+  - Removed hardcoded version "1.1.0" from `rem-adapter.ts` (was out of sync with package version 0.3.2)
+  - Plugin now correctly reports version 0.3.2 via `getStatus()`
+  - Reduced manual steps in release process from 3 locations to 2 (package.json and manifest.json)
+  - Added vitest config to define `__PLUGIN_VERSION__` constant for test environment
+
 ### Documentation
 
+- Updated CLAUDE.md "Release Version Updates" section to reflect automated version injection
 - Corrected "Important Limitations" section in README.md
   - Fixed incorrect statement about 1:1:1 relationship limiting to one AI agent
   - Clarified that multiple AI agents CAN connect to the MCP server simultaneously

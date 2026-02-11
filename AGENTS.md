@@ -78,7 +78,7 @@ See **.agents/dev-workflow.md** for complete Git Commit Policy details.
 
 ## Release Version Updates
 
-When creating a new release, update version in these 3 locations:
+When creating a new release, update version in these 2 locations:
 
 1. **package.json** - `"version": "X.Y.Z"` (npm semver format)
 2. **public/manifest.json** - `"version": { "major": X, "minor": Y, "patch": Z }` (RemNote format)
