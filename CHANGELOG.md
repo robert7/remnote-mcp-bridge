@@ -14,11 +14,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Accessible via Ctrl-K/Cmd-K → search for "Open MCP Bridge Control Panel in Sidebar"
   - Widget can now be opened as both popup (existing) and sidebar (new)
   - Each instance maintains independent state (separate WebSocket clients, logs, stats)
-
 - Toast notifications when opening Control Panel
   - Shows "Opening MCP Bridge Control Panel..." for immediate user feedback
   - Applies to both popup and sidebar commands
-
 - Testing infrastructure
   - Comprehensive test suite with 78 tests covering all core modules
   - Unit tests for WebSocket client, RemAdapter, settings, and widget registration
@@ -27,7 +25,6 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - GitHub Actions CI workflow for continuous integration
   - Test utilities: mocks, fixtures, and helpers for async operations
   - Coverage badges in README (CI status and Codecov)
-
 - Code quality tooling
   - ESLint configuration with TypeScript support
   - Prettier code formatting with project standards
@@ -37,14 +34,14 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Updated manifest
 - Widget file renamed from `mcp_bridge_popup.tsx` to `mcp_bridge.tsx` to reflect dual-location capability
 - Widget now registered at both Popup and RightSidebar locations with appropriate dimensions
-
 - README.md improvements
   - Documented both popup and sidebar commands
   - Added usage guidance (use only one mode at a time)
   - Clarified differences between popup (modal, quick access) and sidebar (persistent, non-blocking)
-
+  - Added Data Privacy section explaining data flow from RemNote through local MCP server to AI assistant
 - Documentation improvements
   - Updated README.md with comprehensive installation instructions from MCP server documentation
   - Added demo section linking to server repository demo

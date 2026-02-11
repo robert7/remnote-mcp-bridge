@@ -37,7 +37,8 @@ See **.agents/dev-requirements.md** for detailed guidelines on:
 
 ## MANDATORY: Documentation Change Requirements
 
-**Before making ANY documentation change, you MUST read .agents/dev-documentation.md** for documentation standards and guidelines.
+**Before making ANY documentation change, you MUST read .agents/dev-documentation.md** for documentation standards and
+guidelines.
 
 **ALL documentation changes MUST be documented in CHANGELOG.md** - this includes updates to:
 
@@ -49,7 +50,8 @@ See **.agents/dev-requirements.md** for detailed guidelines on:
 
 ## CRITICAL: ExecPlans
 
-When writing complex features or significant refactors, use an ExecPlan (as described in .agents/PLANS.md) from design to implementation.
+When writing complex features or significant refactors, use an ExecPlan (as described in .agents/PLANS.md) from design
+to implementation.
 
 ## CRITICAL: Git Commit Policy
 
@@ -98,7 +100,8 @@ See `package.json` for complete script definitions.
 
 **Why esbuild-loader?** Fast TypeScript compilation without separate tsc step.
 
-**Why dual entry points?** Each widget in `src/widgets/**/*.tsx` generates both `widgetname.js` and `widgetname-sandbox.js` to support RemNote's widget isolation model.
+**Why dual entry points?** Each widget in `src/widgets/**/*.tsx` generates both `widgetname.js` and
+`widgetname-sandbox.js` to support RemNote's widget isolation model.
 
 **Target:** ES2020 (RemNote compatibility requirement)
 
@@ -106,13 +109,17 @@ See `webpack.config.js` for build configuration details.
 
 ## Architecture Notes
 
-**Why dual widget bundles?** RemNote's security model requires both standard and sandboxed versions of each widget for isolated execution contexts.
+**Why dual widget bundles?** RemNote's security model requires both standard and sandboxed versions of each widget for
+isolated execution contexts.
 
-**Why exponential backoff in WebSocket client?** Prevents thundering herd during MCP server restarts. Uses jitter to distribute reconnection attempts.
+**Why exponential backoff in WebSocket client?** Prevents thundering herd during MCP server restarts. Uses jitter
+to distribute reconnection attempts.
 
-**Why convert content to child Rems?** (in `rem-adapter.ts`) Maintains RemNote's hierarchical structure, supports rich formatting per line, and enables independent tagging of content blocks.
+**Why convert content to child Rems?** (in `rem-adapter.ts`) Maintains RemNote's hierarchical structure, supports rich
+formatting per line, and enables independent tagging of content blocks.
 
 **Key files:**
+
 - `src/widgets/index.tsx` - Plugin entry point
 - `src/widgets/right_sidebar.tsx` - Main UI widget
 - `src/bridge/websocket-client.ts` - WebSocket client with reconnection logic
@@ -121,7 +128,9 @@ See `webpack.config.js` for build configuration details.
 
 ## Key Technical Patterns
 
-**Widget Registration:** RemNote plugins use a widget-based architecture. Each widget in `src/widgets/` is automatically discovered and bundled with both standard and sandboxed versions. Widgets must be explicitly registered in the plugin's `onActivate` function.
+**Widget Registration:** RemNote plugins use a widget-based architecture. Each widget in `src/widgets/` is automatically
+discovered and bundled with both standard and sandboxed versions. Widgets must be explicitly registered in the plugin's
+`onActivate` function.
 
 ## Dependencies & Tooling
 
@@ -135,7 +144,8 @@ See `package.json` for complete dependency list.
 
 ## Common Issues
 
-- "Invalid event setCustomCSS" errors in development are cosmetic and don't affect functionality (won't appear in production)
+- "Invalid event setCustomCSS" errors in development are cosmetic and don't affect functionality (won't appear in
+  production)
 - Connection failures: Verify MCP server is running and WebSocket URL is correct
 - Widget not appearing: Check widget registration in `index.tsx` and RemNote's plugin settings
 - MCP server connection issues: Check MCP logs at `~/.claude/debug/mcp-*.log`
@@ -146,11 +156,13 @@ See `package.json` for complete dependency list.
 This plugin maintains code quality through build-time validation rather than extensive runtime tests.
 
 **Validation workflow:**
+
 1. TypeScript strict mode type checking (`npm run check-types`)
 2. Plugin manifest validation (`npx remnote-plugin validate`)
 3. Manual testing in RemNote (dev mode and production build)
 
-**Why minimal runtime tests?** The plugin is a thin bridge between MCP and RemNote SDK. Most logic is SDK method calls, which RemNote tests. Manual testing in RemNote catches integration issues more effectively than mocking the SDK.
+**Why minimal runtime tests?** The plugin is a thin bridge between MCP and RemNote SDK. Most logic is SDK method calls,
+which RemNote tests. Manual testing in RemNote catches integration issues more effectively than mocking the SDK.
 
 **IMPORTANT:** Always run type checking before committing changes.
 

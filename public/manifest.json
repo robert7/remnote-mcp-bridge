@@ -2,14 +2,14 @@
   "manifestVersion": 1,
   "id": "remnote-mcp-bridge",
   "name": "MCP Bridge",
-  "author": "Quentin Tousart",
+  "author": "Robert Spiegel",
   "description": "Connect RemNote to AI assistants (Claude, GPT, etc.) via MCP. Create, search, read, and update notes directly from your AI.",
   "version": {
     "major": 1,
     "minor": 1,
     "patch": 0
   },
-  "repoUrl": "https://github.com/quentintou/remnote-mcp-bridge",
+  "repoUrl": "https://github.com/robert7/remnote-mcp-bridge",
   "enableOnMobile": false,
   "requestNative": false,
   "requiredScopes": [
@@ -17,5 +17,6 @@
       "type": "All",
       "level": "ReadCreateModifyDelete"
     }
-  ]
+  ],
+  "unlisted": true
 }

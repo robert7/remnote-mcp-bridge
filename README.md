@@ -1,15 +1,20 @@
 # RemNote MCP Bridge
 
-A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context Protocol (MCP).
+A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context
+Protocol (MCP).
 
-![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue) ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg) [![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
+![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
+![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
 
 ## Two-Component Architecture
 
 This system consists of **two separate components** that work together:
 
-1. **RemNote MCP Bridge** (this repository) - A RemNote plugin that runs in your browser and exposes RemNote API functionality via WebSocket
-2. **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)** - A standalone server that connects your AI assistant to the bridge using MCP protocol
+1. **RemNote MCP Bridge** (this repository) - A RemNote plugin that runs in your browser and exposes RemNote API
+   functionality via WebSocket
+2. **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)** - A standalone server that connects your AI
+   assistant to the bridge using MCP protocol
 
 **Both components are required** for AI integration with RemNote.
 
@@ -42,11 +47,30 @@ to interact with external tools and data sources. With this plugin, your AI assi
 - **Real-time Status** - Connection status indicator in popup control panel
 - **Command Palette Access** - Open control panel via Ctrl-K → "Open MCP Bridge Control Panel"
 
+## Data Privacy
+
+This plugin connects your RemNote knowledge base to AI assistants through a **locally running MCP server** (installed
+separately from this plugin). Here's the data flow:
+
+**RemNote ↔ Local MCP Server ↔ AI Assistant**
+
+- The plugin communicates exclusively with your local MCP server via WebSocket (default: `ws://127.0.0.1:3002`)
+- The MCP server forwards data to your AI assistant (Claude, GPT, etc.) using the MCP protocol
+- **The plugin itself does NOT send data to external servers** - all external communication happens through your local
+  MCP server
+
+Your RemNote data is only shared with the AI assistant you've configured in your MCP server setup. The plugin acts as
+a local bridge and has no built-in external network access beyond the local WebSocket connection.
+
+For technical details about the security model, see the [RemNote MCP Server Security
+Model](https://github.com/robert7/remnote-mcp-server/blob/main/docs/architecture.md#security-model) documentation.
+
 ## Installation
 
 ### 1. Install the RemNote Plugin (This Repository)
 
-**Currently, this plugin is only available for local development installation.** Future releases may be published to RemNote's plugin marketplace.
+**Currently, this plugin is only available for local development installation.** Future releases may be published
+to RemNote's plugin marketplace.
 
 **Development Installation:**
 
@@ -63,14 +87,14 @@ to interact with external tools and data sources. With this plugin, your AI assi
    - Click **"Develop from localhost"**
    - Click **"Develop"**
    - The MCP Bridge plugin will now be active
-
 3. Access the control panel:
    - Press **Ctrl-K** (or Cmd-K on macOS) to open RemNote's command palette
    - Search for **"Open MCP Bridge Control Panel"**
 
 ### 2. Install the MCP Server
 
-**Important:** The plugin alone is not sufficient - you must also install the [RemNote MCP Server](https://github.com/robert7/remnote-mcp-server), which connects your AI assistant to this plugin.
+**Important:** The plugin alone is not sufficient - you must also install the [RemNote MCP
+Server](https://github.com/robert7/remnote-mcp-server), which connects your AI assistant to this plugin.
 
 Install the server globally:
 
@@ -78,15 +102,18 @@ Install the server globally:
 npm install -g remnote-mcp-server
 ```
 
-For detailed installation instructions, configuration, and troubleshooting, see the **[RemNote MCP Server repository](https://github.com/robert7/remnote-mcp-server)**.
+For detailed installation instructions, configuration, and troubleshooting, see the **[RemNote MCP Server
+repository](https://github.com/robert7/remnote-mcp-server)**.
 
 ## Important Limitations
 
 The system enforces a **1:1:1 relationship**: one AI agent ↔ one MCP server instance ↔ one RemNote plugin connection.
 
-**You cannot use multiple AI agents with the same RemNote knowledge base simultaneously.** Only one AI assistant can be connected at a time.
+**You cannot use multiple AI agents with the same RemNote knowledge base simultaneously.** Only one AI assistant can
+be connected at a time.
 
-For technical details about these limitations and alternative approaches, see the **[RemNote MCP Server documentation](https://github.com/robert7/remnote-mcp-server#important-limitations)**.
+For technical details about these limitations and alternative approaches, see the **[RemNote MCP Server
+documentation](https://github.com/robert7/remnote-mcp-server#important-limitations)**.
 
 ## Configuration
 
@@ -134,7 +161,8 @@ The MCP Bridge Control Panel can be opened in two ways:
 3. The widget opens in RemNote's right sidebar
 4. Remains visible while navigating RemNote (non-blocking)
 
-**Important:** Use only one mode at a time. Opening the widget in both locations simultaneously will create independent instances with separate state (different WebSocket connections, logs, and statistics).
+**Important:** Use only one mode at a time. Opening the widget in both locations simultaneously will create independent
+instances with separate state (different WebSocket connections, logs, and statistics).
 
 ### Example AI Interactions
 
@@ -154,8 +182,10 @@ AI Assistant (Claude Code/Desktop) ↔ MCP Server (stdio) ↔ WebSocket :3002 �
 
 **Component roles:**
 
-- **RemNote MCP Server** ([separate repository](https://github.com/robert7/remnote-mcp-server)) - Exposes MCP tools to AI assistants and manages WebSocket server
-- **RemNote MCP Bridge** (this repository) - RemNote plugin that connects to the server and executes operations via RemNote SDK
+- **RemNote MCP Server** ([separate repository](https://github.com/robert7/remnote-mcp-server)) - Exposes MCP tools to
+  AI assistants and manages WebSocket server
+- **RemNote MCP Bridge** (this repository) - RemNote plugin that connects to the server and executes operations via
+  RemNote SDK
 
 ## Development
 
@@ -203,7 +233,9 @@ npm run build
 
 ### Server Issues
 
-For server-related troubleshooting (installation, configuration, port conflicts, MCP tools not appearing in AI assistant), see the **[RemNote MCP Server documentation](https://github.com/robert7/remnote-mcp-server#troubleshooting)**.
+For server-related troubleshooting (installation, configuration, port conflicts, MCP tools not appearing in
+AI assistant), see the **[RemNote MCP Server
+documentation](https://github.com/robert7/remnote-mcp-server#troubleshooting)**.
 
 ## Contributing
 
