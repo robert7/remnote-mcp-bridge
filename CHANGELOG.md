@@ -62,7 +62,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Preserved all MANDATORY/CRITICAL sections and troubleshooting content
   - Added rationale for dual widget bundles, exponential backoff, and content-to-child-Rems conversion
 
-## [1.1.0] - 2025-02-07
+## [0.2.0] - 2025-02-07
 
 ### Changed
 
@@ -76,7 +76,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Documentation files (AGENTS.md, docs/notes.md)
 - Helper utilities
 
-### Initial Features (v1.0.0 - v1.1.0)
+### Initial Features (v0.1.0)
 
 - WebSocket bridge to MCP server (port 3002)
 - MCP tool implementations:
