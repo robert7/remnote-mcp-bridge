@@ -50,6 +50,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Added "Important Limitations" section explaining 1:1:1 relationship constraint
   - Improved architecture explanation including stdio transport details
   - Updated repository references from `quentintou` to `robert7`
+  - Added "Release Version Updates" section to CLAUDE.md documenting the 3 locations where version must be updated during release creation (package.json, public/manifest.json, CHANGELOG.md)
 - Revised AGENTS.md (CLAUDE.md) to follow non-redundancy principle
   - Removed code-redundant implementation details (~150 lines)
   - Focused on design rationale (WHY) instead of implementation details (WHAT/HOW)
