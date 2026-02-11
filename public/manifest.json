@@ -3,7 +3,7 @@
   "id": "remnote-mcp-bridge",
   "name": "MCP Bridge",
   "author": "Robert Spiegel",
-  "description": "Connect RemNote to AI assistants (Claude, GPT, etc.) via MCP. Create, search, read, and update notes directly from your AI.",
+  "description": "Connect RemNote to AI assistants (Claude, GPT, etc.) via MCP. Create, search, read, and update notes from your AI. Requires companion MCP server.",
   "version": {
     "major": 0,
     "minor": 3,

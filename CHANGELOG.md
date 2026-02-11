@@ -7,6 +7,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Updated manifest description to inform users about companion MCP server requirement
+  - Changed from "...directly from your AI." to "...from your AI. Requires companion MCP server."
+  - Critical information for users to understand two-part architecture before installation
+
 ## [0.3.0] - 2026-02-11
 
 ### Added
