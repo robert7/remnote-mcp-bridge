@@ -7,6 +7,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Updated manifest, modified plugin name, to make it distinct from the original version by Quentin Tousart
+
 ## [0.3.1] - 2026-02-11
 
 ### Changed
