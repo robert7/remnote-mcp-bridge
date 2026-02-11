@@ -36,10 +36,14 @@ describe('Widget Registration (index.tsx)', () => {
       app: {
         registerWidget: registerWidgetSpy,
         registerCommand: registerCommandSpy,
+        toast: vi.fn(async () => {}),
       } as unknown as ReactRNPlugin['app'],
       widget: {
         openPopup: vi.fn(async () => {}),
       } as unknown as ReactRNPlugin['widget'],
+      window: {
+        openWidgetInRightSidebar: vi.fn(async () => []),
+      } as unknown as ReactRNPlugin['window'],
     };
   });
 
@@ -144,21 +148,43 @@ describe('Widget Registration (index.tsx)', () => {
   });
 
   describe('Widget registration', () => {
-    it('should register popup widget', async () => {
-      await mockPlugin.app!.registerWidget!('mcp_bridge_popup', 1, {
+    it('should register widget for both popup and sidebar', async () => {
+      // Register for popup
+      await mockPlugin.app!.registerWidget!('mcp_bridge', 1, {
         dimensions: {
           height: 'auto',
           width: '600px',
         },
       });
 
+      // Register for sidebar (WidgetLocation.RightSidebar)
+      await mockPlugin.app!.registerWidget!('mcp_bridge', 3, {
+        dimensions: {
+          width: 300,
+        },
+      });
+
+      expect(registerWidgetSpy).toHaveBeenCalledTimes(2);
+
+      // Check popup registration
       expect(registerWidgetSpy).toHaveBeenCalledWith(
-        'mcp_bridge_popup',
+        'mcp_bridge',
         1,
         expect.objectContaining({
           dimensions: {
             height: 'auto',
             width: '600px',
+          },
+        })
+      );
+
+      // Check sidebar registration
+      expect(registerWidgetSpy).toHaveBeenCalledWith(
+        'mcp_bridge',
+        3,
+        expect.objectContaining({
+          dimensions: {
+            width: 300,
           },
         })
       );
@@ -168,7 +194,8 @@ describe('Widget Registration (index.tsx)', () => {
   describe('Command registration', () => {
     it('should register open popup command', async () => {
       const commandAction = vi.fn(async () => {
-        await mockPlugin.widget!.openPopup!('mcp_bridge_popup');
+        await mockPlugin.app!.toast!('Opening MCP Bridge Control Panel...');
+        await mockPlugin.widget!.openPopup!('mcp_bridge');
       });
 
       await mockPlugin.app!.registerCommand!({
@@ -187,7 +214,34 @@ describe('Widget Registration (index.tsx)', () => {
       // Test command action
       const registeredCommand = registerCommandSpy.mock.calls[0][0];
       await registeredCommand.action();
-      expect(mockPlugin.widget!.openPopup).toHaveBeenCalledWith('mcp_bridge_popup');
+      expect(mockPlugin.app!.toast).toHaveBeenCalledWith('Opening MCP Bridge Control Panel...');
+      expect(mockPlugin.widget!.openPopup).toHaveBeenCalledWith('mcp_bridge');
+    });
+
+    it('should register open sidebar command', async () => {
+      const commandAction = vi.fn(async () => {
+        await mockPlugin.app!.toast!('Opening MCP Bridge Control Panel...');
+        await mockPlugin.window!.openWidgetInRightSidebar!('mcp_bridge');
+      });
+
+      await mockPlugin.app!.registerCommand!({
+        id: 'open-mcp-bridge-sidebar',
+        name: 'Open MCP Bridge Control Panel in Sidebar',
+        action: commandAction,
+      });
+
+      expect(registerCommandSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'open-mcp-bridge-sidebar',
+          name: 'Open MCP Bridge Control Panel in Sidebar',
+        })
+      );
+
+      // Test command action
+      const registeredCommand = registerCommandSpy.mock.calls[0][0];
+      await registeredCommand.action();
+      expect(mockPlugin.app!.toast).toHaveBeenCalledWith('Opening MCP Bridge Control Panel...');
+      expect(mockPlugin.window!.openWidgetInRightSidebar).toHaveBeenCalledWith('mcp_bridge');
     });
   });
 });
