@@ -7,9 +7,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-02-11
+
 ### Changed
 
-- Updated manifest, modified plugin name, to make it distinct from the original version by Quentin Tousart
+- Updated manifest, modified plugin name to "MCP Bridge Plus", to make it distinct from
+  the original version by Quentin Tousart
 
 ## [0.3.1] - 2026-02-11
 
@@ -64,7 +67,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Added "Important Limitations" section explaining 1:1:1 relationship constraint
   - Improved architecture explanation including stdio transport details
   - Updated repository references from `quentintou` to `robert7`
-  - Added "Release Version Updates" section to CLAUDE.md documenting the 3 locations where version must be updated during release creation (package.json, public/manifest.json, CHANGELOG.md)
+  - Added "Release Version Updates" section to CLAUDE.md documenting the 3 locations where version must be updated during
+    release creation (package.json, public/manifest.json, CHANGELOG.md)
 - Revised AGENTS.md (CLAUDE.md) to follow non-redundancy principle
   - Removed code-redundant implementation details (~150 lines)
   - Focused on design rationale (WHY) instead of implementation details (WHAT/HOW)
