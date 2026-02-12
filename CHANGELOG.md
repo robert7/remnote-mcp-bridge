@@ -9,20 +9,24 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- MCP Bridge icon in right sidebar toolbar
-  - Icon displays with clear visual identification
-  - Click icon to toggle control panel in sidebar (no command needed)
-  - Icon provides quick visual access and better UX consistency with RemNote plugins
+- Pizza widget replica for sidebar UI testing (temporary)
+  - Settings for pizza widget (name, pizza preference, favorite number)
+  - Exact replica of working pizza plugin to isolate sidebar UI rendering issue
 
 ### Changed
 
+- MCP Bridge widget now displays in popup only (sidebar uses pizza test widget)
+- Right sidebar icon now opens pizza widget instead of MCP Bridge
 - MCP Bridge icon now uses proven external image URL (https://i.imgur.com/MLaBDJw.png)
-  - Uses same icon and configuration as test plugin (verified working)
-  - Widget dimensions changed to `{ height: '100%', width: '100%' }` for consistency
+  - Uses same icon as test plugin (verified working in production)
   - Ensures reliable display in both development and production modes
   - External URL avoids webpack dev server static file serving complexity
   - Configured webpack dev server to serve static files from `public/` directory (for future local assets)
-- Removed `widgetTabTitle` property (not needed - RemNote infers from widget name)
+
+### Developer Notes
+
+- Testing sidebar UI pattern with minimal pizza widget replica
+- Once verified, will migrate MCP functionality to sidebar-optimized widget
 
 ### Changed
 

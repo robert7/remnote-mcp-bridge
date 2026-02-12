@@ -67,7 +67,28 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   console.log('[MCP Bridge] Settings registered');
 
-  // Register widget for both popup and sidebar access
+  // Pizza plugin settings (for testing sidebar UI)
+  await plugin.settings.registerStringSetting({
+    id: 'name',
+    title: 'What is your Name?',
+    defaultValue: 'Bob',
+  });
+
+  await plugin.settings.registerBooleanSetting({
+    id: 'pizza',
+    title: 'Do you like pizza?',
+    defaultValue: true,
+  });
+
+  await plugin.settings.registerNumberSetting({
+    id: 'favorite-number',
+    title: 'What is your favorite number?',
+    defaultValue: 42,
+  });
+
+  console.log('[MCP Bridge] Pizza settings registered');
+
+  // Register MCP widget in popup only (for now)
   await plugin.app.registerWidget('mcp_bridge', WidgetLocation.Popup, {
     dimensions: {
       height: 'auto',
@@ -75,8 +96,8 @@ async function onActivate(plugin: ReactRNPlugin) {
     },
   });
 
-  await plugin.app.registerWidget('mcp_bridge', WidgetLocation.RightSidebar, {
-    dimensions: { height: '100%', width: '100%' },
+  // Register pizza widget in right sidebar (testing UI pattern)
+  await plugin.app.registerWidget('sample_pizza_widget', WidgetLocation.RightSidebar, {
     widgetTabIcon: 'https://i.imgur.com/MLaBDJw.png',
   });
 
@@ -93,8 +114,10 @@ async function onActivate(plugin: ReactRNPlugin) {
   console.log('[MCP Bridge] Command registered: Open MCP Bridge Control Panel');
 }
 
-async function onDeactivate(_: ReactRNPlugin) {
+async function onDeactivate(plugin: ReactRNPlugin) {
   console.log('[MCP Bridge] Plugin deactivating...');
+  await plugin.app.unregisterWidget('mcp_bridge', WidgetLocation.Popup);
+  await plugin.app.unregisterWidget('sample_pizza_widget', WidgetLocation.RightSidebar);
 }
 
 declareIndexPlugin(onActivate, onDeactivate);
