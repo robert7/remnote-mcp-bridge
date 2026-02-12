@@ -18,11 +18,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - MCP Bridge widget now displays in popup only (sidebar uses pizza test widget)
 - Right sidebar icon now opens pizza widget instead of MCP Bridge
-- MCP Bridge icon now uses proven external image URL (https://i.imgur.com/MLaBDJw.png)
-  - Uses same icon as test plugin (verified working in production)
-  - Ensures reliable display in both development and production modes
-  - External URL avoids webpack dev server static file serving complexity
-  - Configured webpack dev server to serve static files from `public/` directory (for future local assets)
+- Pizza widget uses local SVG icon (`mcp-icon.svg`) instead of external URL
+  - Verifies local asset serving works correctly in sidebar
+  - Uses same icon pattern as intended for MCP Bridge sidebar widget
 
 ### Developer Notes
 

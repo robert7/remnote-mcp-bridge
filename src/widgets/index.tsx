@@ -77,7 +77,7 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   // Register pizza widget in right sidebar (testing UI pattern)
   await plugin.app.registerWidget('sample_pizza_widget', WidgetLocation.RightSidebar, {
-    widgetTabIcon: 'https://i.imgur.com/MLaBDJw.png',
+    widgetTabIcon: `${plugin.rootURL}mcp-icon.svg`,
   });
 
   // Register command to open the widget as popup
