@@ -43,12 +43,12 @@ to interact with external tools and data sources. With this plugin, your AI assi
 
 ### Plugin Features
 
+- **Sidebar Control Panel** - Monitor MCP connection status, statistics, and action history
 - **Auto-tagging** - Automatically tag notes created via MCP (configurable)
 - **Session Statistics** - Track created/updated/journal entries/searches
 - **Action History** - View last 10 MCP actions with timestamps
 - **Configurable Settings** - Customize behavior through RemNote settings
-- **Real-time Status** - Connection status indicator in popup control panel
-- **Command Palette Access** - Open control panel via Ctrl-K → "Open MCP Bridge Control Panel"
+- **Real-time Status** - Live connection status indicator in sidebar panel
 
 ## Data Privacy
 
@@ -91,8 +91,8 @@ to RemNote's plugin marketplace.
    - Click **"Develop"**
    - The MCP Bridge plugin will now be active
 3. Access the control panel:
-   - Press **Ctrl-K** (or Cmd-K on macOS) to open RemNote's command palette
-   - Search for **"Open MCP Bridge Control Panel"**
+   - Look for the **MCP icon** in RemNote's right sidebar toolbar
+   - Click the icon to open the control panel
 
 ### 2. Install the MCP Server
 
@@ -151,26 +151,19 @@ Once connected, your AI assistant can use these tools:
 
 ### Opening the Control Panel
 
-The MCP Bridge Control Panel can be opened in two ways:
+The MCP Bridge Control Panel is accessible via the right sidebar:
 
-#### Popup Mode (Quick Access)
+1. Locate the **MCP icon** in RemNote's right sidebar toolbar
+2. Click the icon to open the control panel in the sidebar
+3. The panel displays:
+   - **Connection Status** - Current WebSocket connection state
+   - **Session Statistics** - Counts of created notes, updates, journal entries, and searches
+   - **Action History** - Last 10 MCP actions with timestamps
+   - **Recent Logs** - Real-time activity log
+4. The panel remains visible while you navigate RemNote (non-blocking)
+5. Click the icon again to close the panel
 
-1. Press **Ctrl-K** (or Cmd-K on macOS) to open RemNote's command palette
-2. Search for **"Open MCP Bridge Control Panel"**
-3. The popup will display connection status, statistics, history, and logs
-4. Blocks interaction with RemNote while open (modal behavior)
-
-#### Sidebar Mode (Persistent Access)
-
-> **DIDN'T WORK FOR ME** - if it doesn't work for you, use **popup mode** for now. Future updates may improve sidebar functionality.
-
-1. Press **Ctrl-K** (or Cmd-K on macOS) to open RemNote's command palette
-2. Search for **"Open MCP Bridge Control Panel in Sidebar"**
-3. The widget opens in RemNote's right sidebar
-4. Remains visible while navigating RemNote (non-blocking)
-
-**Important:** Use only one mode at a time. Opening the widget in both locations simultaneously will create independent
-instances with separate state (different WebSocket connections, logs, and statistics).
+The sidebar panel provides persistent monitoring of MCP connection and activity while you work in RemNote.
 
 ### Example AI Interactions
 

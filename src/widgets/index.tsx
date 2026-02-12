@@ -67,47 +67,38 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   console.log('[MCP Bridge] Settings registered');
 
-  // Register widget for both popup and sidebar access
-  await plugin.app.registerWidget('mcp_bridge', WidgetLocation.Popup, {
-    dimensions: {
-      height: 'auto',
-      width: '600px',
-    },
-  });
+  // Register MCP widget in popup
+  // NOT needed anymore, but kept here for reference, in case the sidebar implementation doesn't work
+  // and we need to revert to the popup implementation
+  // await plugin.app.registerWidget('mcp_bridge', WidgetLocation.Popup, {
+  //   dimensions: {
+  //     height: 'auto',
+  //     width: '600px',
+  //   },
+  // });
 
+  // Register MCP widget in right sidebar
   await plugin.app.registerWidget('mcp_bridge', WidgetLocation.RightSidebar, {
-    dimensions: {
-      width: 300,
-    },
+    widgetTabIcon: `${plugin.rootURL}mcp-icon.svg`,
   });
 
-  // Register command to open the widget as popup
-  await plugin.app.registerCommand({
-    id: 'open-mcp-bridge-popup',
-    name: 'Open MCP Bridge Control Panel',
-    action: async () => {
-      await plugin.app.toast('Opening MCP Bridge Control Panel...');
-      await plugin.widget.openPopup('mcp_bridge');
-    },
-  });
+  // // Register command to open the widget as popup
+  // // NOT needed anymore, but kept here for reference, in case we need to revert
+  // await plugin.app.registerCommand({
+  //   id: 'open-mcp-bridge-popup',
+  //   name: 'Open MCP Bridge Control Panel',
+  //   action: async () => {
+  //     await plugin.app.toast('Opening MCP Bridge Control Panel...');
+  //     await plugin.widget.openPopup('mcp_bridge');
+  //   },
+  // });
 
-  console.log('[MCP Bridge] Command registered: Open MCP Bridge Control Panel');
-
-  // Register command to open the widget in sidebar
-  await plugin.app.registerCommand({
-    id: 'open-mcp-bridge-sidebar',
-    name: 'Open MCP Bridge Control Panel in Sidebar',
-    action: async () => {
-      await plugin.app.toast('Opening MCP Bridge Control Panel...');
-      await plugin.window.openWidgetInRightSidebar('mcp_bridge');
-    },
-  });
-
-  console.log('[MCP Bridge] Command registered: Open MCP Bridge Control Panel in Sidebar');
+  console.log('[MCP Bridge] Widget registered in sidebar with icon');
 }
 
-async function onDeactivate(_: ReactRNPlugin) {
+async function onDeactivate(plugin: ReactRNPlugin) {
   console.log('[MCP Bridge] Plugin deactivating...');
+  await plugin.app.unregisterWidget('mcp_bridge', WidgetLocation.RightSidebar);
 }
 
 declareIndexPlugin(onActivate, onDeactivate);

@@ -7,6 +7,31 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- MCP Bridge icon in right sidebar toolbar
+  - Icon displays with clear visual identification using local SVG (`mcp-icon.svg`)
+  - Click icon to toggle MCP Bridge control panel in sidebar
+  - Icon provides quick visual access and better UX consistency with RemNote plugins
+- Pizza widget replica kept as simple reference implementation
+  - Displays static random content (name, pizza preference, favorite number)
+  - Minimal working sidebar widget as fallback reference
+  - Preserved for future debugging if sidebar UI issues recur
+
+### Changed
+
+- MCP Bridge widget now accessible exclusively via sidebar icon
+  - Click icon in right sidebar toolbar for persistent monitoring
+  - Panel displays connection status, statistics, history, and logs
+  - Remains visible while navigating RemNote (non-blocking)
+
+### Removed
+
+- Popup mode and command palette access ("Open MCP Bridge Control Panel" command)
+  - Simplified UX by consolidating to single sidebar access point
+  - Eliminates potential state conflicts from multiple widget instances
+  - Popup registration and command code kept commented in source for future reference
+
 ### Changed
 
 - Consolidated version management to use single source of truth
@@ -15,9 +40,16 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Plugin now correctly reports version 0.3.2 via `getStatus()`
   - Reduced manual steps in release process from 3 locations to 2 (package.json and manifest.json)
   - Added vitest config to define `__PLUGIN_VERSION__` constant for test environment
+- MCP Bridge UI now accessible via sidebar icon (preferred method)
+  - Clicking icon toggles control panel in right sidebar
+  - Removed "Open MCP Bridge Control Panel in Sidebar" command (redundant with icon)
+  - Command palette access ("Open MCP Bridge Control Panel") still available for popup mode
 
 ### Documentation
 
+- Added Node.js environment access note to CLAUDE.md "Development Commands" section
+  - Documents requirement to `source node-check.sh` when Node.js/npm not available in shell environment
+  - Critical for AI agents running in environments without Node.js in PATH
 - Updated CLAUDE.md "Release Version Updates" section to reflect automated version injection
 - Corrected "Important Limitations" section in README.md
   - Fixed incorrect statement about 1:1:1 relationship limiting to one AI agent
@@ -25,6 +57,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Explained that the limitation is single RemNote plugin connection, not AI agent count
   - Updated to reflect MCP server's HTTP Streamable transport supporting multiple concurrent sessions
   - Updated documentation link from `#important-limitations` to `#multi-agent-support`
+- Updated README.md usage instructions
+  - Added sidebar icon as primary access method
+  - Documented both access methods: icon click (sidebar) and command palette (popup)
+  - Clarified when to use each method (persistent monitoring vs quick checks)
 
 ## [0.3.2] - 2026-02-11
 

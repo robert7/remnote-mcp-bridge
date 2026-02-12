@@ -119,7 +119,11 @@ if (isProd) {
     open: true,
     hot: true,
     compress: true,
-    watchFiles: ['src/*'],
+    static: {
+      directory: path.join(__dirname, 'public'),
+      publicPath: '/',
+    },
+    watchFiles: ['src/*', 'public/*'],
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'baggage, sentry-trace',
