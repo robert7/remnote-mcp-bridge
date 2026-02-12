@@ -7,6 +7,13 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- MCP Bridge icon in right sidebar toolbar
+  - New icon displays connection arrows (⇄) + "MCP" text for clear identification
+  - Click icon to toggle control panel in sidebar (no command needed)
+  - Icon provides quick visual access and better UX consistency with RemNote plugins
+
 ### Changed
 
 - Consolidated version management to use single source of truth
@@ -15,6 +22,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Plugin now correctly reports version 0.3.2 via `getStatus()`
   - Reduced manual steps in release process from 3 locations to 2 (package.json and manifest.json)
   - Added vitest config to define `__PLUGIN_VERSION__` constant for test environment
+- MCP Bridge UI now accessible via sidebar icon (preferred method)
+  - Clicking icon toggles control panel in right sidebar
+  - Removed "Open MCP Bridge Control Panel in Sidebar" command (redundant with icon)
+  - Command palette access ("Open MCP Bridge Control Panel") still available for popup mode
 
 ### Documentation
 
@@ -25,6 +36,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Explained that the limitation is single RemNote plugin connection, not AI agent count
   - Updated to reflect MCP server's HTTP Streamable transport supporting multiple concurrent sessions
   - Updated documentation link from `#important-limitations` to `#multi-agent-support`
+- Updated README.md usage instructions
+  - Added sidebar icon as primary access method
+  - Documented both access methods: icon click (sidebar) and command palette (popup)
+  - Clarified when to use each method (persistent monitoring vs quick checks)
 
 ## [0.3.2] - 2026-02-11
 
