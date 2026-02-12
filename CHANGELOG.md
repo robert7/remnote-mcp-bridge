@@ -7,6 +7,20 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Build script (`build-plugin-zip.sh`) for creating plugin zip with defensive error checking
+  - Cleans up existing build artifacts (PluginZip.zip, dist folder)
+  - Ensures Node.js environment is available
+  - Runs full production build and creates PluginZip.zip
+  - Comprehensive error checking and colored output
+
+### Removed
+
+- Sample pizza widget (`sample_pizza_widget.tsx`)
+  - Removed test widget that was used during sidebar UI development
+  - No longer needed now that main widget functionality is verified
+
 ## [0.4.0] - 2026-02-12
 
 ### Added
