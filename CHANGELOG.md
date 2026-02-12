@@ -10,9 +10,19 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - MCP Bridge icon in right sidebar toolbar
-  - New icon displays connection arrows (⇄) + "MCP" text for clear identification
+  - Icon displays with clear visual identification
   - Click icon to toggle control panel in sidebar (no command needed)
   - Icon provides quick visual access and better UX consistency with RemNote plugins
+
+### Changed
+
+- MCP Bridge icon now uses proven external image URL (https://i.imgur.com/MLaBDJw.png)
+  - Uses same icon and configuration as test plugin (verified working)
+  - Widget dimensions changed to `{ height: '100%', width: '100%' }` for consistency
+  - Ensures reliable display in both development and production modes
+  - External URL avoids webpack dev server static file serving complexity
+  - Configured webpack dev server to serve static files from `public/` directory (for future local assets)
+- Removed `widgetTabTitle` property (not needed - RemNote infers from widget name)
 
 ### Changed
 
@@ -29,6 +39,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Documentation
 
+- Added Node.js environment access note to CLAUDE.md "Development Commands" section
+  - Documents requirement to `source node-check.sh` when Node.js/npm not available in shell environment
+  - Critical for AI agents running in environments without Node.js in PATH
 - Updated CLAUDE.md "Release Version Updates" section to reflect automated version injection
 - Corrected "Important Limitations" section in README.md
   - Fixed incorrect statement about 1:1:1 relationship limiting to one AI agent

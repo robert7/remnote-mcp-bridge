@@ -76,11 +76,8 @@ async function onActivate(plugin: ReactRNPlugin) {
   });
 
   await plugin.app.registerWidget('mcp_bridge', WidgetLocation.RightSidebar, {
-    dimensions: {
-      width: 300,
-    },
-    widgetTabIcon: `${plugin.rootURL}mcp-icon.svg`,
-    widgetTabTitle: 'MCP Bridge',
+    dimensions: { height: '100%', width: '100%' },
+    widgetTabIcon: 'https://i.imgur.com/MLaBDJw.png',
   });
 
   // Register command to open the widget as popup

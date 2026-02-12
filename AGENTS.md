@@ -96,6 +96,12 @@ This file contains critical principles for writing maintainable documentation, i
 
 ## Development Commands
 
+**IMPORTANT - Node.js Access:** If Node.js/npm is not available in your environment, use:
+```bash
+source node-check.sh  # Makes Node.js available in current shell
+```
+This must be done before running any npm commands or `./code-quality.sh`.
+
 ```bash
 npm run dev          # Development mode with hot reload (:8080)
 npm run build        # Production build (validates, bundles, creates zip)
