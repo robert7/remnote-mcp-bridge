@@ -9,23 +9,28 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Pizza widget replica for sidebar UI testing (simple reference implementation)
+- MCP Bridge icon in right sidebar toolbar
+  - Icon displays with clear visual identification using local SVG (`mcp-icon.svg`)
+  - Click icon to toggle MCP Bridge control panel in sidebar
+  - Icon provides quick visual access and better UX consistency with RemNote plugins
+- Pizza widget replica kept as simple reference implementation
   - Displays static random content (name, pizza preference, favorite number)
   - Minimal working sidebar widget as fallback reference
-  - Successfully isolated and resolved sidebar UI rendering issue
+  - Preserved for future debugging if sidebar UI issues recur
 
 ### Changed
 
-- MCP Bridge widget now displays in popup only (sidebar uses pizza test widget)
-- Right sidebar icon now opens pizza widget instead of MCP Bridge
-- Pizza widget uses local SVG icon (`mcp-icon.svg`) instead of external URL
-  - Verifies local asset serving works correctly in sidebar
-  - Uses same icon pattern as intended for MCP Bridge sidebar widget
+- MCP Bridge widget now accessible exclusively via sidebar icon
+  - Click icon in right sidebar toolbar for persistent monitoring
+  - Panel displays connection status, statistics, history, and logs
+  - Remains visible while navigating RemNote (non-blocking)
 
-### Developer Notes
+### Removed
 
-- Testing sidebar UI pattern with minimal pizza widget replica
-- Once verified, will migrate MCP functionality to sidebar-optimized widget
+- Popup mode and command palette access ("Open MCP Bridge Control Panel" command)
+  - Simplified UX by consolidating to single sidebar access point
+  - Eliminates potential state conflicts from multiple widget instances
+  - Popup registration and command code kept commented in source for future reference
 
 ### Changed
 

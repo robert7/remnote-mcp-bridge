@@ -1,3 +1,6 @@
+// currently not used, but kept here for reference, in case the sidebar implementation doesn't work
+// its simplest widget implementation, based on the remnote plugin template
+
 import { renderWidget } from '@remnote/plugin-sdk';
 
 const randomNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry'];

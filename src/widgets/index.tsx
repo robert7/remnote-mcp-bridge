@@ -67,36 +67,38 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   console.log('[MCP Bridge] Settings registered');
 
-  // Register MCP widget in popup only (for now)
-  await plugin.app.registerWidget('mcp_bridge', WidgetLocation.Popup, {
-    dimensions: {
-      height: 'auto',
-      width: '600px',
-    },
-  });
+  // Register MCP widget in popup
+  // NOT needed anymore, but kept here for reference, in case the sidebar implementation doesn't work
+  // and we need to revert to the popup implementation
+  // await plugin.app.registerWidget('mcp_bridge', WidgetLocation.Popup, {
+  //   dimensions: {
+  //     height: 'auto',
+  //     width: '600px',
+  //   },
+  // });
 
-  // Register pizza widget in right sidebar (testing UI pattern)
-  await plugin.app.registerWidget('sample_pizza_widget', WidgetLocation.RightSidebar, {
+  // Register MCP widget in right sidebar
+  await plugin.app.registerWidget('mcp_bridge', WidgetLocation.RightSidebar, {
     widgetTabIcon: `${plugin.rootURL}mcp-icon.svg`,
   });
 
-  // Register command to open the widget as popup
-  await plugin.app.registerCommand({
-    id: 'open-mcp-bridge-popup',
-    name: 'Open MCP Bridge Control Panel',
-    action: async () => {
-      await plugin.app.toast('Opening MCP Bridge Control Panel...');
-      await plugin.widget.openPopup('mcp_bridge');
-    },
-  });
+  // // Register command to open the widget as popup
+  // // NOT needed anymore, but kept here for reference, in case we need to revert
+  // await plugin.app.registerCommand({
+  //   id: 'open-mcp-bridge-popup',
+  //   name: 'Open MCP Bridge Control Panel',
+  //   action: async () => {
+  //     await plugin.app.toast('Opening MCP Bridge Control Panel...');
+  //     await plugin.widget.openPopup('mcp_bridge');
+  //   },
+  // });
 
-  console.log('[MCP Bridge] Command registered: Open MCP Bridge Control Panel');
+  console.log('[MCP Bridge] Widget registered in sidebar with icon');
 }
 
 async function onDeactivate(plugin: ReactRNPlugin) {
   console.log('[MCP Bridge] Plugin deactivating...');
-  await plugin.app.unregisterWidget('mcp_bridge', WidgetLocation.Popup);
-  await plugin.app.unregisterWidget('sample_pizza_widget', WidgetLocation.RightSidebar);
+  await plugin.app.unregisterWidget('mcp_bridge', WidgetLocation.RightSidebar);
 }
 
 declareIndexPlugin(onActivate, onDeactivate);
