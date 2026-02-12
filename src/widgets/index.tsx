@@ -67,27 +67,6 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   console.log('[MCP Bridge] Settings registered');
 
-  // Pizza plugin settings (for testing sidebar UI)
-  await plugin.settings.registerStringSetting({
-    id: 'name',
-    title: 'What is your Name?',
-    defaultValue: 'Bob',
-  });
-
-  await plugin.settings.registerBooleanSetting({
-    id: 'pizza',
-    title: 'Do you like pizza?',
-    defaultValue: true,
-  });
-
-  await plugin.settings.registerNumberSetting({
-    id: 'favorite-number',
-    title: 'What is your favorite number?',
-    defaultValue: 42,
-  });
-
-  console.log('[MCP Bridge] Pizza settings registered');
-
   // Register MCP widget in popup only (for now)
   await plugin.app.registerWidget('mcp_bridge', WidgetLocation.Popup, {
     dimensions: {

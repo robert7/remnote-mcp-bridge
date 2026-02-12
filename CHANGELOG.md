@@ -9,9 +9,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Pizza widget replica for sidebar UI testing (temporary)
-  - Settings for pizza widget (name, pizza preference, favorite number)
-  - Exact replica of working pizza plugin to isolate sidebar UI rendering issue
+- Pizza widget replica for sidebar UI testing (simple reference implementation)
+  - Displays static random content (name, pizza preference, favorite number)
+  - Minimal working sidebar widget as fallback reference
+  - Successfully isolated and resolved sidebar UI rendering issue
 
 ### Changed
 
