@@ -7,6 +7,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-02-12
+
 ### Added
 
 - Build script (`build-plugin-zip.sh`) for creating plugin zip with defensive error checking
