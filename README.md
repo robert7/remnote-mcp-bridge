@@ -7,8 +7,15 @@ Protocol (MCP).
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
 [![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
 
-> Improved and renamed fork of original plugin
+> This is a working **proof-of-concept/experimental solution**. It "works on my machine" — you're invited to test
+> it and [report any bugs or issues](https://github.com/robert7/remnote-mcp-bridge/issues).
+> Further it is improved and renamed fork of original plugin
 > [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
+
+## Demo
+
+See Claude Code in action with RemNote: **[View Demo
+→](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
 
 ## Two-Component Architecture
 
@@ -20,11 +27,6 @@ This system consists of **two separate components** that work together:
    assistant to the bridge using MCP protocol
 
 **Both components are required** for AI integration with RemNote.
-
-## Demo
-
-See Claude Code in action with RemNote: **[View Demo
-→](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
 
 ## What is MCP?
 
