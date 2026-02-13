@@ -14,7 +14,7 @@ Protocol (MCP).
 
 ## Demo
 
-See Claude Code in action with RemNote: **[View Demo
+See AI agent examples in action with RemNote: **[View Demo
 →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
 
 ## Two-Component Architecture
