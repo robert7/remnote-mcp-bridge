@@ -21,7 +21,7 @@ See AI agent examples in action with RemNote: **[View Demo
 
 This system consists of **two separate components** that work together:
 
-1. **RemNote MCP Bridge** (this repository) - A RemNote plugin that runs in your browser or RemNote desktop app and
+1. **RemNote MCP Bridge** (this project) - A RemNote plugin that runs in your browser or RemNote desktop app and
    exposes RemNote API functionality via WebSocket
 2. **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)** - A standalone server that connects your AI
    assistant to the bridge using MCP protocol
