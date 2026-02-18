@@ -3,8 +3,8 @@
 A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context
 Protocol (MCP).
 
-> **New integration direction:** This bridge supports MCP-based workflows today and is being prepared for OpenClaw CLI
-> workflows next (CLI companion not released yet).
+> **New integration direction:** This bridge supports MCP-based workflows today and also supports companion app workflows
+> via RemNote CLI for OpenClaw and other agentic automation.
 
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
@@ -24,15 +24,16 @@ See AI agent examples in action with RemNote: **[View Demo
 
 This project is a bridge layer with two consumer paths:
 
-1. **MCP path (available now):**
+1. **MCP Server path:**
    - **RemNote Bridge for MCP & OpenClaw** (this project): RemNote plugin exposing RemNote API via WebSocket
    - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: companion server exposing MCP tools to AI
      assistants
-2. **OpenClaw path (planned):**
+2. **CLI app path:**
    - This bridge plugin remains the RemNote endpoint
-   - A companion OpenClaw-focused CLI adapter can connect over the same WebSocket bridge
+   - **[RemNote CLI](https://github.com/robert7/remnote-cli)**: companion app for integrating RemNote with OpenClaw and
+     other agentic workflows via the same WebSocket bridge
 
-**For MCP-based AI integration today, both this plugin and the MCP server are required.**
+**For both paths always 2 components are required - the bridge and either the MCP server or the CLI app.**
 
 ## What is MCP?
 
@@ -137,7 +138,7 @@ Access plugin settings in RemNote via **Settings > Plugins > RemNote Bridge for 
 |---------|-------------|---------|
 | Auto-tag MCP notes | Add a tag to all AI-created notes | `true` |
 | Auto-tag name | Tag name for AI-created notes | `MCP` |
-| Journal entry prefix | Prefix for journal entries | `[Claude]` |
+| Journal entry prefix | Optional prefix for journal entries | `` |
 | Add timestamp to journal | Include time in journal entries | `true` |
 | WebSocket server URL | MCP server connection URL | `ws://127.0.0.1:3002` |
 | Default parent Rem ID | Parent for new notes (empty = root) | `` |
