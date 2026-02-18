@@ -7,6 +7,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Added `publish-to-marketplace.sh` helper script to run `npm run build` for marketplace packaging workflow
+
 ## [0.4.2] - 2026-02-18
 
 ### Changed
