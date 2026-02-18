@@ -12,11 +12,6 @@ Protocol (MCP) or via CLI (command-line interface)** e.g. for [OpenClaw](https:/
 > Further it is an improved and renamed fork of the original plugin
 > [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
 
-## Demo
-
-See AI agent examples in action with RemNote: **[View Demo
-→](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
-
 ## Integration Paths
 
 This project is a bridge layer with two consumer paths:
@@ -25,10 +20,12 @@ This project is a bridge layer with two consumer paths:
    - **RemNote Bridge for MCP & OpenClaw** (this project): RemNote plugin exposing RemNote API via WebSocket
    - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: companion server exposing MCP tools to AI
      assistants
+   - Demo: **[View MCP Server Demo →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
 2. **CLI app path (e.g. for OpenClaw):**
    - This bridge plugin remains the RemNote endpoint
    - **[RemNote CLI](https://github.com/robert7/remnote-cli)**: companion app for integrating RemNote with OpenClaw and
      other agentic workflows via the same WebSocket bridge
+   - Demo: **[View RemNote CLI Demo →](https://github.com/robert7/remnote-cli/blob/main/docs/demo.md)**
 
 **For both paths always 2 components are required - the bridge and either the MCP server or the CLI app.**
 
