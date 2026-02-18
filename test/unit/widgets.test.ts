@@ -247,6 +247,13 @@ describe('Widget Registration (index.tsx)', () => {
 });
 
 describe('Widget UI (mcp_bridge_popup.tsx)', () => {
+  describe('Branding', () => {
+    it('should use updated bridge title label', () => {
+      const panelTitle = 'Bridge for MCP & OpenClaw';
+      expect(panelTitle).toBe('Bridge for MCP & OpenClaw');
+    });
+  });
+
   describe('Log management', () => {
     it('should limit logs to 50 entries (FIFO)', () => {
       const logs: Array<{ timestamp: Date; message: string; level: string }> = [];

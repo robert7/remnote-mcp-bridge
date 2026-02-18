@@ -1,7 +1,10 @@
-# RemNote MCP Bridge Plus
+# RemNote Bridge for MCP & OpenClaw
 
 A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context
 Protocol (MCP).
+
+> **New integration direction:** This bridge supports MCP-based workflows today and is being prepared for OpenClaw CLI
+> workflows next (CLI companion not released yet).
 
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
@@ -9,7 +12,7 @@ Protocol (MCP).
 
 > This is a working **proof-of-concept/experimental solution**. It "works on my machine" — you're invited to test
 > it and [report any bugs or issues](https://github.com/robert7/remnote-mcp-bridge/issues).
-> Further it is improved and renamed fork of original plugin
+> Further it is an improved and renamed fork of the original plugin
 > [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
 
 ## Demo
@@ -17,16 +20,19 @@ Protocol (MCP).
 See AI agent examples in action with RemNote: **[View Demo
 →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
 
-## Two-Component Architecture
+## Integration Paths
 
-This system consists of **two separate components** that work together:
+This project is a bridge layer with two consumer paths:
 
-1. **RemNote MCP Bridge** (this project) - A RemNote plugin that runs in your browser or RemNote desktop app and
-   exposes RemNote API functionality via WebSocket
-2. **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)** - A standalone server that connects your AI
-   assistant to the bridge using MCP protocol
+1. **MCP path (available now):**
+   - **RemNote Bridge for MCP & OpenClaw** (this project): RemNote plugin exposing RemNote API via WebSocket
+   - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: companion server exposing MCP tools to AI
+     assistants
+2. **OpenClaw path (planned):**
+   - This bridge plugin remains the RemNote endpoint
+   - A companion OpenClaw-focused CLI adapter can connect over the same WebSocket bridge
 
-**Both components are required** for AI integration with RemNote.
+**For MCP-based AI integration today, both this plugin and the MCP server are required.**
 
 ## What is MCP?
 
@@ -91,7 +97,7 @@ to RemNote's plugin marketplace.
    - Go to **Settings > Plugins**
    - Click **"Develop from localhost"**
    - Click **"Develop"**
-   - The MCP Bridge plugin will now be active
+   - The RemNote Bridge for MCP & OpenClaw plugin will now be active
 3. Access the control panel:
    - Look for the **MCP icon** in RemNote's right sidebar toolbar
    - Click the icon to open the control panel
@@ -125,7 +131,7 @@ documentation](https://github.com/robert7/remnote-mcp-server#multi-agent-support
 
 ## Configuration
 
-Access plugin settings in RemNote via **Settings > Plugins > MCP Bridge**:
+Access plugin settings in RemNote via **Settings > Plugins > RemNote Bridge for MCP & OpenClaw**:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -153,7 +159,7 @@ Once connected, your AI assistant can use these tools:
 
 ### Opening the Control Panel
 
-The MCP Bridge Control Panel is accessible via the right sidebar:
+The bridge control panel is accessible via the right sidebar:
 
 1. Locate the **MCP icon** in RemNote's right sidebar toolbar
 2. Click the icon to open the control panel in the sidebar
@@ -187,8 +193,8 @@ AI Assistant (Claude Code/Desktop) ↔ MCP Server (HTTP) ↔ WebSocket :3002 ↔
 
 - **RemNote MCP Server** ([separate repository](https://github.com/robert7/remnote-mcp-server)) - Exposes MCP tools to
   AI assistants and manages WebSocket server
-- **RemNote MCP Bridge** (this repository) - RemNote plugin that connects to the server and executes operations via
-  RemNote SDK
+- **RemNote Bridge for MCP & OpenClaw** (this repository) - RemNote plugin that connects to the server and executes
+  operations via RemNote SDK
 
 ## Development
 
