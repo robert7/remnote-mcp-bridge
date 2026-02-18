@@ -2,6 +2,24 @@
 
 This file provides guidance to AI Agents when working with code in this repository.
 
+## CRITICAL: Companion Project Context
+
+When additional context is needed, agents SHOULD inspect companion projects from this repo root (`$(pwd)`), where
+companions are sibling directories at `$(pwd)/../...`.
+
+- `$(pwd)/../remnote-mcp-server` - MCP server companion; useful for MCP transport/session handling, tool-dispatch
+  patterns, and bridge contract usage.
+- `$(pwd)/../remnote-cli` - CLI companion app using the same bridge; useful for daemon/control API workflows and
+  bridge action compatibility checks.
+
+Agents should check companion repos every time it is useful for protocol, architecture, or integration context.
+
+Terminology aliases used across docs and discussions:
+
+- `remnote-mcp-bridge` = "MCP bridge" or "bridge plugin" (this repository)
+- `remnote-mcp-server` = "MCP server" (same project)
+- `remnote-cli` = "CLI companion app" (same project)
+
 ## Project Overview
 
 RemNote Bridge for MCP & OpenClaw is a RemNote plugin that implements the Model Context Protocol (MCP), enabling AI assistants
