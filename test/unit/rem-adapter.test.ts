@@ -14,7 +14,7 @@ describe('RemAdapter', () => {
     adapter = new RemAdapter(plugin as unknown as typeof plugin, {
       autoTagEnabled: true,
       autoTag: 'MCP',
-      journalPrefix: '[Claude]',
+      journalPrefix: '',
       journalTimestamp: true,
       wsUrl: 'ws://localhost:3002',
       defaultParentId: '',
@@ -26,7 +26,7 @@ describe('RemAdapter', () => {
       const settings = adapter.getSettings();
       expect(settings.autoTagEnabled).toBe(true);
       expect(settings.autoTag).toBe('MCP');
-      expect(settings.journalPrefix).toBe('[Claude]');
+      expect(settings.journalPrefix).toBe('');
     });
 
     it('should update settings', () => {
@@ -143,8 +143,8 @@ describe('RemAdapter', () => {
       });
 
       expect(result.remId).toBeDefined();
-      expect(result.content).toContain('[Claude]');
       expect(result.content).toContain('Journal entry');
+      expect(result.content).toMatch(/^\[\d{1,2}:\d{2}:\d{2}/); // No leading space when prefix is empty
       expect(result.content).toMatch(/\[\d{1,2}:\d{2}:\d{2}/); // Timestamp pattern
     });
 
@@ -154,8 +154,7 @@ describe('RemAdapter', () => {
         timestamp: false,
       });
 
-      expect(result.content).toContain('[Claude]');
-      expect(result.content).toContain('No timestamp entry');
+      expect(result.content).toBe('No timestamp entry');
       expect(result.content).not.toMatch(/\[\d{1,2}:\d{2}:\d{2}/);
     });
 
@@ -177,7 +176,7 @@ describe('RemAdapter', () => {
       });
 
       expect(result.content).toContain('[AI]');
-      expect(result.content).not.toContain('[Claude]');
+      expect(result.content).not.toMatch(/^ /);
     });
   });
 

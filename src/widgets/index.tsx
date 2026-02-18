@@ -40,7 +40,7 @@ async function onActivate(plugin: ReactRNPlugin) {
   await plugin.settings.registerStringSetting({
     id: SETTING_JOURNAL_PREFIX,
     title: 'Journal entry prefix',
-    description: 'Prefix for journal entries (e.g., "[Claude]", "[MCP]")',
+    description: 'Optional prefix for journal entries (e.g., "[MCP]")',
     defaultValue: DEFAULT_JOURNAL_PREFIX,
   });
 

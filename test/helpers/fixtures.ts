@@ -60,7 +60,7 @@ export const sampleNoteResult = {
 
 export const sampleJournalResult = {
   remId: 'rem_456',
-  content: '[Claude] [12:00:00 PM] Journal entry for today',
+  content: '[12:00:00 PM] Journal entry for today',
 };
 
 export const sampleSearchResults: SearchResultItem[] = [

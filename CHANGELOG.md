@@ -11,6 +11,19 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Added `publish-to-marketplace.sh` helper script to run `npm run build` for marketplace packaging workflow
 
+### Changed
+
+- Changed default journal entry prefix from `[Claude]` to no prefix (empty string)
+- Journal entries no longer include a leading prefix-space when the configured prefix is empty
+
+### Documentation
+
+- Updated journal prefix defaults in `README.md` and plugin setting description text to reflect no-prefix default
+- Updated `README.md` integration paths:
+  - Replaced planned OpenClaw companion wording with available-now companion app wording
+  - Added **[RemNote CLI](https://github.com/robert7/remnote-cli)** as the second consumer path
+  - Clarified that RemNote CLI supports OpenClaw integration and other agentic workflows
+
 ## [0.4.2] - 2026-02-18
 
 ### Changed

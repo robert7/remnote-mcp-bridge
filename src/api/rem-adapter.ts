@@ -4,7 +4,7 @@
  */
 
 import { ReactRNPlugin, RichTextInterface, Rem } from '@remnote/plugin-sdk';
-import { MCPSettings } from '../settings';
+import { MCPSettings, DEFAULT_JOURNAL_PREFIX } from '../settings';
 
 // Build-time constant injected by webpack DefinePlugin
 declare const __PLUGIN_VERSION__: string;
@@ -64,7 +64,7 @@ export class RemAdapter {
     this.settings = {
       autoTagEnabled: true,
       autoTag: 'MCP',
-      journalPrefix: '[Claude]',
+      journalPrefix: DEFAULT_JOURNAL_PREFIX,
       journalTimestamp: true,
       wsUrl: 'ws://127.0.0.1:3002',
       defaultParentId: '',

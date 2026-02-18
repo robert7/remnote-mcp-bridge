@@ -90,7 +90,7 @@ describe('Widget Registration (index.tsx)', () => {
       await mockPlugin.settings!.registerStringSetting!({
         id: SETTING_JOURNAL_PREFIX,
         title: 'Journal entry prefix',
-        description: 'Prefix for journal entries (e.g., "[Claude]", "[MCP]")',
+        description: 'Optional prefix for journal entries (e.g., "[MCP]")',
         defaultValue: DEFAULT_JOURNAL_PREFIX,
       });
 
@@ -130,7 +130,7 @@ describe('Widget Registration (index.tsx)', () => {
 
       expect(registerStringSettingSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          defaultValue: '[Claude]',
+          defaultValue: '',
         })
       );
 

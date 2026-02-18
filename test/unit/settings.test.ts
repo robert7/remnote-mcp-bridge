@@ -44,13 +44,12 @@ describe('Settings', () => {
   describe('Default values', () => {
     it('should have correct default values', () => {
       expect(DEFAULT_AUTO_TAG).toBe('MCP');
-      expect(DEFAULT_JOURNAL_PREFIX).toBe('[Claude]');
+      expect(DEFAULT_JOURNAL_PREFIX).toBe('');
       expect(DEFAULT_WS_URL).toBe('ws://127.0.0.1:3002');
     });
 
-    it('should have non-empty default values', () => {
+    it('should have non-empty required default values', () => {
       expect(DEFAULT_AUTO_TAG).toBeTruthy();
-      expect(DEFAULT_JOURNAL_PREFIX).toBeTruthy();
       expect(DEFAULT_WS_URL).toBeTruthy();
     });
 
@@ -64,7 +63,7 @@ describe('Settings', () => {
       const settings: MCPSettings = {
         autoTagEnabled: true,
         autoTag: 'MCP',
-        journalPrefix: '[Claude]',
+        journalPrefix: '',
         journalTimestamp: true,
         wsUrl: 'ws://127.0.0.1:3002',
         defaultParentId: '',
@@ -72,7 +71,7 @@ describe('Settings', () => {
 
       expect(settings.autoTagEnabled).toBe(true);
       expect(settings.autoTag).toBe('MCP');
-      expect(settings.journalPrefix).toBe('[Claude]');
+      expect(settings.journalPrefix).toBe('');
       expect(settings.journalTimestamp).toBe(true);
       expect(settings.wsUrl).toBe('ws://127.0.0.1:3002');
       expect(settings.defaultParentId).toBe('');

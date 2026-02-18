@@ -12,7 +12,7 @@ export const SETTING_DEFAULT_PARENT = 'mcp-default-parent';
 
 // Default values
 export const DEFAULT_AUTO_TAG = 'MCP';
-export const DEFAULT_JOURNAL_PREFIX = '[Claude]';
+export const DEFAULT_JOURNAL_PREFIX = '';
 export const DEFAULT_WS_URL = 'ws://127.0.0.1:3002';
 
 // Settings interface for type safety

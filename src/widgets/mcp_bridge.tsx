@@ -17,6 +17,7 @@ import {
   SETTING_JOURNAL_TIMESTAMP,
   SETTING_WS_URL,
   SETTING_DEFAULT_PARENT,
+  DEFAULT_JOURNAL_PREFIX,
   DEFAULT_WS_URL,
   MCPSettings,
 } from '../settings';
@@ -106,7 +107,7 @@ function MCPBridgeWidget() {
       const settings: MCPSettings = {
         autoTagEnabled: autoTagEnabled ?? true,
         autoTag: autoTag ?? 'MCP',
-        journalPrefix: journalPrefix ?? '[Claude]',
+        journalPrefix: journalPrefix ?? DEFAULT_JOURNAL_PREFIX,
         journalTimestamp: journalTimestamp ?? true,
         wsUrl: wsUrl ?? DEFAULT_WS_URL,
         defaultParentId: defaultParentId ?? '',
