@@ -23,6 +23,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Replaced planned OpenClaw companion wording with available-now companion app wording
   - Added **[RemNote CLI](https://github.com/robert7/remnote-cli)** as the second consumer path
   - Clarified that RemNote CLI supports OpenClaw integration and other agentic workflows
+- Restructured demo links in `README.md`:
+  - Moved MCP server demo link from the top-level Demo section into the `MCP Server path` subsection
+  - Added a CLI demo link in the `CLI app path (e.g. for OpenClaw)` subsection
 
 ## [0.4.2] - 2026-02-18
 
