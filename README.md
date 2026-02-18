@@ -28,7 +28,7 @@ This project is a bridge layer with two consumer paths:
    - **RemNote Bridge for MCP & OpenClaw** (this project): RemNote plugin exposing RemNote API via WebSocket
    - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: companion server exposing MCP tools to AI
      assistants
-2. **CLI app path:**
+2. **CLI app path (e.g. for OpenClaw):**
    - This bridge plugin remains the RemNote endpoint
    - **[RemNote CLI](https://github.com/robert7/remnote-cli)**: companion app for integrating RemNote with OpenClaw and
      other agentic workflows via the same WebSocket bridge
