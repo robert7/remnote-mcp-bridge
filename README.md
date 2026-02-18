@@ -1,10 +1,7 @@
 # RemNote Bridge for MCP & OpenClaw
 
-A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the Model Context
-Protocol (MCP).
-
-> **New integration direction:** This bridge supports MCP-based workflows and supports companion app workflows
-> via RemNote CLI for OpenClaw and other agentic automation.
+A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the **Model Context
+Protocol (MCP) or via CLI (command-line interface)** e.g. for [OpenClaw](https://github.com/openclaw/openclaw) or other agentic automation workflows.
 
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
