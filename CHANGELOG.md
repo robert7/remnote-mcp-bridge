@@ -7,6 +7,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-02-18
+
 ### Changed
 
 - Renamed plugin display name to **RemNote Bridge for MCP & OpenClaw** in `public/manifest.json`
