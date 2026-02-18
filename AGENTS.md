@@ -4,7 +4,7 @@ This file provides guidance to AI Agents when working with code in this reposito
 
 ## Project Overview
 
-RemNote MCP Bridge is a RemNote plugin that implements the Model Context Protocol (MCP), enabling AI assistants
+RemNote Bridge for MCP & OpenClaw is a RemNote plugin that implements the Model Context Protocol (MCP), enabling AI assistants
 to interact bidirectionally with RemNote knowledge bases. The plugin acts as a WebSocket bridge between an external MCP
 server and RemNote's Plugin SDK.
 

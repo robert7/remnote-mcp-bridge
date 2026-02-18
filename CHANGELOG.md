@@ -11,6 +11,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Renamed plugin display name to **RemNote Bridge for MCP & OpenClaw** in `public/manifest.json`
 - Updated in-plugin control panel title to **Bridge for MCP & OpenClaw** for naming consistency
+- Added `prettier` to `devDependencies` so formatting checks use an explicit pinned tool dependency
 
 ### Documentation
 
@@ -20,6 +21,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - MCP path available now (plugin + MCP server)
   - OpenClaw path planned (future CLI companion using same WebSocket bridge)
 - Updated installation/configuration wording to use the new plugin name consistently
+- Updated `AGENTS.md` project overview to reference **RemNote Bridge for MCP & OpenClaw**
 
 ## [0.4.1] - 2026-02-12
 
