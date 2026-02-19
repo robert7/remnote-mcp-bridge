@@ -36,7 +36,8 @@ export function registerDevToolsBridgeExecutor(config: DevToolsExecutorConfig): 
       return;
     }
 
-    const requestId = detail.id ?? `devtools-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const requestId =
+      detail.id ?? `devtools-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const request: BridgeRequest = {
       id: requestId,
       action: detail.action,

@@ -10,6 +10,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Added `publish-to-marketplace.sh` helper script to run `npm run build` for marketplace packaging workflow
+- Added DevTools bridge execution hook in the widget via event contract:
+  - Execute event: `remnote:mcp:execute`
+  - Result event: `remnote:mcp:result`
+  - Allows direct command execution through `handleRequest` without MCP server/CLI in the loop
 
 ### Changed
 
@@ -30,6 +34,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Reframed the bridge as a shared WebSocket execution endpoint (not MCP-only)
   - Documented both consumer paths (`remnote-mcp-server` and `remnote-cli`)
   - Replaced single-flow diagram with MCP-path and CLI-path flows
+- Added `docs/guides/development-execute-bridge-commands.md` with step-by-step Developer Console workflow and copy-paste
+  examples for every supported bridge action
 
 ## [0.4.2] - 2026-02-18
 

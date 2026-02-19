@@ -9,8 +9,8 @@ companions are sibling directories at `$(pwd)/../...`.
 
 - `$(pwd)/../remnote-mcp-server` - MCP server companion; useful for MCP transport/session handling, tool-dispatch
   patterns, and bridge contract usage.
-- `$(pwd)/../remnote-cli` - CLI companion app using the same bridge; useful for daemon/control API workflows and
-  bridge action compatibility checks.
+- `$(pwd)/../remnote-cli` - CLI companion app using the same bridge; useful for daemon/control API workflows and bridge
+  action compatibility checks.
 
 Agents should check companion repos every time it is useful for protocol, architecture, or integration context.
 
