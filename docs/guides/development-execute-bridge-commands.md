@@ -19,58 +19,11 @@ This path runs through the same action handler used by WebSocket requests in `sr
 
 ## Paste once: console helper
 
-Paste this in the Developer Console first:
+Copy/paste the full contents of:
 
-```js
-const BRIDGE_EXECUTE_EVENT = 'remnote:mcp:execute';
-const BRIDGE_RESULT_EVENT = 'remnote:mcp:result';
+- `docs/guides/development-execute-bridge-commands-helper.js`
 
-async function runBridge(action, payload = {}, opts = {}) {
-  const timeoutMs = opts.timeoutMs ?? 15000;
-  const id = opts.id ?? `devtools-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-  return await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      window.removeEventListener(BRIDGE_RESULT_EVENT, onResult);
-      reject(new Error(`Timed out waiting for result of ${action} (${id})`));
-    }, timeoutMs);
-
-    function onResult(event) {
-      const detail = event?.detail;
-      if (!detail || detail.id !== id) return;
-
-      clearTimeout(timer);
-      window.removeEventListener(BRIDGE_RESULT_EVENT, onResult);
-
-      if (detail.ok) {
-        resolve(detail.result);
-      } else {
-        reject(new Error(detail.error || 'Unknown bridge error'));
-      }
-    }
-
-    window.addEventListener(BRIDGE_RESULT_EVENT, onResult);
-    window.dispatchEvent(
-      new CustomEvent(BRIDGE_EXECUTE_EVENT, {
-        detail: { id, action, payload },
-      })
-    );
-  });
-}
-
-
-// Optional convenience wrapper:
-async function runAndLog(action, payload = {}) {
-  try {
-    const result = await runBridge(action, payload);
-    console.log(`[${action}] result`, result);
-    return result;
-  } catch (error) {
-    console.error(`[${action}] error`, error);
-    throw error;
-  }
-}
-```
+Then run it once in the Developer Console.
 
 ## Command examples
 
@@ -153,7 +106,7 @@ await runBridge('update_note', {
   appendContent: 'Updated from smoke flow',
 });
 await runBridge('search', {
-  query: 'Bridge smoke flow',
+  query: 'AI assisted coding',
   includeContent: true,
 });
 await runBridge('append_journal', {

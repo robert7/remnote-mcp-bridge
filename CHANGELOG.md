@@ -36,6 +36,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Replaced single-flow diagram with MCP-path and CLI-path flows
 - Added `docs/guides/development-execute-bridge-commands.md` with step-by-step Developer Console workflow and copy-paste
   examples for every supported bridge action
+- Added `docs/guides/development-execute-bridge-commands-helper.js` so the DevTools helper can be copied from a plain
+  `.js` file instead of selecting it from markdown
+- Simplified `docs/guides/development-execute-bridge-commands.md` to use the dedicated helper file as the only
+  copy/paste path (removed inline fallback snippet)
 
 ## [0.4.2] - 2026-02-18
 
