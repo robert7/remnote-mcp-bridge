@@ -7,8 +7,7 @@ Protocol (MCP) or via CLI (command-line interface)** e.g. for [OpenClaw](https:/
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
 [![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
 
-> This is a working **proof-of-concept/experimental solution**. It "works on my machine" — you're invited to test
-> it and [report any bugs or issues](https://github.com/robert7/remnote-mcp-bridge/issues).
+> This is a working solution, but still experimental. If you run into any issues, please [report them here](https://github.com/robert7/remnote-mcp-bridge/issues).
 > Further it is an improved and renamed fork of the original plugin
 > [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
 
