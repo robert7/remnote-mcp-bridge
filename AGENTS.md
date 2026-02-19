@@ -22,18 +22,23 @@ Terminology aliases used across docs and discussions:
 
 ## Project Overview
 
-RemNote Bridge for MCP & OpenClaw is a RemNote plugin that implements the Model Context Protocol (MCP), enabling AI assistants
-to interact bidirectionally with RemNote knowledge bases. The plugin acts as a WebSocket bridge between an external MCP
-server and RemNote's Plugin SDK.
+RemNote Bridge for MCP & OpenClaw is a RemNote plugin that exposes RemNote operations over a local WebSocket bridge,
+allowing external companion applications to execute actions against the RemNote SDK.
 
-**Architecture Flow:**
+This bridge supports two consumer paths:
+
+1. **MCP Server path** - `remnote-mcp-server` exposes MCP tools to AI assistants and dispatches bridge actions
+2. **CLI app path** - `remnote-cli` dispatches the same bridge actions for OpenClaw and other agentic workflows
+
+**Architecture Flows:**
 
 ```text
-AI Assistant (e.g. Claude Code) ↔ MCP Server (stdio, WebSocket) ↔ This Plugin ↔ RemNote SDK ↔ RemNote KB
+AI Assistant ↔ MCP Server ↔ This Plugin ↔ RemNote SDK ↔ RemNote KB
+CLI / Automation ↔ RemNote CLI ↔ This Plugin ↔ RemNote SDK ↔ RemNote KB
 ```
 
-The plugin receives MCP actions via WebSocket (default: ws://127.0.0.1:3002), executes them against the RemNote API, and
-returns results.
+The plugin receives action requests via WebSocket (default: ws://127.0.0.1:3002), executes them against the RemNote API,
+and returns results to the active consumer.
 
 ## MANDATORY: Code Change Requirements
 

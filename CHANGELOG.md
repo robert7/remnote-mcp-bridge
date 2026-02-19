@@ -26,6 +26,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Restructured demo links in `README.md`:
   - Moved MCP server demo link from the top-level Demo section into the `MCP Server path` subsection
   - Added a CLI demo link in the `CLI app path (e.g. for OpenClaw)` subsection
+- Updated `AGENTS.md` Project Overview to align with current architecture:
+  - Reframed the bridge as a shared WebSocket execution endpoint (not MCP-only)
+  - Documented both consumer paths (`remnote-mcp-server` and `remnote-cli`)
+  - Replaced single-flow diagram with MCP-path and CLI-path flows
 
 ## [0.4.2] - 2026-02-18
 

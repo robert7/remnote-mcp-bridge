@@ -10,6 +10,7 @@ import { renderWidget, usePlugin, useTracker, ReactRNPlugin } from '@remnote/plu
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { WebSocketClient, ConnectionStatus, BridgeRequest } from '../bridge/websocket-client';
 import { RemAdapter } from '../api/rem-adapter';
+import { registerDevToolsBridgeExecutor } from './devtools-bridge-executor';
 import {
   SETTING_AUTO_TAG_ENABLED,
   SETTING_AUTO_TAG,
@@ -242,6 +243,22 @@ function MCPBridgeWidget() {
       client.disconnect();
     };
   }, [handleRequest, addLog, currentWsUrl]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const unregister = registerDevToolsBridgeExecutor({
+      target: window,
+      execute: handleRequest,
+      onLog: (message, level) => addLog(message, level ?? 'info'),
+    });
+
+    addLog('DevTools bridge executor ready (event-based)', 'info');
+
+    return unregister;
+  }, [handleRequest, addLog]);
 
   // Handle reconnect button
   const handleReconnect = useCallback(() => {
