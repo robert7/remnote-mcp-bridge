@@ -97,6 +97,10 @@ to RemNote's plugin marketplace.
    - Look for the **MCP icon** in RemNote's right sidebar toolbar
    - Click the icon to open the control panel
 
+Beginner walkthrough with screenshots:
+
+- [Run The Plugin Locally (Beginner Guide)](docs/guides/development-run-plugin-locally.md)
+
 ### 2. Install the MCP Server
 
 **Important:** The plugin alone is not sufficient - you must also install the [RemNote MCP

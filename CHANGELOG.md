@@ -52,11 +52,23 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - `AGENTS.md`
 - Changed RemNote concept reference path mentions to proper clickable Markdown links for easier GitHub browsing
 - Refactored DevTools execution guide assets for easier copy/paste and browsing:
-  - Moved helper script to `docs/guides/js/development-execute-bridge-commands-helper.js`
+  - Moved helper script to `docs/guides/js/development-execute-bridge-commands-00-helper.js`
   - Extracted per-command JS examples into `docs/guides/js/` and linked them from the guide
   - Updated guide links to clickable Markdown links
   - Expanded troubleshooting with multi-`localhost:8080` iframe context guidance after browser restart
 - Updated guide links to match ordered example filenames in `docs/guides/js/` (`00`-`06` naming)
+- Added beginner local-development guide with step-by-step screenshots:
+  - `docs/guides/development-run-plugin-locally.md`
+- Added README discoverability link to local development guide:
+  - `README.md` (Development Installation section)
+- Renamed `docs/guides/images/` files to a consistent ordered sequence for easier navigation:
+  - `01-clone-repository.jpg`
+  - `02-install-dependencies.jpg`
+  - `03-run-dev-server.jpg`
+  - `04-open-remnote-plugin-build-tab.jpg`
+  - `05-develop-from-localhost-dialog.jpg`
+  - `06-plugin-activated-build-list.jpg`
+  - `07-open-plugin-sidebar-panel.jpg`
 
 ## [0.4.2] - 2026-02-18
 
