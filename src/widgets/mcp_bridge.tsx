@@ -10,7 +10,7 @@ import { renderWidget, usePlugin, useTracker, ReactRNPlugin } from '@remnote/plu
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { WebSocketClient, ConnectionStatus, BridgeRequest } from '../bridge/websocket-client';
 import { RemAdapter } from '../api/rem-adapter';
-import { registerDevToolsBridgeExecutor } from './devtools-bridge-executor';
+import { registerDevToolsBridgeExecutor, exposeDevToolsHelpers } from './devtools-bridge-executor';
 import {
   SETTING_AUTO_TAG_ENABLED,
   SETTING_AUTO_TAG,
@@ -249,15 +249,34 @@ function MCPBridgeWidget() {
       return;
     }
 
+    const targetWindow = (() => {
+      try {
+        if (window.top && window.top !== window) return window.top;
+      } catch {
+        // Cross-origin sandbox restriction — stay on iframe window
+      }
+      return window;
+    })();
+
     const unregister = registerDevToolsBridgeExecutor({
-      target: window,
+      target: targetWindow,
       execute: handleRequest,
       onLog: (message, level) => addLog(message, level ?? 'info'),
     });
 
-    addLog('DevTools bridge executor ready (event-based)', 'info');
+    const removeHelpers = exposeDevToolsHelpers(targetWindow);
 
-    return unregister;
+    addLog(
+      targetWindow === window
+        ? 'DevTools bridge executor ready (runBridge / runAndLog available on iframe window)'
+        : 'DevTools bridge executor ready (runBridge / runAndLog available on top window)',
+      'info'
+    );
+
+    return () => {
+      removeHelpers();
+      unregister();
+    };
   }, [handleRequest, addLog]);
 
   // Handle reconnect button

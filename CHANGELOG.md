@@ -9,6 +9,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- DevTools helper functions (`runBridge`, `runAndLog`) are now auto-exposed on `window.top` (the default DevTools
+  console context) by the bridge plugin; no manual paste step or iframe context switching needed
 - Removed redundant `preview` field from search results (was just `title.substring(0, 100)`)
 
 ### Fixed
@@ -28,8 +30,17 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Changed default journal entry prefix from `[Claude]` to no prefix (empty string)
 - Journal entries no longer include a leading prefix-space when the configured prefix is empty
 
+### Removed
+
+- Deleted `docs/guides/js/development-execute-bridge-commands-00-helper.js` (auto-exposed on `window` now)
+- Deleted `docs/guides/images/execute-bridge-console-03-paste-helper-into-console.jpg` (paste step removed)
+
 ### Documentation
 
+- Updated `docs/guides/development-execute-bridge-commands.md` to remove manual paste step, note auto-available
+  helpers on top window, and update troubleshooting for top-window exposure
+- Updated `docs/guides/development-execute-bridge-commands-screenshots.md` to remove paste step, note default top
+  context works without switching, and update troubleshooting
 - Updated journal prefix defaults in `README.md` and plugin setting description text to reflect no-prefix default
 - Updated `README.md` integration paths:
   - Replaced planned OpenClaw companion wording with available-now companion app wording

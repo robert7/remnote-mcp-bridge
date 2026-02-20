@@ -19,15 +19,10 @@ This path runs through the same action handler used by WebSocket requests in `sr
 3. Open RemNote Developer Tools:
    - macOS: `Cmd+Option+I`
    - Windows/Linux: `Ctrl+Shift+I`
-4. In the Developer Console context picker, select the plugin iframe context (not the top page context).
 
-## Paste once: console helper
-
-Copy/paste the full contents of:
-
-- [`docs/guides/js/development-execute-bridge-commands-00-helper.js`](./js/development-execute-bridge-commands-00-helper.js)
-
-Then run it once in the Developer Console.
+The helper functions `runBridge(action, payload?, opts?)` and `runAndLog(action, payload?)` are automatically available
+on the **top window** once the bridge panel is open — no manual paste step and no iframe context switching required.
+Just open the Console and start typing.
 
 ## Command examples
 
@@ -61,10 +56,10 @@ Use a known Rem ID (for example `testRemId` from `create_note`).
 
 ## Troubleshooting
 
-- `Timed out waiting for result...`: Usually wrong console execution context. Re-select plugin iframe context.
-- After Chrome/RemNote restart, there can be multiple `index.html (localhost:8080)` contexts in DevTools. If one
-  times out, switch to the other `localhost:8080` context, paste helper again, and retry.
-- If the bridge widget is not visible/open yet, open the sidebar panel first. The event listener is registered by the
-  widget runtime.
+- `runBridge is not a function`: The bridge sidebar panel is not open yet, or the plugin has not finished
+  initializing. Open the **Bridge for MCP & OpenClaw** panel first — the helpers are registered by the widget runtime.
+- `Timed out waiting for result...`: Ensure the bridge panel is visible. If running in a restrictive sandbox where
+  `window.top` is cross-origin, the helpers fall back to the iframe `window` — in that case, switch to the plugin
+  iframe context (`index.html (localhost:8080)`) in the DevTools context picker.
 - `Unknown action: ...`: The action string does not match one of the supported names exactly.
 - `Note not found: ...`: `remId` does not exist in the current KB.
