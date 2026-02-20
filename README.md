@@ -193,9 +193,9 @@ AI Assistant (Claude Code/Desktop) ↔ MCP Server (HTTP) ↔ WebSocket :3002 ↔
 
 ## RemNote Concept Reference (for Contributors and Agents)
 
-For RemNote domain concepts relevant to bridge behavior (especially `remnote_read_note` and `remnote_search`), see:
+For RemNote domain concepts relevant to bridge behavior, see:
 
-- `docs/reference/remnote/README.md`
+- [RemNote Domain Reference](docs/reference/remnote/README.md)
 
 ## Development
 

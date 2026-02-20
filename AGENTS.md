@@ -267,4 +267,4 @@ or at the root level.
 
 For deeper domain context (flashcards/CDF, links/tags/portals, search/retrieval implications), use:
 
-- `docs/reference/remnote/README.md`
+- [`docs/reference/remnote/README.md`](docs/reference/remnote/README.md)

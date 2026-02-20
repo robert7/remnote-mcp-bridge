@@ -2,7 +2,8 @@
 
 ## The atomic unit: Rem
 
-A Rem is RemNote's atomic object for notes and knowledge structure. In practice, many entities are represented as Rems, including regular notes and organizational nodes.
+A Rem is RemNote's atomic object for notes and knowledge structure. In practice, many entities are represented as Rems,
+including regular notes and organizational nodes.
 
 Practical bridge implication:
 
@@ -11,7 +12,8 @@ Practical bridge implication:
 
 ## Hierarchy is first-class
 
-RemNote is outline-first. Rems exist in parent/child hierarchies, with ancestor/descendant relationships and top-level placement.
+RemNote is outline-first. Rems exist in parent/child hierarchies, with ancestor/descendant relationships and top-level
+placement.
 
 Practical bridge implication:
 
@@ -20,7 +22,8 @@ Practical bridge implication:
 
 ## Document, Folder, Top-level Rem are orthogonal attributes
 
-"Document", "Folder", and "Top-level Rem" are not one simple type enum in everyday usage. A Rem can be top-level and also behave as a document/folder depending on settings and context.
+"Document", "Folder", and "Top-level Rem" are not one simple type enum in everyday usage. A Rem can be top-level and
+also behave as a document/folder depending on settings and context.
 
 Practical bridge implication:
 
@@ -29,7 +32,8 @@ Practical bridge implication:
 
 ## Rem vs Flashcard
 
-A key distinction in RemNote concepts: flashcards are generated from Rem content and syntax; they are not the same thing as regular content nodes.
+A key distinction in RemNote concepts: flashcards are generated from Rem content and syntax; they are not the same thing
+as regular content nodes.
 
 Practical bridge implication:
 

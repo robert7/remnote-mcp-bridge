@@ -19,8 +19,10 @@ RemNote distinguishes three important relationship mechanisms:
 
 Implication for agents:
 
-- A matching Rem in search results may be linked context, tagged context, or portal context; they are not interchangeable.
-- A read response should preserve enough information to tell whether content is original local content versus referenced context.
+- A matching Rem in search results may be linked context, tagged context, or portal context; they are not
+  interchangeable.
+- A read response should preserve enough information to tell whether content is original local content versus referenced
+  context.
 
 ## Backlinks and graph context
 
@@ -32,7 +34,8 @@ Implication for agents:
 
 ## Properties and structured metadata
 
-RemNote supports property-like metadata conventions for Rems. This can carry typed information that plain text summarization misses.
+RemNote supports property-like metadata conventions for Rems. This can carry typed information that plain text
+summarization misses.
 
 Implication for agents:
 

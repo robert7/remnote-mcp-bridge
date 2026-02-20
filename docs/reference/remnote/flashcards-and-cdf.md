@@ -2,7 +2,8 @@
 
 ## Flashcards are generated from authoring syntax
 
-RemNote uses in-line syntax and structures to generate flashcards (for example descriptor separators, cloze patterns, and related constructs).
+RemNote uses in-line syntax and structures to generate flashcards (for example descriptor separators, cloze patterns,
+and related constructs).
 
 Implication for agents:
 
@@ -11,11 +12,13 @@ Implication for agents:
 
 ## Concept-Descriptor Framework (CDF)
 
-CDF is a central RemNote knowledge-modeling approach. It structures how concepts and descriptors are represented and studied.
+CDF is a central RemNote knowledge-modeling approach. It structures how concepts and descriptors are represented and
+studied.
 
 Implication for agents:
 
-- For retrieval quality, preserving concept/describer relationships is often better than returning only a flat concatenated string.
+- For retrieval quality, preserving concept/describer relationships is often better than returning only a flat
+  concatenated string.
 
 ## Multiple flashcard behaviors exist
 

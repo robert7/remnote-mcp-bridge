@@ -1,18 +1,19 @@
 # RemNote Domain Reference for Bridge Development
 
-Purpose: give AI agents a concise, reliable concept map of RemNote's domain model before changing bridge behavior, especially `remnote_read_note` and `remnote_search`.
+Purpose: give developers and AI agents a concise, reliable concept map of RemNote's domain model before changing bridge behavior.
 
 ## How to use this reference
 
-1. Start with `core-model.md` to align on what a Rem is (and what is not a Rem).
-2. Read `structure-and-links.md` to understand hierarchy, references, tags, and portals.
-3. Read `flashcards-and-cdf.md` when interpreting Rem text that may encode card semantics.
-4. Read `search-retrieval-notes.md` before changing read/search output behavior.
+1. Start with [`core-model.md`](./core-model.md) to align on what a Rem is (and what is not a Rem).
+2. Read [`structure-and-links.md`](./structure-and-links.md) to understand hierarchy, references, tags, and portals.
+3. Read [`flashcards-and-cdf.md`](./flashcards-and-cdf.md) when interpreting Rem text that may encode card semantics.
+4. Read [`search-retrieval-notes.md`](./search-retrieval-notes.md) before changing read/search output behavior.
 
 ## Bridge action relevance
 
 - `remnote_read_note`: depends heavily on hierarchy semantics, references/portals context, and Rem text interpretation.
-- `remnote_search`: depends on search behavior expectations, query scope, and what should be returned as summary context.
+- `remnote_search`: depends on search behavior expectations, query scope, and what should be returned as summary
+  context.
 - `remnote_create_note` / `remnote_update_note`: should preserve Rem hierarchy and text semantics.
 - `remnote_append_journal`: maps to daily document behavior.
 

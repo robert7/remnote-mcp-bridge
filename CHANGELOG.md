@@ -50,6 +50,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Added discoverability links to the new concept reference in:
   - `README.md`
   - `AGENTS.md`
+- Changed RemNote concept reference path mentions to proper clickable Markdown links for easier GitHub browsing
 
 ## [0.4.2] - 2026-02-18
 
