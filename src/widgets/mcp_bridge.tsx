@@ -10,7 +10,13 @@ import { renderWidget, usePlugin, useTracker, ReactRNPlugin } from '@remnote/plu
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { WebSocketClient, ConnectionStatus, BridgeRequest } from '../bridge/websocket-client';
 import { RemAdapter } from '../api/rem-adapter';
-import { registerDevToolsBridgeExecutor, exposeDevToolsHelpers } from './devtools-bridge-executor';
+import {
+  LOG_TAG,
+  TOP_CONSOLE_HELPER,
+  registerDevToolsBridgeExecutor,
+  registerDevToolsBridgeMessageListener,
+  exposeDevToolsHelpers,
+} from './devtools-bridge-executor';
 import {
   SETTING_AUTO_TAG_ENABLED,
   SETTING_AUTO_TAG,
@@ -263,8 +269,15 @@ function MCPBridgeWidget() {
       execute: handleRequest,
       onLog: (message, level) => addLog(message, level ?? 'info'),
     });
+    const unregisterMsg = registerDevToolsBridgeMessageListener({
+      execute: handleRequest,
+      onLog: (message, level) => addLog(message, level ?? 'info'),
+    });
 
     const removeHelpers = exposeDevToolsHelpers(targetWindow);
+    console.log(
+      `${LOG_TAG} Top-console helper — paste once in the default (top) DevTools context:\n${TOP_CONSOLE_HELPER}`
+    );
 
     addLog(
       targetWindow === window
@@ -276,6 +289,7 @@ function MCPBridgeWidget() {
     return () => {
       removeHelpers();
       unregister();
+      unregisterMsg();
     };
   }, [handleRequest, addLog]);
 

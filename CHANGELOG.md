@@ -9,8 +9,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- DevTools helper functions (`runBridge`, `runAndLog`) are now auto-exposed on `window.top` (the default DevTools
-  console context) by the bridge plugin; no manual paste step or iframe context switching needed
+- DevTools top-context workflow now uses a cross-origin-safe `postMessage` bridge: paste a one-time helper snippet in
+  the default (`top`) DevTools context, then execute `runBridge` / `runAndLog` without switching contexts
+- Iframe DevTools workflow remains supported: `runBridge` / `runAndLog` are still auto-exposed when using the plugin
+  iframe console context
 - Removed redundant `preview` field from search results (was just `title.substring(0, 100)`)
 
 ### Fixed
@@ -24,6 +26,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Execute event: `remnote:mcp:execute`
   - Result event: `remnote:mcp:result`
   - Allows direct command execution through `handleRequest` without MCP server/CLI in the loop
+- Added dedicated top-context helper script:
+  - `docs/guides/js/development-execute-bridge-commands-00-top-console-helper.js`
 
 ### Changed
 
@@ -37,10 +41,11 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Documentation
 
-- Updated `docs/guides/development-execute-bridge-commands.md` to remove manual paste step, note auto-available
-  helpers on top window, and update troubleshooting for top-window exposure
-- Updated `docs/guides/development-execute-bridge-commands-screenshots.md` to remove paste step, note default top
-  context works without switching, and update troubleshooting
+- Updated `docs/guides/development-execute-bridge-commands.md` to document both workflows:
+  - Iframe context (no paste)
+  - Top context (one-time helper paste)
+- Updated `docs/guides/development-execute-bridge-commands-screenshots.md` to reflect both context options and revised
+  troubleshooting
 - Updated journal prefix defaults in `README.md` and plugin setting description text to reflect no-prefix default
 - Updated `README.md` integration paths:
   - Replaced planned OpenClaw companion wording with available-now companion app wording

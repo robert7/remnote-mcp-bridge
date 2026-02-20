@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   DEVTOOLS_EXECUTE_EVENT,
   DEVTOOLS_RESULT_EVENT,
+  TOP_CONSOLE_HELPER,
   registerDevToolsBridgeExecutor,
+  registerDevToolsBridgeMessageListener,
   type DevToolsResultDetail,
 } from '../../src/widgets/devtools-bridge-executor';
 
@@ -124,5 +126,133 @@ describe('registerDevToolsBridgeExecutor', () => {
 
     window.removeEventListener(DEVTOOLS_RESULT_EVENT, resultSpy);
     unregister();
+  });
+});
+
+describe('registerDevToolsBridgeMessageListener', () => {
+  it('executes bridge requests and posts successful results to message source', async () => {
+    const execute = vi.fn(async () => ({ connected: false }));
+    const onLog = vi.fn();
+    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => {});
+
+    const unregister = registerDevToolsBridgeMessageListener({
+      execute,
+      onLog,
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          type: DEVTOOLS_EXECUTE_EVENT,
+          id: 'msg-1',
+          action: 'get_status',
+          payload: {},
+        },
+        origin: 'https://remnote.com',
+        source: window,
+      })
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(execute).toHaveBeenCalledWith({
+      id: 'msg-1',
+      action: 'get_status',
+      payload: {},
+    });
+    expect(onLog).toHaveBeenCalledWith('DevTools execute: get_status', 'info');
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      {
+        type: DEVTOOLS_RESULT_EVENT,
+        id: 'msg-1',
+        ok: true,
+        action: 'get_status',
+        result: { connected: false },
+      },
+      'https://remnote.com'
+    );
+
+    unregister();
+    postMessageSpy.mockRestore();
+  });
+
+  it('posts errors when execution fails', async () => {
+    const execute = vi.fn(async () => {
+      throw new Error('Bridge failed');
+    });
+    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => {});
+
+    const unregister = registerDevToolsBridgeMessageListener({
+      execute,
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          type: DEVTOOLS_EXECUTE_EVENT,
+          id: 'msg-2',
+          action: 'search',
+          payload: { query: 'x' },
+        },
+        origin: 'https://remnote.com',
+        source: window,
+      })
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(postMessageSpy).toHaveBeenCalledWith(
+      {
+        type: DEVTOOLS_RESULT_EVENT,
+        id: 'msg-2',
+        ok: false,
+        action: 'search',
+        error: 'Bridge failed',
+      },
+      'https://remnote.com'
+    );
+
+    unregister();
+    postMessageSpy.mockRestore();
+  });
+
+  it('ignores invalid postMessage requests without action', async () => {
+    const execute = vi.fn(async () => ({}));
+    const onLog = vi.fn();
+    const postMessageSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => {});
+
+    const unregister = registerDevToolsBridgeMessageListener({
+      execute,
+      onLog,
+    });
+
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          type: DEVTOOLS_EXECUTE_EVENT,
+          id: 'msg-3',
+          payload: { query: 'x' },
+        },
+        origin: 'https://remnote.com',
+        source: window,
+      })
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(execute).not.toHaveBeenCalled();
+    expect(postMessageSpy).not.toHaveBeenCalled();
+    expect(onLog).toHaveBeenCalledWith('Ignored invalid devtools request (missing action)', 'warn');
+
+    unregister();
+    postMessageSpy.mockRestore();
+  });
+});
+
+describe('TOP_CONSOLE_HELPER', () => {
+  it('contains helper function definitions for top context usage', () => {
+    expect(TOP_CONSOLE_HELPER).toContain('window.runBridge = async function runBridge');
+    expect(TOP_CONSOLE_HELPER).toContain("type: 'remnote:mcp:execute'");
+    expect(TOP_CONSOLE_HELPER).toContain('window.runAndLog = async function runAndLog');
   });
 });

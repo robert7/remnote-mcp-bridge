@@ -1,7 +1,7 @@
 # Execute Bridge Commands from RemNote Developer Console
 
-Use this guide to execute bridge actions directly inside the RemNote plugin iframe and inspect raw results, without the
-MCP server or CLI in the middle.
+Use this guide to execute bridge actions directly from DevTools and inspect raw results, without the MCP server or CLI
+in the middle.
 
 Visual walkthrough:
 
@@ -20,9 +20,19 @@ This path runs through the same action handler used by WebSocket requests in `sr
    - macOS: `Cmd+Option+I`
    - Windows/Linux: `Ctrl+Shift+I`
 
-The helper functions `runBridge(action, payload?, opts?)` and `runAndLog(action, payload?)` are automatically available
-on the **top window** once the bridge panel is open — no manual paste step and no iframe context switching required.
-Just open the Console and start typing.
+## Choose a workflow
+
+### Workflow A: Iframe context (zero setup)
+
+1. In DevTools Console, switch context to `index.html (localhost:8080)`.
+2. Run commands immediately (`runBridge` / `runAndLog` are auto-exposed on that iframe window).
+
+### Workflow B: Top context (paste once per browser session)
+
+1. Stay in the default `top` console context.
+2. Copy and paste the helper snippet printed on plugin startup (`[runBridge v2] Top-console helper ...`) or use:
+   - [`development-execute-bridge-commands-00-top-console-helper.js`](./js/development-execute-bridge-commands-00-top-console-helper.js)
+3. After one paste, run commands in top context with `runBridge` / `runAndLog`.
 
 ## Command examples
 
@@ -56,10 +66,12 @@ Use a known Rem ID (for example `testRemId` from `create_note`).
 
 ## Troubleshooting
 
-- `runBridge is not a function`: The bridge sidebar panel is not open yet, or the plugin has not finished
-  initializing. Open the **Bridge for MCP & OpenClaw** panel first — the helpers are registered by the widget runtime.
-- `Timed out waiting for result...`: Ensure the bridge panel is visible. If running in a restrictive sandbox where
-  `window.top` is cross-origin, the helpers fall back to the iframe `window` — in that case, switch to the plugin
-  iframe context (`index.html (localhost:8080)`) in the DevTools context picker.
+- `runBridge is not a function`:
+  - Bridge panel is not open yet, or plugin initialization has not completed.
+  - If you are in top context, paste the helper snippet first.
+- `Timed out waiting for result...`:
+  - Ensure the **Bridge for MCP & OpenClaw** panel is visible.
+  - In top context, re-paste the helper and retry.
+  - In iframe workflow, confirm DevTools context is `index.html (localhost:8080)`.
 - `Unknown action: ...`: The action string does not match one of the supported names exactly.
 - `Note not found: ...`: `remId` does not exist in the current KB.

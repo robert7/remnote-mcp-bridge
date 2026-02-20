@@ -13,17 +13,22 @@ If you have not yet run the plugin locally, start with:
 Before running commands from DevTools:
 
 - Make sure the **Bridge for MCP & OpenClaw** panel is visible in RemNote.
-- The helper functions `runBridge` and `runAndLog` are auto-exposed on `window` by the plugin — no paste step needed.
+- The command executor is registered by that widget runtime.
 
 ![Bridge visible and helper source](./images/execute-bridge-console-01-plugin-visible-and-helper-source.jpg)
 
-## 2) Use the default (top) console context
+## 2) Pick your console workflow
 
-The helper functions are now exposed on the **top window** automatically — no iframe context switching needed.
-Just open the Console tab and start typing commands.
+### Option A: Iframe context (no paste)
 
-> **Fallback:** If `window.top` is blocked by a cross-origin sandbox, the helpers fall back to the iframe `window`.
-> In that case, select `index.html (localhost:8080)` in the DevTools context picker.
+- In DevTools, switch context to `index.html (localhost:8080)`.
+- `runBridge` and `runAndLog` are auto-exposed in that context.
+
+### Option B: Top context (paste once)
+
+- Stay in default `top` context.
+- Paste the helper snippet logged on plugin startup (`[runBridge v2] Top-console helper ...`) or copy:
+  - [`development-execute-bridge-commands-00-top-console-helper.js`](./js/development-execute-bridge-commands-00-top-console-helper.js)
 
 ![Select plugin iframe context](./images/execute-bridge-console-02-select-correct-plugin-iframe-context.jpg)
 
@@ -36,9 +41,6 @@ await runAndLog('get_status');
 ```
 
 Expected result: object with fields like `connected` and `pluginVersion`.
-
-> **Note:** The screenshot below may still show a manual paste step — this is no longer needed. Robert will update
-> this screenshot in a future pass.
 
 ![Run get_status and verify](./images/execute-bridge-console-04-run-get-status-and-verify-result.jpg)
 
@@ -60,14 +62,15 @@ Expected result: `{ results: [...] }` with `remId`, `title`, and optional `conte
 ## Troubleshooting (quick)
 
 - `runBridge is not a function`:
-  - Bridge panel not open yet. Open the **Bridge for MCP & OpenClaw** sidebar panel first.
-  - If `window.top` is cross-origin (rare), switch to the plugin iframe context (`index.html (localhost:8080)`).
+  - Bridge panel not open yet.
+  - In top context, helper snippet not pasted yet.
+  - In iframe workflow, ensure context is `index.html (localhost:8080)`.
 - Timeout after running a command:
-  - Ensure the bridge panel is visible and the plugin has initialized.
-  - If cross-origin fallback is active, make sure you're in the correct iframe context.
+  - Ensure bridge panel is visible and the plugin is initialized.
+  - In top context, re-paste helper and retry.
 - No events/responses:
-  - Ensure bridge sidebar panel is open and visible; helper functions and event listener are registered by widget
-    runtime.
+  - Re-open bridge panel and retry.
+  - Confirm command uses a supported action name.
 
 ## Related guides
 
