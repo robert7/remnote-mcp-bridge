@@ -10,6 +10,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - Added `publish-to-marketplace.sh` helper script to run `npm run build` for marketplace packaging workflow
+- Added DevTools bridge execution hook in the widget via event contract:
+  - Execute event: `remnote:mcp:execute`
+  - Result event: `remnote:mcp:result`
+  - Allows direct command execution through `handleRequest` without MCP server/CLI in the loop
 
 ### Changed
 
@@ -26,6 +30,33 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Restructured demo links in `README.md`:
   - Moved MCP server demo link from the top-level Demo section into the `MCP Server path` subsection
   - Added a CLI demo link in the `CLI app path (e.g. for OpenClaw)` subsection
+- Updated `AGENTS.md` Project Overview to align with current architecture:
+  - Reframed the bridge as a shared WebSocket execution endpoint (not MCP-only)
+  - Documented both consumer paths (`remnote-mcp-server` and `remnote-cli`)
+  - Replaced single-flow diagram with MCP-path and CLI-path flows
+- Added `docs/guides/development-execute-bridge-commands.md` with step-by-step Developer Console workflow and copy-paste
+  examples for every supported bridge action
+- Added `docs/guides/js/development-execute-bridge-commands-helper.js` so the DevTools helper can be copied from a plain
+  `.js` file instead of selecting it from markdown
+- Simplified `docs/guides/development-execute-bridge-commands.md` to use the dedicated helper file as the only
+  copy/paste path (removed inline fallback snippet)
+- Added RemNote domain concept reference set for bridge contributors/agents:
+  - `docs/reference/remnote/README.md`
+  - `docs/reference/remnote/core-model.md`
+  - `docs/reference/remnote/structure-and-links.md`
+  - `docs/reference/remnote/flashcards-and-cdf.md`
+  - `docs/reference/remnote/search-retrieval-notes.md`
+  - Includes links to official RemNote Help Center source pages for concept verification
+- Added discoverability links to the new concept reference in:
+  - `README.md`
+  - `AGENTS.md`
+- Changed RemNote concept reference path mentions to proper clickable Markdown links for easier GitHub browsing
+- Refactored DevTools execution guide assets for easier copy/paste and browsing:
+  - Moved helper script to `docs/guides/js/development-execute-bridge-commands-helper.js`
+  - Extracted per-command JS examples into `docs/guides/js/` and linked them from the guide
+  - Updated guide links to clickable Markdown links
+  - Expanded troubleshooting with multi-`localhost:8080` iframe context guidance after browser restart
+- Updated guide links to match ordered example filenames in `docs/guides/js/` (`00`-`06` naming)
 
 ## [0.4.2] - 2026-02-18
 

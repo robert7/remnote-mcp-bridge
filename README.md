@@ -1,7 +1,8 @@
 # RemNote Bridge for MCP & OpenClaw
 
 A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the **Model Context
-Protocol (MCP) or via CLI (command-line interface)** e.g. for [OpenClaw](https://github.com/openclaw/openclaw) or other agentic automation workflows.
+Protocol (MCP) or via CLI (command-line interface)** e.g. for [OpenClaw](https://github.com/openclaw/openclaw) or other
+agentic automation workflows.
 
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
@@ -189,6 +190,12 @@ AI Assistant (Claude Code/Desktop) ↔ MCP Server (HTTP) ↔ WebSocket :3002 ↔
   AI assistants and manages WebSocket server
 - **RemNote Bridge for MCP & OpenClaw** (this repository) - RemNote plugin that connects to the server and executes
   operations via RemNote SDK
+
+## RemNote Concept Reference (for Contributors and Agents)
+
+For RemNote domain concepts relevant to bridge behavior, see:
+
+- [RemNote Domain Reference](docs/reference/remnote/README.md)
 
 ## Development
 
