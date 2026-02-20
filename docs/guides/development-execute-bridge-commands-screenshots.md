@@ -58,7 +58,7 @@ await runBridge('search', {
 });
 ```
 
-Expected result: `{ results: [...] }` with `remId`, `title`, `preview`, and optional `content` entries.
+Expected result: `{ results: [...] }` with `remId`, `title`, and optional `content` entries.
 
 ![Run search and inspect results](./images/execute-bridge-console-05-run-search-and-inspect-results.jpg)
 

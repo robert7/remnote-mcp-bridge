@@ -246,7 +246,29 @@ describe('RemAdapter', () => {
       });
 
       expect(result.results[0].title).toBe('First note');
-      expect(result.results[0].preview).toContain('First note');
+      expect(result.results[0]).not.toHaveProperty('preview');
+    });
+
+    it('should deduplicate results by remId preserving first occurrence', async () => {
+      const { MockRem: MockRemClass } = await import('../helpers/mocks');
+      const dup = new MockRemClass('rem_1', 'First note duplicate');
+
+      // Override search to return duplicates
+      plugin.search.search.mockResolvedValueOnce([
+        await plugin.rem.findOne('rem_1'),
+        await plugin.rem.findOne('rem_2'),
+        dup, // duplicate rem_1
+        await plugin.rem.findOne('rem_3'),
+      ]);
+
+      const result = await adapter.search({
+        query: 'note',
+      });
+
+      const ids = result.results.map((r) => r.remId);
+      expect(ids).toEqual(['rem_1', 'rem_2', 'rem_3']);
+      // First occurrence title preserved, not the duplicate's
+      expect(result.results[0].title).toBe('First note');
     });
   });
 

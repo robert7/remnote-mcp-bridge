@@ -49,7 +49,6 @@ export interface NoteChild {
 export interface SearchResultItem {
   remId: string;
   title: string;
-  preview: string;
   content?: string;
 }
 
@@ -231,16 +230,18 @@ export class RemAdapter {
     );
 
     const results: SearchResultItem[] = [];
+    const seen = new Set<string>();
 
     for (const rem of searchResults) {
+      if (seen.has(rem._id)) continue;
+      seen.add(rem._id);
+
       // Use rem.text property (not getText method)
       const title = this.extractText(rem.text);
-      const preview = title.substring(0, 100);
 
       const item: SearchResultItem = {
         remId: rem._id,
         title,
-        preview,
       };
 
       if (params.includeContent) {

@@ -7,6 +7,14 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Removed redundant `preview` field from search results (was just `title.substring(0, 100)`)
+
+### Fixed
+
+- Search results no longer contain duplicate entries (deduplicated by `remId`)
+
 ### Added
 
 - Added `publish-to-marketplace.sh` helper script to run `npm run build` for marketplace packaging workflow
