@@ -57,6 +57,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Updated guide links to clickable Markdown links
   - Expanded troubleshooting with multi-`localhost:8080` iframe context guidance after browser restart
 - Updated guide links to match ordered example filenames in `docs/guides/js/` (`00`-`06` naming)
+- Excluded `docs/**` from coverage reporting in `vitest.config.ts` so Developer Console example snippets do not impact
+  code coverage thresholds
 - Added beginner local-development guide with step-by-step screenshots:
   - `docs/guides/development-run-plugin-locally.md`
 - Added README discoverability link to local development guide:

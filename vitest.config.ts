@@ -16,6 +16,8 @@ export default defineConfig({
         'node_modules',
         'dist',
         'coverage',
+        'docs',
+        'docs/**',
         '**/*.config.ts',
         '**/*.config.js',
         'test',
