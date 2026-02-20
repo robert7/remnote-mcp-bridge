@@ -21,7 +21,7 @@ This path runs through the same action handler used by WebSocket requests in `sr
 
 Copy/paste the full contents of:
 
-- `docs/guides/development-execute-bridge-commands-helper.js`
+- [`docs/guides/js/development-execute-bridge-commands-00-helper.js`](./js/development-execute-bridge-commands-00-helper.js)
 
 Then run it once in the Developer Console.
 
@@ -31,103 +31,36 @@ All commands below call the same bridge action names supported in `handleRequest
 
 ### 1) `get_status`
 
-```js
-await runAndLog('get_status');
-```
+- [`development-execute-bridge-commands-01-get-status.js`](./js/development-execute-bridge-commands-01-get-status.js)
 
 ### 2) `create_note`
 
-```js
-const created = await runAndLog('create_note', {
-  title: 'DevTools test note',
-  content: 'Line 1\nLine 2',
-  tags: ['MCP', 'devtools'],
-  // parentId: 'YOUR_PARENT_REM_ID',
-});
-
-// Save for follow-up commands
-const testRemId = created.remId;
-```
+- [`development-execute-bridge-commands-02-create-note.js`](./js/development-execute-bridge-commands-02-create-note.js)
 
 ### 3) `read_note`
 
 Use a known Rem ID (for example `testRemId` from `create_note`).
 
-```js
-await runAndLog('read_note', {
-  remId: testRemId,
-  depth: 2,
-});
-```
+- [`development-execute-bridge-commands-03-read-note.js`](./js/development-execute-bridge-commands-03-read-note.js)
 
 ### 4) `update_note`
 
-```js
-await runAndLog('update_note', {
-  remId: testRemId,
-  title: 'DevTools test note (updated)',
-  appendContent: 'Appended line from DevTools',
-  addTags: ['updated-from-console'],
-  removeTags: ['devtools'],
-});
-```
+- [`development-execute-bridge-commands-04-update-note.js`](./js/development-execute-bridge-commands-04-update-note.js)
 
 ### 5) `search`
 
-```js
-await runAndLog('search', {
-  query: 'DevTools test note',
-  limit: 10,
-  includeContent: true,
-});
-```
+- [`development-execute-bridge-commands-05-search.js`](./js/development-execute-bridge-commands-05-search.js)
 
 ### 6) `append_journal`
 
-```js
-await runAndLog('append_journal', {
-  content: 'Journal line written from RemNote DevTools console',
-  timestamp: true,
-});
-```
-
-## Quick end-to-end smoke flow
-
-```js
-const created = await runBridge('create_note', {
-  title: 'Bridge smoke flow',
-  content: 'Created from DevTools',
-  tags: ['smoke'],
-});
-
-await runBridge('read_note', { remId: created.remId, depth: 2 });
-await runBridge('update_note', {
-  remId: created.remId,
-  appendContent: 'Updated from smoke flow',
-});
-
-
-await runBridge('search', {
-  query: 'AI assisted coding',
-  includeContent: true,
-});
-await runBridge('search', {
-  query: 'AI assisted coding',
-  includeContent: false,
-});
-
-
-
-await runBridge('append_journal', {
-  content: `Smoke flow completed for ${created.remId}`,
-  timestamp: false,
-});
-await runBridge('get_status');
-```
+- [`development-execute-bridge-commands-06-append-journal.js`](./js/development-execute-bridge-commands-06-append-journal.js)
 
 ## Troubleshooting
 
 - `Timed out waiting for result...`: Usually wrong console execution context. Re-select plugin iframe context.
+- After Chrome/RemNote restart, there can be multiple `index.html (localhost:8080)` contexts in DevTools. If one
+  times out, switch to the other `localhost:8080` context, paste helper again, and retry.
+- If the bridge widget is not visible/open yet, open the sidebar panel first. The event listener is registered by the
+  widget runtime.
 - `Unknown action: ...`: The action string does not match one of the supported names exactly.
 - `Note not found: ...`: `remId` does not exist in the current KB.
-- No response events at all: ensure the bridge widget is open; the event listener is registered by the widget runtime.

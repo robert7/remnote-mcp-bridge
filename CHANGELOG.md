@@ -36,7 +36,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - Replaced single-flow diagram with MCP-path and CLI-path flows
 - Added `docs/guides/development-execute-bridge-commands.md` with step-by-step Developer Console workflow and copy-paste
   examples for every supported bridge action
-- Added `docs/guides/development-execute-bridge-commands-helper.js` so the DevTools helper can be copied from a plain
+- Added `docs/guides/js/development-execute-bridge-commands-helper.js` so the DevTools helper can be copied from a plain
   `.js` file instead of selecting it from markdown
 - Simplified `docs/guides/development-execute-bridge-commands.md` to use the dedicated helper file as the only
   copy/paste path (removed inline fallback snippet)
@@ -51,6 +51,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - `README.md`
   - `AGENTS.md`
 - Changed RemNote concept reference path mentions to proper clickable Markdown links for easier GitHub browsing
+- Refactored DevTools execution guide assets for easier copy/paste and browsing:
+  - Moved helper script to `docs/guides/js/development-execute-bridge-commands-helper.js`
+  - Extracted per-command JS examples into `docs/guides/js/` and linked them from the guide
+  - Updated guide links to clickable Markdown links
+  - Expanded troubleshooting with multi-`localhost:8080` iframe context guidance after browser restart
+- Updated guide links to match ordered example filenames in `docs/guides/js/` (`00`-`06` naming)
 
 ## [0.4.2] - 2026-02-18
 
