@@ -40,6 +40,16 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   `.js` file instead of selecting it from markdown
 - Simplified `docs/guides/development-execute-bridge-commands.md` to use the dedicated helper file as the only
   copy/paste path (removed inline fallback snippet)
+- Added RemNote domain concept reference set for bridge contributors/agents:
+  - `docs/reference/remnote/README.md`
+  - `docs/reference/remnote/core-model.md`
+  - `docs/reference/remnote/structure-and-links.md`
+  - `docs/reference/remnote/flashcards-and-cdf.md`
+  - `docs/reference/remnote/search-retrieval-notes.md`
+  - Includes links to official RemNote Help Center source pages for concept verification
+- Added discoverability links to the new concept reference in:
+  - `README.md`
+  - `AGENTS.md`
 
 ## [0.4.2] - 2026-02-18
 

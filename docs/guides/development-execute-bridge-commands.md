@@ -105,10 +105,19 @@ await runBridge('update_note', {
   remId: created.remId,
   appendContent: 'Updated from smoke flow',
 });
+
+
 await runBridge('search', {
   query: 'AI assisted coding',
   includeContent: true,
 });
+await runBridge('search', {
+  query: 'AI assisted coding',
+  includeContent: false,
+});
+
+
+
 await runBridge('append_journal', {
   content: `Smoke flow completed for ${created.remId}`,
   timestamp: false,

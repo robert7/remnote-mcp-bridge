@@ -191,6 +191,12 @@ AI Assistant (Claude Code/Desktop) ↔ MCP Server (HTTP) ↔ WebSocket :3002 ↔
 - **RemNote Bridge for MCP & OpenClaw** (this repository) - RemNote plugin that connects to the server and executes
   operations via RemNote SDK
 
+## RemNote Concept Reference (for Contributors and Agents)
+
+For RemNote domain concepts relevant to bridge behavior (especially `remnote_read_note` and `remnote_search`), see:
+
+- `docs/reference/remnote/README.md`
+
 ## Development
 
 ```bash

@@ -264,3 +264,7 @@ targets "today's" daily document.
 
 **Parent-Child Hierarchy:** Rems can have parent-child relationships. New Rems can be created under a specific parent
 or at the root level.
+
+For deeper domain context (flashcards/CDF, links/tags/portals, search/retrieval implications), use:
+
+- `docs/reference/remnote/README.md`
