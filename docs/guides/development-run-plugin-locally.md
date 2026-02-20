@@ -14,6 +14,10 @@ If your shell cannot find Node.js in this repo environment, run:
 source node-check.sh
 ```
 
+> **Note**: this works if you installed Node.js via [nvm](https://github.com/nvm-sh/nvm),
+> if this is not your setup, ensure Node.js is properly installed and available in your
+> terminal and ignore the `source node-check.sh` step.
+
 ## 1. Clone the repository
 
 ```bash
@@ -21,7 +25,7 @@ git clone https://github.com/robert7/remnote-mcp-bridge.git
 cd remnote-mcp-bridge
 ```
 
-![Clone repository](./images/01-clone-repository.jpg)
+![Clone repository](./images/run-plugin-locally-01-clone-repository.jpg)
 
 ## 2. Install dependencies
 
@@ -29,7 +33,7 @@ cd remnote-mcp-bridge
 npm install
 ```
 
-![Install dependencies](./images/02-install-dependencies.jpg)
+![Install dependencies](./images/run-plugin-locally-02-install-dependencies.jpg)
 
 ## 3. Start the dev server
 
@@ -48,7 +52,7 @@ or
 Expected result: webpack dev server runs on `http://localhost:8080`.
 Keep this terminal running while developing.
 
-![Run dev server](./images/03-run-dev-server.jpg)
+![Run dev server](./images/run-plugin-locally-03-run-dev-server.jpg)
 
 ## 4. Open RemNote plugin Build screen
 
@@ -59,7 +63,7 @@ In RemNote:
 3. Switch to `Build`
 4. Click `Develop from localhost`
 
-![Open plugin build tab](./images/04-open-remnote-plugin-build-tab.jpg)
+![Open plugin build tab](./images/run-plugin-locally-04-open-remnote-plugin-build-tab.jpg)
 
 ## 5. Load plugin from localhost
 
@@ -68,7 +72,7 @@ In the dialog:
 1. Enter `http://localhost:8080/`
 2. Click `Develop`
 
-![Develop from localhost dialog](./images/05-develop-from-localhost-dialog.jpg)
+![Develop from localhost dialog](./images/run-plugin-locally-05-develop-from-localhost-dialog.jpg)
 
 ## 6. Verify plugin is active
 
@@ -78,7 +82,7 @@ On the Plugins Build list, confirm:
 - URL is `http://localhost:8080/`
 - Status indicator is green / enabled
 
-![Plugin activated in build list](./images/06-plugin-activated-build-list.jpg)
+![Plugin activated in build list](./images/run-plugin-locally-06-plugin-activated-build-list.jpg)
 
 ## 7. Open the plugin panel in sidebar
 
@@ -88,7 +92,7 @@ Use RemNote's right sidebar:
 - Keep the sidebar pinned/open while testing
 - Open **Bridge for MCP & OpenClaw**
 
-![Open plugin sidebar panel](./images/07-open-plugin-sidebar-panel.jpg)
+![Open plugin sidebar panel](./images/run-plugin-locally-07-open-plugin-sidebar-panel.jpg)
 
 ## Common troubleshooting
 
@@ -104,3 +108,4 @@ Use RemNote's right sidebar:
 ## Related guides
 
 - [Execute Bridge Commands from RemNote Developer Console](./development-execute-bridge-commands.md)
+- [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](./development-execute-bridge-commands-screenshots.md)

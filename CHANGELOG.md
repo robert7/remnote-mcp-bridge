@@ -69,6 +69,21 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   - `05-develop-from-localhost-dialog.jpg`
   - `06-plugin-activated-build-list.jpg`
   - `07-open-plugin-sidebar-panel.jpg`
+- Updated image paths in `docs/guides/development-run-plugin-locally.md` to match renamed
+  `run-plugin-locally-*.jpg` files
+- Added screenshot-based Developer Console execution walkthrough:
+  - `docs/guides/development-execute-bridge-commands-screenshots.md`
+  - Positioned as a visual extension of `docs/guides/development-execute-bridge-commands.md`
+- Added cross-links between development guides for easier navigation:
+  - `docs/guides/development-execute-bridge-commands.md`
+  - `docs/guides/development-run-plugin-locally.md`
+  - `README.md`
+- Renamed new `2026*` screenshots in `docs/guides/images/` to descriptive ordered names:
+  - `execute-bridge-console-01-plugin-visible-and-helper-source.jpg`
+  - `execute-bridge-console-02-select-correct-plugin-iframe-context.jpg`
+  - `execute-bridge-console-03-paste-helper-into-console.jpg`
+  - `execute-bridge-console-04-run-get-status-and-verify-result.jpg`
+  - `execute-bridge-console-05-run-search-and-inspect-results.jpg`
 
 ## [0.4.2] - 2026-02-18
 

@@ -3,6 +3,10 @@
 Use this guide to execute bridge actions directly inside the RemNote plugin iframe and inspect raw results, without the
 MCP server or CLI in the middle.
 
+Visual walkthrough:
+
+- [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](./development-execute-bridge-commands-screenshots.md)
+
 ## Why this exists
 
 This path runs through the same action handler used by WebSocket requests in `src/widgets/mcp_bridge.tsx`

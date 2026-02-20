@@ -100,6 +100,7 @@ to RemNote's plugin marketplace.
 Beginner walkthrough with screenshots:
 
 - [Run The Plugin Locally (Beginner Guide)](docs/guides/development-run-plugin-locally.md)
+- [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](docs/guides/development-execute-bridge-commands-screenshots.md)
 
 ### 2. Install the MCP Server
 
