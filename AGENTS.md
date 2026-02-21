@@ -22,7 +22,7 @@ Terminology aliases used across docs and discussions:
 
 ## Project Overview
 
-RemNote Bridge for MCP & OpenClaw is a RemNote plugin that exposes RemNote operations over a local WebSocket bridge,
+RemNote Automation Bridge is a RemNote plugin that exposes RemNote operations over a local WebSocket bridge,
 allowing external companion applications to execute actions against the RemNote SDK.
 
 This bridge supports two consumer paths:

@@ -1,5 +1,5 @@
 /**
- * RemNote MCP Bridge Plugin
+ * RemNote Automation Bridge Plugin
  *
  * Entry point for the RemNote plugin that connects to the MCP server.
  * This file only registers the widget - the actual widget is in mcp_bridge.tsx

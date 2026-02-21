@@ -1,5 +1,5 @@
 /**
- * Settings IDs and defaults for MCP Bridge plugin
+ * Settings IDs and defaults for Automation Bridge plugin
  */
 
 // Setting IDs

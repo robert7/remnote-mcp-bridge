@@ -1,8 +1,8 @@
 /**
- * MCP Bridge Widget
+ * Automation Bridge Widget
  *
  * Popup widget that displays connection status, stats, and logs.
- * Opens via command palette (Ctrl-K): "Open MCP Bridge Control Panel"
+ * Opens via command palette (Ctrl-K): "Open Automation Bridge Control Panel"
  * Uses renderWidget() as required by RemNote plugin SDK.
  */
 
@@ -297,7 +297,7 @@ function MCPBridgeWidget() {
           marginBottom: '12px',
         }}
       >
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Bridge for MCP & OpenClaw</h3>
+        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Automation Bridge (MCP, OpenClaw...)</h3>
         <div
           style={{
             display: 'flex',

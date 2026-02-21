@@ -12,7 +12,7 @@ If you have not yet run the plugin locally, start with:
 
 Before running commands from DevTools:
 
-- Make sure the **Bridge for MCP & OpenClaw** panel is visible in RemNote.
+- Make sure the **Automation Bridge (MCP, OpenClaw...)** panel is visible in RemNote.
 - Open helper source file so you can copy it easily:
   - [`docs/guides/js/development-execute-bridge-commands-00-helper.js`](./js/development-execute-bridge-commands-00-helper.js)
 

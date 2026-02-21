@@ -249,8 +249,8 @@ describe('Widget Registration (index.tsx)', () => {
 describe('Widget UI (mcp_bridge_popup.tsx)', () => {
   describe('Branding', () => {
     it('should use updated bridge title label', () => {
-      const panelTitle = 'Bridge for MCP & OpenClaw';
-      expect(panelTitle).toBe('Bridge for MCP & OpenClaw');
+      const panelTitle = 'Automation Bridge (MCP, OpenClaw...)';
+      expect(panelTitle).toBe('Automation Bridge (MCP, OpenClaw...)');
     });
   });
 

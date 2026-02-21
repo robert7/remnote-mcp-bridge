@@ -1,8 +1,8 @@
-# RemNote Bridge for MCP & OpenClaw
+# RemNote Automation Bridge
 
-A RemNote plugin that enables AI assistants to interact with your RemNote knowledge base through the **Model Context
-Protocol (MCP) or via CLI (command-line interface)** e.g. for [OpenClaw](https://github.com/openclaw/openclaw) or other
-agentic automation workflows.
+A RemNote plugin that provides a generic, extensible bridge for external tools to interact with your RemNote knowledge
+base via local WebSocket APIs. It powers MCP servers, CLI apps, and broader automation flows, including but not
+limited to AI assistants.
 
 ![Status](https://img.shields.io/badge/status-beta-yellow) ![License](https://img.shields.io/badge/license-MIT-blue)
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
@@ -17,7 +17,7 @@ agentic automation workflows.
 This project is a bridge layer with two consumer paths:
 
 1. **MCP Server path:**
-   - **RemNote Bridge for MCP & OpenClaw** (this project): RemNote plugin exposing RemNote API via WebSocket
+   - **RemNote Automation Bridge** (this project): RemNote plugin exposing RemNote API via WebSocket
    - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: companion server exposing MCP tools to AI
      assistants
    - Demo: **[View MCP Server Demo →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
@@ -92,7 +92,7 @@ to RemNote's plugin marketplace.
    - Go to **Settings > Plugins**
    - Click **"Develop from localhost"**
    - Click **"Develop"**
-   - The RemNote Bridge for MCP & OpenClaw plugin will now be active
+   - The Automation Bridge (MCP, OpenClaw...) plugin will now be active
 3. Access the control panel:
    - Look for the **MCP icon** in RemNote's right sidebar toolbar
    - Click the icon to open the control panel
@@ -131,7 +131,7 @@ documentation](https://github.com/robert7/remnote-mcp-server#multi-agent-support
 
 ## Configuration
 
-Access plugin settings in RemNote via **Settings > Plugins > RemNote Bridge for MCP & OpenClaw**:
+Access plugin settings in RemNote via **Settings > Plugins > Automation Bridge (MCP, OpenClaw...)**:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -193,7 +193,7 @@ AI Assistant (Claude Code/Desktop) ↔ MCP Server (HTTP) ↔ WebSocket :3002 ↔
 
 - **RemNote MCP Server** ([separate repository](https://github.com/robert7/remnote-mcp-server)) - Exposes MCP tools to
   AI assistants and manages WebSocket server
-- **RemNote Bridge for MCP & OpenClaw** (this repository) - RemNote plugin that connects to the server and executes
+- **RemNote Automation Bridge** (this repository) - RemNote plugin that connects to the server and executes
   operations via RemNote SDK
 
 ## RemNote Concept Reference (for Contributors and Agents)

@@ -18,6 +18,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Plugin branding renamed to **RemNote Automation Bridge** with display name
+  **Automation Bridge (MCP, OpenClaw...)**.
 - Search default limit increased from 20 to 50.
 - Search results are grouped by `remType` priority while preserving SDK ordering within each group.
 - Journal default prefix is now empty; entries no longer include a leading space when no prefix is configured.
@@ -34,6 +36,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Added and linked a canonical search/read output contract reference:
   - `docs/reference/remnote/bridge-search-read-contract.md`
 - Consolidated developer guidance for local plugin execution and DevTools command workflows in `docs/guides/`.
+- Updated `README.md` opening description to position the plugin as a generic/extensible external automation bridge
+  (MCP server, CLI, and broader automation flows), not AI-assistant-only.
 
 ## [0.4.2] - 2026-02-18
 

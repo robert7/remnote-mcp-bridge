@@ -15,7 +15,7 @@ This path runs through the same action handler used by WebSocket requests in `sr
 ## Prerequisites
 
 1. Start RemNote with this plugin enabled.
-2. Open the bridge panel (right sidebar widget: **Bridge for MCP & OpenClaw**).
+2. Open the bridge panel (right sidebar widget: **Automation Bridge (MCP, OpenClaw...)**).
 3. Open RemNote Developer Tools:
    - macOS: `Cmd+Option+I`
    - Windows/Linux: `Ctrl+Shift+I`
