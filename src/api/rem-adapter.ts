@@ -3,7 +3,13 @@
  * Wraps the RemNote Plugin SDK with correct method signatures for v0.0.46+
  */
 
-import { ReactRNPlugin, RichTextInterface, Rem } from '@remnote/plugin-sdk';
+import {
+  ReactRNPlugin,
+  RichTextInterface,
+  Rem,
+  RemType,
+  BuiltInPowerupCodes,
+} from '@remnote/plugin-sdk';
 import { MCPSettings, DEFAULT_JOURNAL_PREFIX } from '../settings';
 
 // Build-time constant injected by webpack DefinePlugin
@@ -49,9 +55,40 @@ export interface NoteChild {
 export interface SearchResultItem {
   remId: string;
   title: string;
-  preview: string;
+  detail?: string;
+  remType: RemClassification;
+  cardDirection?: CardDirection;
   content?: string;
 }
+
+export type RemClassification =
+  | 'document'
+  | 'dailyDocument'
+  | 'concept'
+  | 'descriptor'
+  | 'portal'
+  | 'text';
+
+export type CardDirection = 'forward' | 'reverse' | 'bidirectional';
+
+/** Default number of search results when no limit is specified. */
+const DEFAULT_SEARCH_LIMIT = 50;
+
+/** Maximum child Rems included in search content preview. */
+const SEARCH_CONTENT_CHILD_LIMIT = 5;
+
+/** Default recursion depth for reading child Rems. */
+const DEFAULT_READ_DEPTH = 3;
+
+/** Type priority for search result sorting (lower = higher priority). */
+const TYPE_PRIORITY: Record<RemClassification, number> = {
+  document: 0,
+  dailyDocument: 1,
+  concept: 2,
+  descriptor: 3,
+  portal: 4,
+  text: 5,
+};
 
 export class RemAdapter {
   private settings: MCPSettings;
@@ -87,23 +124,220 @@ export class RemAdapter {
   }
 
   /**
-   * Extract plain text from RichTextInterface
+   * Extract text from RichTextInterface, resolving references and applying markdown formatting.
+   *
+   * Handles all SDK rich text element types:
+   * - Plain strings, formatted text (bold/italic/code/links), Rem references,
+   *   global names, LaTeX, annotations, images, audio, drawings.
+   * - Card delimiters and plugin elements produce empty strings.
+   * - Circular references are guarded via visitedIds set.
    */
-  private extractText(richText: RichTextInterface | undefined): string {
+  private async extractText(
+    richText: RichTextInterface | undefined,
+    visitedIds?: Set<string>
+  ): Promise<string> {
     if (!richText || !Array.isArray(richText)) return '';
 
-    return richText
-      .map((element) => {
-        if (typeof element === 'string') {
-          return element;
+    const visited = visitedIds ?? new Set<string>();
+    const parts: string[] = [];
+
+    for (const element of richText) {
+      if (typeof element === 'string') {
+        parts.push(element);
+        continue;
+      }
+
+      if (!element || typeof element !== 'object') continue;
+
+      const el = element as Record<string, unknown>;
+      const discriminant = el.i as string | undefined;
+
+      switch (discriminant) {
+        case 'm': {
+          // Formatted text
+          let text = (el.text as string) || '';
+          if (!text) break;
+
+          // Apply markdown formatting (innermost to outermost)
+          if (el.code === true) text = `\`${text}\``;
+          if (el.b === true) text = `**${text}**`;
+          if (el.l === true) text = `*${text}*`;
+          // u (underline), q (quote), h (highlight) — skipped per plan
+
+          // External URL link wraps the formatted text
+          if (typeof el.url === 'string' && el.url) {
+            text = `[${text}](${el.url})`;
+          }
+          // qId (inline link to another Rem) — just use text as-is
+
+          parts.push(text);
+          break;
         }
-        // Handle rich text elements (references, formatting, etc.)
-        if (element && typeof element === 'object' && 'text' in element) {
-          return (element as { text?: string }).text || '';
+
+        case 'q': {
+          // Rem reference — must resolve via SDK lookup
+          const refId = el._id as string | undefined;
+          if (!refId) {
+            parts.push('[deleted reference]');
+            break;
+          }
+          if (visited.has(refId)) {
+            parts.push('[circular reference]');
+            break;
+          }
+          visited.add(refId);
+          try {
+            const refRem = await this.plugin.rem.findOne(refId);
+            if (refRem) {
+              const refText = await this.extractText(refRem.text, visited);
+              parts.push(refText);
+            } else if (el.textOfDeletedRem) {
+              const deletedText = await this.extractText(
+                el.textOfDeletedRem as RichTextInterface,
+                visited
+              );
+              parts.push(deletedText || '[deleted reference]');
+            } else {
+              parts.push('[deleted reference]');
+            }
+          } finally {
+            // Keep cycle detection scoped to the current recursion branch.
+            visited.delete(refId);
+          }
+          break;
         }
-        return '';
-      })
-      .join('');
+
+        case 'g': {
+          // Global name — resolve via SDK lookup (has _id, no text)
+          const gId = el._id as string | null;
+          if (!gId) break;
+          if (visited.has(gId)) {
+            parts.push('[circular reference]');
+            break;
+          }
+          visited.add(gId);
+          try {
+            const gRem = await this.plugin.rem.findOne(gId);
+            if (gRem) {
+              const gText = await this.extractText(gRem.text, visited);
+              parts.push(gText);
+            }
+          } finally {
+            visited.delete(gId);
+          }
+          break;
+        }
+
+        case 'x': // LaTeX
+        case 'n': // Annotation
+          parts.push((el.text as string) || '');
+          break;
+
+        case 'i': // Image
+          parts.push((el.title as string) || '[image]');
+          break;
+
+        case 'a': // Audio
+          parts.push('[audio]');
+          break;
+
+        case 'r': // Drawing
+          parts.push('[drawing]');
+          break;
+
+        case 's': // Card delimiter — structural, not displayable
+        case 'p': // Plugin element — not user content
+          break;
+
+        default: {
+          // Fallback: try to extract text property (forward-compat for unknown types)
+          if ('text' in el) {
+            parts.push((el.text as string) || '');
+          }
+          break;
+        }
+      }
+    }
+
+    return parts.join('');
+  }
+
+  /**
+   * Classify a Rem into a semantic type using SDK metadata.
+   */
+  private async classifyRem(rem: Rem): Promise<RemClassification> {
+    if (await rem.hasPowerup(BuiltInPowerupCodes.DailyDocument)) return 'dailyDocument';
+    if (rem.type === RemType.CONCEPT) return 'concept';
+    if (rem.type === RemType.DESCRIPTOR) return 'descriptor';
+    if (rem.type === RemType.PORTAL) return 'portal';
+    if (await rem.isDocument()) return 'document';
+    return 'text';
+  }
+
+  /**
+   * Map SDK practice direction to contract card direction values.
+   * Returns undefined when direction is 'none' (omit from output).
+   */
+  private mapCardDirection(
+    sdkDirection: 'forward' | 'backward' | 'both' | 'none'
+  ): CardDirection | undefined {
+    switch (sdkDirection) {
+      case 'forward':
+        return 'forward';
+      case 'backward':
+        return 'reverse';
+      case 'both':
+        return 'bidirectional';
+      default:
+        return undefined;
+    }
+  }
+
+  private getCardDelimiterIndex(richText: RichTextInterface | undefined): number {
+    if (!richText || !Array.isArray(richText)) return -1;
+    return richText.findIndex(
+      (element) =>
+        typeof element === 'object' &&
+        element !== null &&
+        'i' in (element as Record<string, unknown>) &&
+        (element as Record<string, unknown>).i === 's'
+    );
+  }
+
+  private async getTitleAndDetail(rem: Rem): Promise<{ title: string; detail?: string }> {
+    const delimiterIndex = this.getCardDelimiterIndex(rem.text);
+    if (delimiterIndex >= 0 && Array.isArray(rem.text)) {
+      const front = await this.extractText(rem.text.slice(0, delimiterIndex) as RichTextInterface);
+
+      // Prefer canonical SDK backText when available; fallback to right side of inline delimiter.
+      const detailSource =
+        rem.backText && rem.backText.length > 0
+          ? rem.backText
+          : (rem.text.slice(delimiterIndex + 1) as RichTextInterface);
+
+      const detail = await this.extractText(detailSource);
+      return { title: front, ...(detail ? { detail } : {}) };
+    }
+
+    const title = await this.extractText(rem.text);
+    if (rem.backText && rem.backText.length > 0) {
+      const detail = await this.extractText(rem.backText);
+      return { title, ...(detail ? { detail } : {}) };
+    }
+
+    return { title };
+  }
+
+  private async getContentPreview(rem: Rem): Promise<string | undefined> {
+    const children = await rem.getChildrenRem();
+    if (!children || children.length === 0) return undefined;
+
+    const childTexts = await Promise.all(
+      children
+        .slice(0, SEARCH_CONTENT_CHILD_LIMIT)
+        .map(async (child) => this.extractText(child.text))
+    );
+    return childTexts.join('\n');
   }
 
   /**
@@ -218,10 +452,17 @@ export class RemAdapter {
   }
 
   /**
-   * Search the knowledge base
+   * Search the knowledge base.
+   *
+   * Results are sorted by remType priority (document > dailyDocument > concept > descriptor >
+   * portal > text) with intra-group ordering preserved from RemNote's search API as a proxy
+   * for relevance (no score is available from the SDK).
+   *
+   * The RemNote SDK search API may enforce an opaque hard limit on result count beyond the
+   * requested value — this is not controllable from the plugin side.
    */
   async search(params: SearchParams): Promise<{ results: SearchResultItem[] }> {
-    const limit = params.limit ?? 20;
+    const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
 
     // Use the search API - query must be RichTextInterface
     const searchResults = await this.plugin.search.search(
@@ -230,31 +471,46 @@ export class RemAdapter {
       { numResults: limit }
     );
 
-    const results: SearchResultItem[] = [];
+    const collected: Array<SearchResultItem & { _sourceIndex: number }> = [];
+    const seen = new Set<string>();
+    let sourceIndex = 0;
 
     for (const rem of searchResults) {
-      // Use rem.text property (not getText method)
-      const title = this.extractText(rem.text);
-      const preview = title.substring(0, 100);
+      if (seen.has(rem._id)) continue;
+      seen.add(rem._id);
 
-      const item: SearchResultItem = {
+      const [{ title, detail }, remType, cardDirection, content] = await Promise.all([
+        this.getTitleAndDetail(rem),
+        this.classifyRem(rem),
+        rem.backText
+          ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+          : Promise.resolve(undefined),
+        params.includeContent ? this.getContentPreview(rem) : Promise.resolve(undefined),
+      ]);
+
+      const item: SearchResultItem & { _sourceIndex: number } = {
         remId: rem._id,
         title,
-        preview,
+        ...(detail ? { detail } : {}),
+        remType,
+        ...(cardDirection ? { cardDirection } : {}),
+        ...(content ? { content } : {}),
+        _sourceIndex: sourceIndex++,
       };
 
-      if (params.includeContent) {
-        const children = await rem.getChildrenRem();
-        if (children && children.length > 0) {
-          const childTexts = children.slice(0, 5).map((child) => {
-            return this.extractText(child.text);
-          });
-          item.content = childTexts.join('\n');
-        }
-      }
-
-      results.push(item);
+      collected.push(item);
     }
+
+    // Sort by type priority, then by original SDK position within each type group
+    collected.sort((a, b) => {
+      const pa = TYPE_PRIORITY[a.remType ?? 'text'] ?? 5;
+      const pb = TYPE_PRIORITY[b.remType ?? 'text'] ?? 5;
+      if (pa !== pb) return pa - pb;
+      return a._sourceIndex - b._sourceIndex;
+    });
+
+    // Strip internal _sourceIndex before returning
+    const results: SearchResultItem[] = collected.map(({ _sourceIndex, ...rest }) => rest);
 
     return { results };
   }
@@ -265,23 +521,34 @@ export class RemAdapter {
   async readNote(params: ReadNoteParams): Promise<{
     remId: string;
     title: string;
+    detail?: string;
+    remType: RemClassification;
+    cardDirection?: CardDirection;
     content: string;
     children: NoteChild[];
   }> {
-    const depth = params.depth ?? 3;
+    const depth = params.depth ?? DEFAULT_READ_DEPTH;
     const rem = await this.plugin.rem.findOne(params.remId);
 
     if (!rem) {
       throw new Error(`Note not found: ${params.remId}`);
     }
 
-    // Use rem.text property
-    const title = this.extractText(rem.text);
+    const [{ title, detail }, remType, cardDirection] = await Promise.all([
+      this.getTitleAndDetail(rem),
+      this.classifyRem(rem),
+      rem.backText
+        ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+        : Promise.resolve(undefined),
+    ]);
     const children = await this.getChildrenRecursive(rem, depth);
 
     return {
       remId: rem._id,
       title,
+      ...(detail ? { detail } : {}),
+      remType,
+      ...(cardDirection ? { cardDirection } : {}),
       content: title,
       children,
     };
@@ -299,8 +566,7 @@ export class RemAdapter {
     const result: NoteChild[] = [];
 
     for (const child of children) {
-      // Use child.text property
-      const text = this.extractText(child.text);
+      const text = await this.extractText(child.text);
       const grandchildren = await this.getChildrenRecursive(child, depth - 1);
 
       result.push({

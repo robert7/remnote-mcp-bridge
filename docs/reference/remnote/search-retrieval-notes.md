@@ -37,6 +37,18 @@ Before changing read/search behavior, verify that your assumptions match RemNote
 - Are you avoiding destructive flattening of flashcard/cdf syntax?
 - Are you clear about what constitutes "content" when media is present?
 
+## SDK search behavior
+
+The RemNote Plugin SDK `search.search()` returns `Promise<Rem[]>` with no relevance score or ranking metadata. The
+bridge treats array position as a proxy for relevance. The SDK accepts a `numResults` parameter but may enforce an
+opaque internal hard limit — requesting more results than this limit returns fewer results silently.
+
+## Consumer alignment
+
+Search/read result field semantics are contract-sensitive across bridge, MCP server, and CLI consumers. Before changing
+field meaning (for example `title`, `detail`, `remType`, `cardDirection`), review
+[`bridge-search-read-contract.md`](./bridge-search-read-contract.md) to avoid silent downstream regressions.
+
 ## Sources
 
 - https://help.remnote.com/en/articles/6030721-searching-your-knowledge-base

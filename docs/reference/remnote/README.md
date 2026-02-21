@@ -8,6 +8,8 @@ Purpose: give developers and AI agents a concise, reliable concept map of RemNot
 2. Read [`structure-and-links.md`](./structure-and-links.md) to understand hierarchy, references, tags, and portals.
 3. Read [`flashcards-and-cdf.md`](./flashcards-and-cdf.md) when interpreting Rem text that may encode card semantics.
 4. Read [`search-retrieval-notes.md`](./search-retrieval-notes.md) before changing read/search output behavior.
+5. Read [`bridge-search-read-contract.md`](./bridge-search-read-contract.md) before changing output field semantics
+   for `remnote_search` and `remnote_read_note`.
 
 ## Bridge action relevance
 

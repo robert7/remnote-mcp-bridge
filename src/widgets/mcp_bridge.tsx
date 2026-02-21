@@ -47,7 +47,8 @@ interface HistoryEntry {
 }
 
 function MCPBridgeWidget() {
-  console.log('[MCP Bridge Widget] Rendering...');
+  // console.log(withLogPrefix('Widget rendering...'));
+
   const plugin = usePlugin();
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [logs, setLogs] = useState<LogEntry[]>([]);

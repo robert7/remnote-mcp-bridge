@@ -268,3 +268,7 @@ or at the root level.
 For deeper domain context (flashcards/CDF, links/tags/portals, search/retrieval implications), use:
 
 - [`docs/reference/remnote/README.md`](docs/reference/remnote/README.md)
+
+Before changing `remnote_search` or `remnote_read_note` output field semantics, read:
+
+- [`docs/reference/remnote/bridge-search-read-contract.md`](docs/reference/remnote/bridge-search-read-contract.md)

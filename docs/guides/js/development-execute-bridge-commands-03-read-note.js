@@ -1,4 +1,4 @@
 await runAndLog('read_note', {
-  remId: testRemId,
+  remId: 'qtVwh5XBQbJM2HfSp',
   depth: 2,
 });

@@ -7,6 +7,7 @@
 
 import { declareIndexPlugin, type ReactRNPlugin, WidgetLocation } from '@remnote/plugin-sdk';
 import '../style.css';
+import { withLogPrefix } from '../logging';
 import {
   SETTING_AUTO_TAG_ENABLED,
   SETTING_AUTO_TAG,
@@ -20,7 +21,7 @@ import {
 } from '../settings';
 
 async function onActivate(plugin: ReactRNPlugin) {
-  console.log('[MCP Bridge] Plugin activating...');
+  console.log(withLogPrefix('Plugin activating...'));
 
   // Register settings
   await plugin.settings.registerBooleanSetting({
@@ -65,7 +66,7 @@ async function onActivate(plugin: ReactRNPlugin) {
     defaultValue: '',
   });
 
-  console.log('[MCP Bridge] Settings registered');
+  console.log(withLogPrefix('Settings registered'));
 
   // Register MCP widget in popup
   // NOT needed anymore, but kept here for reference, in case the sidebar implementation doesn't work
@@ -93,11 +94,11 @@ async function onActivate(plugin: ReactRNPlugin) {
   //   },
   // });
 
-  console.log('[MCP Bridge] Widget registered in sidebar with icon');
+  console.log(withLogPrefix('Widget registered in sidebar with icon'));
 }
 
 async function onDeactivate(plugin: ReactRNPlugin) {
-  console.log('[MCP Bridge] Plugin deactivating...');
+  console.log(withLogPrefix('Plugin deactivating...'));
   await plugin.app.unregisterWidget('mcp_bridge', WidgetLocation.RightSidebar);
 }
 

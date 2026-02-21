@@ -2,6 +2,7 @@
  * Tests for RemNote API Adapter
  */
 import { describe, it, expect, beforeEach } from 'vitest';
+import { RemType, BuiltInPowerupCodes } from '@remnote/plugin-sdk';
 import { RemAdapter } from '../../src/api/rem-adapter';
 import { MockRemNotePlugin, MockRem } from '../helpers/mocks';
 
@@ -246,7 +247,79 @@ describe('RemAdapter', () => {
       });
 
       expect(result.results[0].title).toBe('First note');
-      expect(result.results[0].preview).toContain('First note');
+      expect(result.results[0]).not.toHaveProperty('preview');
+    });
+
+    it('should deduplicate results by remId preserving first occurrence', async () => {
+      const { MockRem: MockRemClass } = await import('../helpers/mocks');
+      const dup = new MockRemClass('rem_1', 'First note duplicate');
+
+      // Override search to return duplicates
+      plugin.search.search.mockResolvedValueOnce([
+        await plugin.rem.findOne('rem_1'),
+        await plugin.rem.findOne('rem_2'),
+        dup, // duplicate rem_1
+        await plugin.rem.findOne('rem_3'),
+      ]);
+
+      const result = await adapter.search({
+        query: 'note',
+      });
+
+      const ids = result.results.map((r) => r.remId);
+      expect(ids).toEqual(['rem_1', 'rem_2', 'rem_3']);
+      // First occurrence title preserved, not the duplicate's
+      expect(result.results[0].title).toBe('First note');
+    });
+
+    it('should use default limit of 50', async () => {
+      await adapter.search({ query: 'test' });
+
+      expect(plugin.search.search).toHaveBeenCalledWith(
+        expect.anything(),
+        undefined,
+        expect.objectContaining({ numResults: 50 })
+      );
+    });
+
+    it('should sort results by remType priority', async () => {
+      plugin.clearTestData();
+
+      const textRem = plugin.addTestRem('t1', 'Plain text');
+      const conceptRem = plugin.addTestRem('c1', 'A Concept');
+      conceptRem.type = RemType.CONCEPT;
+      const docRem = plugin.addTestRem('d1', 'A Document');
+      docRem.setIsDocumentMock(true);
+      const descRem = plugin.addTestRem('desc1', 'A Descriptor');
+      descRem.type = RemType.DESCRIPTOR;
+
+      // SDK returns in arbitrary order: text, concept, document, descriptor
+      plugin.search.search.mockResolvedValueOnce([textRem, conceptRem, docRem, descRem]);
+
+      const result = await adapter.search({ query: 'test' });
+      const types = result.results.map((r) => r.remType);
+
+      // Should be sorted: document, concept, descriptor, text
+      expect(types).toEqual(['document', 'concept', 'descriptor', 'text']);
+    });
+
+    it('should preserve intra-group order from SDK within each type', async () => {
+      plugin.clearTestData();
+
+      const doc1 = plugin.addTestRem('doc_a', 'Doc A');
+      doc1.setIsDocumentMock(true);
+      const textRem = plugin.addTestRem('t1', 'Text');
+      const doc2 = plugin.addTestRem('doc_b', 'Doc B');
+      doc2.setIsDocumentMock(true);
+
+      // SDK order: doc_a (pos 0), t1 (pos 1), doc_b (pos 2)
+      plugin.search.search.mockResolvedValueOnce([doc1, textRem, doc2]);
+
+      const result = await adapter.search({ query: 'test' });
+      const ids = result.results.map((r) => r.remId);
+
+      // Documents grouped first (doc_a before doc_b preserving SDK order), then text
+      expect(ids).toEqual(['doc_a', 'doc_b', 't1']);
     });
   });
 
@@ -430,6 +503,382 @@ describe('RemAdapter', () => {
       expect(result.title).toContain('Part 1');
       expect(result.title).toContain('Part 2');
       expect(result.title).toContain('Part 3');
+    });
+  });
+
+  describe('Rich text extraction', () => {
+    it('should resolve Rem references via SDK lookup', async () => {
+      plugin.addTestRem('ref_target', 'Referenced Note');
+      const testRem = plugin.addTestRem('ref_test', '');
+      testRem.text = ['Before ', { i: 'q', _id: 'ref_target' }, ' after'] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'ref_test' });
+      expect(result.title).toBe('Before Referenced Note after');
+    });
+
+    it('should handle deleted Rem references with textOfDeletedRem', async () => {
+      const testRem = plugin.addTestRem('deleted_ref_test', '');
+      testRem.text = [
+        { i: 'q', _id: 'nonexistent_ref', textOfDeletedRem: ['Old Name'] },
+      ] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'deleted_ref_test' });
+      expect(result.title).toBe('Old Name');
+    });
+
+    it('should handle deleted Rem references without textOfDeletedRem', async () => {
+      const testRem = plugin.addTestRem('deleted_ref_no_text', '');
+      testRem.text = [{ i: 'q', _id: 'nonexistent_ref' }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'deleted_ref_no_text' });
+      expect(result.title).toBe('[deleted reference]');
+    });
+
+    it('should guard against circular references', async () => {
+      // Create two Rems that reference each other
+      const remA = plugin.addTestRem('circ_a', '');
+      const remB = plugin.addTestRem('circ_b', '');
+      remA.text = ['A refs ', { i: 'q', _id: 'circ_b' }] as unknown as string[];
+      remB.text = ['B refs ', { i: 'q', _id: 'circ_a' }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'circ_a' });
+      expect(result.title).toContain('A refs');
+      expect(result.title).toContain('B refs');
+      expect(result.title).toContain('[circular reference]');
+    });
+
+    it('should not mark repeated sibling references as circular', async () => {
+      const shared = plugin.addTestRem('shared_ref', 'Shared');
+      const testRem = plugin.addTestRem('repeat_ref_test', '');
+      testRem.text = [
+        'one ',
+        { i: 'q', _id: shared._id },
+        ' two ',
+        { i: 'q', _id: shared._id },
+      ] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'repeat_ref_test' });
+      expect(result.title).toBe('one Shared two Shared');
+      expect(result.title).not.toContain('[circular reference]');
+    });
+
+    it('should resolve global names via SDK lookup', async () => {
+      plugin.addTestRem('global_target', 'Global Concept');
+      const testRem = plugin.addTestRem('global_test', '');
+      testRem.text = [{ i: 'g', _id: 'global_target' }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'global_test' });
+      expect(result.title).toBe('Global Concept');
+    });
+
+    it('should handle null global name _id gracefully', async () => {
+      const testRem = plugin.addTestRem('global_null_test', '');
+      testRem.text = ['text ', { i: 'g', _id: null }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'global_null_test' });
+      expect(result.title).toBe('text ');
+    });
+
+    it('should apply bold markdown formatting', async () => {
+      const testRem = plugin.addTestRem('bold_test', '');
+      testRem.text = [{ i: 'm', text: 'bold', b: true }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'bold_test' });
+      expect(result.title).toBe('**bold**');
+    });
+
+    it('should apply italic markdown formatting', async () => {
+      const testRem = plugin.addTestRem('italic_test', '');
+      testRem.text = [{ i: 'm', text: 'italic', l: true }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'italic_test' });
+      expect(result.title).toBe('*italic*');
+    });
+
+    it('should apply code markdown formatting', async () => {
+      const testRem = plugin.addTestRem('code_test', '');
+      testRem.text = [{ i: 'm', text: 'code', code: true }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'code_test' });
+      expect(result.title).toBe('`code`');
+    });
+
+    it('should nest bold+italic formatting', async () => {
+      const testRem = plugin.addTestRem('bold_italic_test', '');
+      testRem.text = [{ i: 'm', text: 'both', b: true, l: true }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'bold_italic_test' });
+      expect(result.title).toBe('***both***');
+    });
+
+    it('should render external URL links as markdown links', async () => {
+      const testRem = plugin.addTestRem('url_test', '');
+      testRem.text = [
+        { i: 'm', text: 'Click here', url: 'https://example.com' },
+      ] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'url_test' });
+      expect(result.title).toBe('[Click here](https://example.com)');
+    });
+
+    it('should render bold external URL links correctly', async () => {
+      const testRem = plugin.addTestRem('bold_url_test', '');
+      testRem.text = [
+        { i: 'm', text: 'Link', b: true, url: 'https://example.com' },
+      ] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'bold_url_test' });
+      expect(result.title).toBe('[**Link**](https://example.com)');
+    });
+
+    it('should use inline link text as-is (qId)', async () => {
+      const testRem = plugin.addTestRem('inline_link_test', '');
+      testRem.text = [{ i: 'm', text: 'Display Text', qId: 'some_rem_id' }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'inline_link_test' });
+      expect(result.title).toBe('Display Text');
+    });
+
+    it('should render image with title', async () => {
+      const testRem = plugin.addTestRem('img_title_test', '');
+      testRem.text = [
+        { i: 'i', url: 'https://example.com/img.png', title: 'My Image' },
+      ] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'img_title_test' });
+      expect(result.title).toBe('My Image');
+    });
+
+    it('should render image without title as [image]', async () => {
+      const testRem = plugin.addTestRem('img_no_title_test', '');
+      testRem.text = [{ i: 'i', url: 'https://example.com/img.png' }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'img_no_title_test' });
+      expect(result.title).toBe('[image]');
+    });
+
+    it('should render audio as [audio]', async () => {
+      const testRem = plugin.addTestRem('audio_test', '');
+      testRem.text = [{ i: 'a', url: 'https://example.com/audio.mp3' }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'audio_test' });
+      expect(result.title).toBe('[audio]');
+    });
+
+    it('should render drawing as [drawing]', async () => {
+      const testRem = plugin.addTestRem('drawing_test', '');
+      testRem.text = [{ i: 'r' }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'drawing_test' });
+      expect(result.title).toBe('[drawing]');
+    });
+
+    it('should render LaTeX text', async () => {
+      const testRem = plugin.addTestRem('latex_test', '');
+      testRem.text = [{ i: 'x', text: 'E=mc^2' }] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'latex_test' });
+      expect(result.title).toBe('E=mc^2');
+    });
+
+    it('should render annotation text', async () => {
+      const testRem = plugin.addTestRem('annotation_test', '');
+      testRem.text = [
+        { i: 'n', text: 'highlighted text', url: 'https://source.com' },
+      ] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'annotation_test' });
+      expect(result.title).toBe('highlighted text');
+    });
+
+    it('should split at card delimiter and skip plugin elements', async () => {
+      const testRem = plugin.addTestRem('skip_test', '');
+      testRem.text = [
+        'before',
+        { i: 's' },
+        { i: 'p', url: 'plugin://test' },
+        'after',
+      ] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'skip_test' });
+      expect(result.title).toBe('before');
+      expect(result.detail).toBe('after');
+    });
+
+    it('should reveal cloze content as plain text', async () => {
+      const testRem = plugin.addTestRem('cloze_test', '');
+      testRem.text = [
+        'The answer is ',
+        { i: 'm', text: '42', cId: 'cloze_1' },
+      ] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'cloze_test' });
+      expect(result.title).toBe('The answer is 42');
+    });
+  });
+
+  describe('Rem metadata fields', () => {
+    it('should include remType for default text Rem', async () => {
+      plugin.addTestRem('text_type', 'Plain text');
+
+      const result = await adapter.readNote({ remId: 'text_type' });
+      expect(result.remType).toBe('text');
+    });
+
+    it('should classify concept Rem', async () => {
+      const rem = plugin.addTestRem('concept_type', 'A Concept');
+      rem.type = RemType.CONCEPT;
+
+      const result = await adapter.readNote({ remId: 'concept_type' });
+      expect(result.remType).toBe('concept');
+    });
+
+    it('should classify descriptor Rem', async () => {
+      const rem = plugin.addTestRem('descriptor_type', 'A Descriptor');
+      rem.type = RemType.DESCRIPTOR;
+
+      const result = await adapter.readNote({ remId: 'descriptor_type' });
+      expect(result.remType).toBe('descriptor');
+    });
+
+    it('should classify portal Rem', async () => {
+      const rem = plugin.addTestRem('portal_type', 'A Portal');
+      rem.type = RemType.PORTAL;
+
+      const result = await adapter.readNote({ remId: 'portal_type' });
+      expect(result.remType).toBe('portal');
+    });
+
+    it('should classify document Rem', async () => {
+      const rem = plugin.addTestRem('doc_type', 'A Document');
+      rem.setIsDocumentMock(true);
+
+      const result = await adapter.readNote({ remId: 'doc_type' });
+      expect(result.remType).toBe('document');
+    });
+
+    it('should classify daily document Rem', async () => {
+      const rem = plugin.addTestRem('daily_type', 'Feb 21, 2026');
+      rem.addPowerupMock(BuiltInPowerupCodes.DailyDocument);
+
+      const result = await adapter.readNote({ remId: 'daily_type' });
+      expect(result.remType).toBe('dailyDocument');
+    });
+
+    it('should prioritize dailyDocument over concept type', async () => {
+      const rem = plugin.addTestRem('daily_concept', 'Daily Concept');
+      rem.type = RemType.CONCEPT;
+      rem.addPowerupMock(BuiltInPowerupCodes.DailyDocument);
+
+      const result = await adapter.readNote({ remId: 'daily_concept' });
+      expect(result.remType).toBe('dailyDocument');
+    });
+
+    it('should include detail from backText', async () => {
+      const rem = plugin.addTestRem('detail_test', 'Front text');
+      rem.backText = ['Back text explanation'];
+      rem.setPracticeDirectionMock('forward');
+
+      const result = await adapter.readNote({ remId: 'detail_test' });
+      expect(result.title).toBe('Front text');
+      expect(result.detail).toBe('Back text explanation');
+    });
+
+    it('should split title/detail from delimiter when backText is unavailable', async () => {
+      const rem = plugin.addTestRem('delimiter_detail_test', '');
+      rem.text = ['Front text', { i: 's' }, 'Fallback detail'] as unknown as string[];
+
+      const result = await adapter.readNote({ remId: 'delimiter_detail_test' });
+      expect(result.title).toBe('Front text');
+      expect(result.detail).toBe('Fallback detail');
+    });
+
+    it('should prefer backText over delimiter right side when both exist', async () => {
+      const rem = plugin.addTestRem('prefer_back_text_test', '');
+      rem.text = ['Front text', { i: 's' }, 'inline detail'] as unknown as string[];
+      rem.backText = ['canonical back detail'];
+
+      const result = await adapter.readNote({ remId: 'prefer_back_text_test' });
+      expect(result.title).toBe('Front text');
+      expect(result.detail).toBe('canonical back detail');
+    });
+
+    it('should omit detail when no backText', async () => {
+      plugin.addTestRem('no_detail_test', 'No back text');
+
+      const result = await adapter.readNote({ remId: 'no_detail_test' });
+      expect(result.detail).toBeUndefined();
+    });
+
+    it('should map forward card direction', async () => {
+      const rem = plugin.addTestRem('forward_card', 'Front');
+      rem.backText = ['Back'];
+      rem.setPracticeDirectionMock('forward');
+
+      const result = await adapter.readNote({ remId: 'forward_card' });
+      expect(result.cardDirection).toBe('forward');
+    });
+
+    it('should map backward to reverse card direction', async () => {
+      const rem = plugin.addTestRem('backward_card', 'Front');
+      rem.backText = ['Back'];
+      rem.setPracticeDirectionMock('backward');
+
+      const result = await adapter.readNote({ remId: 'backward_card' });
+      expect(result.cardDirection).toBe('reverse');
+    });
+
+    it('should map both to bidirectional card direction', async () => {
+      const rem = plugin.addTestRem('both_card', 'Front');
+      rem.backText = ['Back'];
+      rem.setPracticeDirectionMock('both');
+
+      const result = await adapter.readNote({ remId: 'both_card' });
+      expect(result.cardDirection).toBe('bidirectional');
+    });
+
+    it('should omit cardDirection when practice direction is none', async () => {
+      const rem = plugin.addTestRem('none_card', 'Front');
+      rem.backText = ['Back'];
+      rem.setPracticeDirectionMock('none');
+
+      const result = await adapter.readNote({ remId: 'none_card' });
+      expect(result.cardDirection).toBeUndefined();
+    });
+
+    it('should omit cardDirection when no backText', async () => {
+      plugin.addTestRem('no_back_card', 'No flashcard');
+
+      const result = await adapter.readNote({ remId: 'no_back_card' });
+      expect(result.cardDirection).toBeUndefined();
+    });
+
+    it('should include metadata in search results', async () => {
+      const rem = plugin.addTestRem('search_meta', 'Concept Rem');
+      rem.type = RemType.CONCEPT;
+      rem.backText = ['explanation text'];
+      rem.setPracticeDirectionMock('forward');
+
+      const result = await adapter.search({ query: 'concept', limit: 10 });
+      const item = result.results.find((r) => r.remId === 'search_meta');
+
+      expect(item).toBeDefined();
+      expect(item!.title).toBe('Concept Rem');
+      expect(item!.detail).toBe('explanation text');
+      expect(item!.remType).toBe('concept');
+      expect(item!.cardDirection).toBe('forward');
+    });
+
+    it('should split title/detail in search from delimiter fallback', async () => {
+      const rem = plugin.addTestRem('search_delim_detail', '');
+      rem.text = ['Concept Head', { i: 's' }, 'descriptor detail'] as unknown as string[];
+
+      const result = await adapter.search({ query: 'concept', limit: 10 });
+      const item = result.results.find((r) => r.remId === 'search_delim_detail');
+
+      expect(item).toBeDefined();
+      expect(item!.title).toBe('Concept Head');
+      expect(item!.detail).toBe('descriptor detail');
     });
   });
 

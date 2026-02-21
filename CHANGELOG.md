@@ -7,85 +7,33 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
+### Enhanced
 
-- Added `publish-to-marketplace.sh` helper script to run `npm run build` for marketplace packaging workflow
-- Added DevTools bridge execution hook in the widget via event contract:
-  - Execute event: `remnote:mcp:execute`
-  - Result event: `remnote:mcp:result`
-  - Allows direct command execution through `handleRequest` without MCP server/CLI in the loop
+- `remnote_search` and `remnote_read_note` now render richer titles from RemNote rich text (references, global names,
+  media placeholders, LaTeX/annotation text, and markdown formatting for inline emphasis/links).
+- Added structured result metadata for retrieval workflows:
+  - `detail` (back/descriptor text)
+  - `remType` (`document`, `dailyDocument`, `concept`, `descriptor`, `portal`, `text`)
+  - `cardDirection` (`forward`, `reverse`, `bidirectional`; omitted when not applicable)
 
 ### Changed
 
-- Changed default journal entry prefix from `[Claude]` to no prefix (empty string)
-- Journal entries no longer include a leading prefix-space when the configured prefix is empty
+- Search default limit increased from 20 to 50.
+- Search results are grouped by `remType` priority while preserving SDK ordering within each group.
+- Journal default prefix is now empty; entries no longer include a leading space when no prefix is configured.
+
+### Fixed
+
+- Search results are deduplicated by `remId`.
+- Circular-reference detection in rich-text resolution no longer produces false positives for repeated sibling
+  references.
+- `detail` extraction now falls back to inline card-delimiter content when `backText` is unavailable.
 
 ### Documentation
 
-- Updated journal prefix defaults in `README.md` and plugin setting description text to reflect no-prefix default
-- Updated `README.md` integration paths:
-  - Replaced planned OpenClaw companion wording with available-now companion app wording
-  - Added **[RemNote CLI](https://github.com/robert7/remnote-cli)** as the second consumer path
-  - Clarified that RemNote CLI supports OpenClaw integration and other agentic workflows
-- Restructured demo links in `README.md`:
-  - Moved MCP server demo link from the top-level Demo section into the `MCP Server path` subsection
-  - Added a CLI demo link in the `CLI app path (e.g. for OpenClaw)` subsection
-- Updated `AGENTS.md` Project Overview to align with current architecture:
-  - Reframed the bridge as a shared WebSocket execution endpoint (not MCP-only)
-  - Documented both consumer paths (`remnote-mcp-server` and `remnote-cli`)
-  - Replaced single-flow diagram with MCP-path and CLI-path flows
-- Added `docs/guides/development-execute-bridge-commands.md` with step-by-step Developer Console workflow and copy-paste
-  examples for every supported bridge action
-- Added `docs/guides/js/development-execute-bridge-commands-helper.js` so the DevTools helper can be copied from a plain
-  `.js` file instead of selecting it from markdown
-- Simplified `docs/guides/development-execute-bridge-commands.md` to use the dedicated helper file as the only
-  copy/paste path (removed inline fallback snippet)
-- Added RemNote domain concept reference set for bridge contributors/agents:
-  - `docs/reference/remnote/README.md`
-  - `docs/reference/remnote/core-model.md`
-  - `docs/reference/remnote/structure-and-links.md`
-  - `docs/reference/remnote/flashcards-and-cdf.md`
-  - `docs/reference/remnote/search-retrieval-notes.md`
-  - Includes links to official RemNote Help Center source pages for concept verification
-- Added discoverability links to the new concept reference in:
-  - `README.md`
-  - `AGENTS.md`
-- Changed RemNote concept reference path mentions to proper clickable Markdown links for easier GitHub browsing
-- Refactored DevTools execution guide assets for easier copy/paste and browsing:
-  - Moved helper script to `docs/guides/js/development-execute-bridge-commands-00-helper.js`
-  - Extracted per-command JS examples into `docs/guides/js/` and linked them from the guide
-  - Updated guide links to clickable Markdown links
-  - Expanded troubleshooting with multi-`localhost:8080` iframe context guidance after browser restart
-- Updated guide links to match ordered example filenames in `docs/guides/js/` (`00`-`06` naming)
-- Excluded `docs/**` from coverage reporting in `vitest.config.ts` so Developer Console example snippets do not impact
-  code coverage thresholds
-- Added beginner local-development guide with step-by-step screenshots:
-  - `docs/guides/development-run-plugin-locally.md`
-- Added README discoverability link to local development guide:
-  - `README.md` (Development Installation section)
-- Renamed `docs/guides/images/` files to a consistent ordered sequence for easier navigation:
-  - `01-clone-repository.jpg`
-  - `02-install-dependencies.jpg`
-  - `03-run-dev-server.jpg`
-  - `04-open-remnote-plugin-build-tab.jpg`
-  - `05-develop-from-localhost-dialog.jpg`
-  - `06-plugin-activated-build-list.jpg`
-  - `07-open-plugin-sidebar-panel.jpg`
-- Updated image paths in `docs/guides/development-run-plugin-locally.md` to match renamed
-  `run-plugin-locally-*.jpg` files
-- Added screenshot-based Developer Console execution walkthrough:
-  - `docs/guides/development-execute-bridge-commands-screenshots.md`
-  - Positioned as a visual extension of `docs/guides/development-execute-bridge-commands.md`
-- Added cross-links between development guides for easier navigation:
-  - `docs/guides/development-execute-bridge-commands.md`
-  - `docs/guides/development-run-plugin-locally.md`
-  - `README.md`
-- Renamed new `2026*` screenshots in `docs/guides/images/` to descriptive ordered names:
-  - `execute-bridge-console-01-plugin-visible-and-helper-source.jpg`
-  - `execute-bridge-console-02-select-correct-plugin-iframe-context.jpg`
-  - `execute-bridge-console-03-paste-helper-into-console.jpg`
-  - `execute-bridge-console-04-run-get-status-and-verify-result.jpg`
-  - `execute-bridge-console-05-run-search-and-inspect-results.jpg`
+- Added and linked a canonical search/read output contract reference:
+  - `docs/reference/remnote/bridge-search-read-contract.md`
+- Consolidated developer guidance for local plugin execution and DevTools command workflows in `docs/guides/`.
 
 ## [0.4.2] - 2026-02-18
 

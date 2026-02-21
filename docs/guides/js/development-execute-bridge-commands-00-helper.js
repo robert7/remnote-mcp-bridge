@@ -1,5 +1,6 @@
 const BRIDGE_EXECUTE_EVENT = 'remnote:mcp:execute';
 const BRIDGE_RESULT_EVENT = 'remnote:mcp:result';
+const MCP_BRIDGE_LOG_PREFIX = '[mcp-bridge] ';
 
 async function runBridge(action, payload = {}, opts = {}) {
   const timeoutMs = opts.timeoutMs ?? 15000;
@@ -37,10 +38,12 @@ async function runBridge(action, payload = {}, opts = {}) {
 async function runAndLog(action, payload = {}) {
   try {
     const result = await runBridge(action, payload);
-    console.log(`[${action}] result`, result);
+    console.log(`${MCP_BRIDGE_LOG_PREFIX} ${action}: result`, result);
     return result;
   } catch (error) {
-    console.error(`[${action}] error`, error);
+    console.error(`${MCP_BRIDGE_LOG_PREFIX} ${action} error`, error);
     throw error;
   }
 }
+
+await runAndLog('get_status');

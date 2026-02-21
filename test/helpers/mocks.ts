@@ -3,6 +3,7 @@
  */
 import { vi } from 'vitest';
 import type { ReactRNPlugin, RichTextInterface, Rem } from '@remnote/plugin-sdk';
+import { RemType } from '@remnote/plugin-sdk';
 import { BridgeRequest } from '../../src/bridge/websocket-client';
 
 /**
@@ -65,13 +66,45 @@ export class MockWebSocket {
 export class MockRem implements Partial<Rem> {
   _id: string;
   text: RichTextInterface;
+  backText?: RichTextInterface;
+  type: RemType = RemType.DEFAULT_TYPE;
   private children: MockRem[] = [];
   private tags: string[] = [];
   private parent: MockRem | null = null;
+  private _isDocument = false;
+  private _powerups: string[] = [];
+  private _practiceDirection: 'forward' | 'backward' | 'both' | 'none' = 'none';
 
   constructor(id: string, text: string) {
     this._id = id;
     this.text = [text];
+  }
+
+  /** Configure mock to behave as a document */
+  setIsDocumentMock(val: boolean): void {
+    this._isDocument = val;
+  }
+
+  /** Add a powerup code (e.g. BuiltInPowerupCodes.DailyDocument) */
+  addPowerupMock(code: string): void {
+    this._powerups.push(code);
+  }
+
+  /** Set the mock practice direction */
+  setPracticeDirectionMock(dir: 'forward' | 'backward' | 'both' | 'none'): void {
+    this._practiceDirection = dir;
+  }
+
+  async isDocument(): Promise<boolean> {
+    return this._isDocument;
+  }
+
+  async hasPowerup(code: string): Promise<boolean> {
+    return this._powerups.includes(code);
+  }
+
+  async getPracticeDirection(): Promise<'forward' | 'backward' | 'both' | 'none'> {
+    return this._practiceDirection;
   }
 
   async setText(text: RichTextInterface): Promise<void> {

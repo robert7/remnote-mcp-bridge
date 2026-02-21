@@ -67,13 +67,11 @@ export const sampleSearchResults: SearchResultItem[] = [
   {
     remId: 'rem_1',
     title: 'First Result',
-    preview: 'First Result',
     content: 'Child content 1\nChild content 2',
   },
   {
     remId: 'rem_2',
     title: 'Second Result',
-    preview: 'Second Result',
   },
 ];
 

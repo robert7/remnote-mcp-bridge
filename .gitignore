@@ -6,4 +6,5 @@ dist-ssr
 *.local.md
 *.zip
 .agents
-coverage/
+coverage
+tmp
