@@ -7,6 +7,16 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Updated `remnote_search` ordering priority to `document`/`concept` (same top level), then
+  `dailyDocument`, `portal`, `descriptor`, and `text`; ties within each priority bucket continue to preserve SDK order.
+
+### Documentation
+
+- Updated `docs/reference/remnote/bridge-search-read-contract.md` to reflect the revised `remnote_search` ordering
+  contract.
+
 ## [0.5.0] - 2026-02-21
 
 ### Enhanced

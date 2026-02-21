@@ -290,17 +290,37 @@ describe('RemAdapter', () => {
       conceptRem.type = RemType.CONCEPT;
       const docRem = plugin.addTestRem('d1', 'A Document');
       docRem.setIsDocumentMock(true);
+      const portalRem = plugin.addTestRem('p1', 'A Portal');
+      portalRem.type = RemType.PORTAL;
       const descRem = plugin.addTestRem('desc1', 'A Descriptor');
       descRem.type = RemType.DESCRIPTOR;
 
-      // SDK returns in arbitrary order: text, concept, document, descriptor
-      plugin.search.search.mockResolvedValueOnce([textRem, conceptRem, docRem, descRem]);
+      // SDK returns in arbitrary order: text, concept, document, portal, descriptor
+      plugin.search.search.mockResolvedValueOnce([textRem, conceptRem, docRem, portalRem, descRem]);
 
       const result = await adapter.search({ query: 'test' });
       const types = result.results.map((r) => r.remType);
 
-      // Should be sorted: document, concept, descriptor, text
-      expect(types).toEqual(['document', 'concept', 'descriptor', 'text']);
+      // Should be sorted: document/concept (same priority, SDK order), portal, descriptor, text
+      expect(types).toEqual(['concept', 'document', 'portal', 'descriptor', 'text']);
+    });
+
+    it('should preserve SDK order between document and concept at same priority', async () => {
+      plugin.clearTestData();
+
+      const docRem = plugin.addTestRem('d1', 'A Document');
+      docRem.setIsDocumentMock(true);
+      const conceptRem = plugin.addTestRem('c1', 'A Concept');
+      conceptRem.type = RemType.CONCEPT;
+      const textRem = plugin.addTestRem('t1', 'Text');
+
+      // SDK order: document before concept within same top-priority group
+      plugin.search.search.mockResolvedValueOnce([textRem, docRem, conceptRem]);
+
+      const result = await adapter.search({ query: 'test' });
+      const ids = result.results.map((r) => r.remId);
+
+      expect(ids).toEqual(['d1', 'c1', 't1']);
     });
 
     it('should preserve intra-group order from SDK within each type', async () => {

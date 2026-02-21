@@ -83,11 +83,11 @@ const DEFAULT_READ_DEPTH = 3;
 /** Type priority for search result sorting (lower = higher priority). */
 const TYPE_PRIORITY: Record<RemClassification, number> = {
   document: 0,
+  concept: 0,
   dailyDocument: 1,
-  concept: 2,
   descriptor: 3,
-  portal: 4,
-  text: 5,
+  portal: 2,
+  text: 4,
 };
 
 export class RemAdapter {
@@ -454,8 +454,8 @@ export class RemAdapter {
   /**
    * Search the knowledge base.
    *
-   * Results are sorted by remType priority (document > dailyDocument > concept > descriptor >
-   * portal > text) with intra-group ordering preserved from RemNote's search API as a proxy
+   * Results are sorted by remType priority (document/concept > dailyDocument > portal >
+   * descriptor > text) with intra-group ordering preserved from RemNote's search API as a proxy
    * for relevance (no score is available from the SDK).
    *
    * The RemNote SDK search API may enforce an opaque hard limit on result count beyond the

@@ -62,7 +62,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - Default search limit in bridge is 50 unless caller provides `limit`.
 - Result ordering:
-  1. grouped by `remType` priority
+  1. grouped by `remType` priority (`document`/`concept` > `dailyDocument` > `portal` > `descriptor` > `text`)
   2. preserves SDK-provided intra-group ordering as relevance proxy
 - Search may still return fewer results than requested due to SDK-side internal limits.
 
@@ -70,4 +70,3 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - MCP server should advertise these response fields in tool `outputSchema` so AI clients can plan tool usage correctly.
 - CLI text output may summarize/abbreviate some fields for readability; JSON output should preserve full bridge data.
-
