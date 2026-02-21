@@ -7,6 +7,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-02-21
+
 ### Enhanced
 
 - `remnote_search` and `remnote_read_note` now render richer titles from RemNote rich text (references, global names,
