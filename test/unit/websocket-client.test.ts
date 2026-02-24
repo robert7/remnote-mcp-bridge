@@ -20,6 +20,7 @@ describe('WebSocketClient', () => {
 
     client = new WebSocketClient({
       url: 'ws://localhost:3002',
+      pluginVersion: '0.5.0',
       maxReconnectAttempts: 3,
       initialReconnectDelay: 100,
       maxReconnectDelay: 1000,
@@ -74,6 +75,45 @@ describe('WebSocketClient', () => {
       await wait(10);
 
       expect(client.getStatus()).toBe('connected');
+    });
+  });
+
+  describe('Hello message', () => {
+    it('should send hello message on connect', async () => {
+      client.connect();
+      await wait(10);
+
+      const ws = (client as unknown as { ws: MockWebSocket }).ws;
+      const helloMessage = ws.sentMessages.find((msg) => {
+        const parsed = JSON.parse(msg);
+        return parsed.type === 'hello';
+      });
+      expect(helloMessage).toBeDefined();
+
+      const parsed = JSON.parse(helloMessage!);
+      expect(parsed).toEqual({ type: 'hello', version: '0.5.0' });
+    });
+
+    it('should send hello message on reconnect', async () => {
+      client.connect();
+      await wait(10);
+
+      const ws1 = (client as unknown as { ws: MockWebSocket }).ws;
+      const helloCount1 = ws1.sentMessages.filter((msg) => {
+        const parsed = JSON.parse(msg);
+        return parsed.type === 'hello';
+      }).length;
+      expect(helloCount1).toBe(1);
+
+      client.reconnect();
+      await wait(10);
+
+      const ws2 = (client as unknown as { ws: MockWebSocket }).ws;
+      const helloCount2 = ws2.sentMessages.filter((msg) => {
+        const parsed = JSON.parse(msg);
+        return parsed.type === 'hello';
+      }).length;
+      expect(helloCount2).toBe(1);
     });
   });
 

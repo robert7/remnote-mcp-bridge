@@ -7,6 +7,11 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Automatic version compatibility**: Bridge sends a `hello` message with its version on WebSocket connect, enabling
+  consumers (MCP server, CLI) to detect version mismatches and warn users.
+
 ### Enhanced
 
 - **Unified content rendering**: `remnote_read_note` now returns rendered markdown content of the child subtree in

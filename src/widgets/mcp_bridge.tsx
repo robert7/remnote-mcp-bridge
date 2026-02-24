@@ -6,6 +6,8 @@
  * Uses renderWidget() as required by RemNote plugin SDK.
  */
 
+declare const __PLUGIN_VERSION__: string;
+
 import { renderWidget, usePlugin, useTracker, ReactRNPlugin } from '@remnote/plugin-sdk';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { WebSocketClient, ConnectionStatus, BridgeRequest } from '../bridge/websocket-client';
@@ -233,6 +235,7 @@ function MCPBridgeWidget() {
 
     const client = new WebSocketClient({
       url: currentWsUrl,
+      pluginVersion: __PLUGIN_VERSION__,
       maxReconnectAttempts: 10,
       initialReconnectDelay: 1000,
       maxReconnectDelay: 30000,
