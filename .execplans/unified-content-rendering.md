@@ -11,19 +11,28 @@ The `children` array exists but is only useful for programmatic traversal; AI as
 pre-rendered, human-readable view of a Rem's full subtree. Search results that opt into `includeContent` get a bare
 concatenation of the first five child lines with no hierarchy, no depth control, and no type-aware formatting.
 
-After this change, both `remnote_search` (with `includeContent=true`) and `remnote_read_note` will return:
+After this change, both `remnote_search` and `remnote_read_note` will support a unified `includeContent` mode with
+three values: `"none"`, `"markdown"`, and `"structured"`.
 
-1. A `content` field containing a rendered, indented markdown representation of the Rem's child subtree — complete with
-   type-aware delimiters (`::`/`;;`/`>>`) for flashcard-style Rems, bullet prefixes, and hierarchy indentation.
-2. A `contentProperties` object reporting `childrenRendered` (how many children were included) and `childrenTotal`
-   (actual total, capped at 2000 for safety).
-3. An `aliases` array surfacing alternate names from `rem.getAliases()`.
-4. Opt-in `children` structured array via a new `includeChildren` parameter (previously always included in read, never
-   in search).
-5. Consistent default `depth` of 5 (up from 3) and new `childLimit` / `maxContentLength` knobs.
+1. `includeContent: "markdown"` returns a `content` field containing a rendered, indented markdown representation of
+   the Rem's child subtree — complete with type-aware delimiters (`::`/`;;`/`>>`) for flashcard-style Rems, bullet
+   prefixes, and hierarchy indentation.
+2. `includeContent: "structured"` returns a `contentTree` field containing nested JSON nodes with semantic metadata
+   (`remType`, `cardDirection`, `remId`, `title`, `detail`, `headline`, `children`).
+3. A `contentProperties` object reports `childrenRendered` / `childrenTotal` (capped at 2000) and a truncation flag
+   when markdown content is clipped.
+4. An `aliases` array surfaces alternate names from `rem.getAliases()`.
+5. A new `headline` field provides a display-oriented full line (`title + type-aware delimiter + detail`) while
+   preserving `title` and `detail` as semantic fields.
+6. Consistent default `depth` of 5 (up from 3) and new `childLimit` / `maxContentLength` knobs.
 
-The net effect: an AI assistant calling `remnote_read_note` gets a rich, readable document in `content` without having to
-parse the `children` tree, and search previews become genuinely useful. CLI text output can render `content` directly.
+The net effect: an AI assistant calling `remnote_read_note` gets either a rich, readable document in `content`
+(markdown mode) or a machine-friendly hierarchy (`structured` mode) without custom client-side reconstruction, and
+search previews become genuinely useful. CLI text output can render markdown content directly.
+
+This ExecPlan intentionally includes coordinated changes across all three repositories (`remnote-mcp-bridge`,
+`remnote-mcp-server`, `remnote-cli`). We will increment `0.x` versions and update changelogs/docs together; contract
+breaks are acceptable for this release line. See `docs/guides/bridge-consumer-version-compatibility.md`.
 
 ## Progress
 
@@ -40,13 +49,20 @@ parse the `children` tree, and search previews become genuinely useful. CLI text
 
 ## Decision Log
 
-- Decision: `children` field becomes opt-in via `includeChildren` boolean parameter.
-  Rationale: Most consumers (AI assistants, CLI) only need the rendered `content` markdown. The structured `children`
-  array is expensive to produce and rarely consumed directly. Opt-in avoids unnecessary payload bloat.
-  Date/Author: 2026-02-21 / Robert + Mei
+- Decision: This feature is implemented as a coordinated contract change across bridge + MCP server + CLI (all three
+  repos), with `0.x` version increments.
+  Rationale: A clean contract is preferable to compatibility shims while the integration remains pre-1.0. Version
+  matching is documented in `docs/guides/bridge-consumer-version-compatibility.md`.
+  Date/Author: 2026-02-24 / Robert + Mei
 
-- Decision: `contentProperties` uses two fields: `childrenRendered` (integer) and `childrenTotal` (integer, capped at
-  2000).
+- Decision: `includeContent` becomes a string mode parameter with values `"none" | "markdown" | "structured"`
+  (hard swap from boolean; no deprecated alias).
+  Rationale: A single mode parameter cleanly expresses output shape selection for both search and read without stacking
+  booleans (`includeContent` + `includeChildren`) or mode-specific exceptions.
+  Date/Author: 2026-02-24 / Robert + Mei
+
+- Decision: `contentProperties` uses `childrenRendered` and `childrenTotal` (capped at 2000), plus a truncation
+  indicator when markdown content is clipped by `maxContentLength`.
   Rationale: `childrenRendered` tells the consumer how many children appear in the rendered `content`. `childrenTotal`
   tells them the true scope of the subtree so they can decide whether to request more. The 2000 cap prevents expensive
   full-tree counting on massive Rems.
@@ -66,9 +82,15 @@ parse the `children` tree, and search previews become genuinely useful. CLI text
   Rationale: Single rendering path for both search and read avoids divergent behavior and ensures consistent output.
   Date/Author: 2026-02-21 / Robert + Mei
 
-- Decision: Same parameter names (`childLimit`, `depth`, `maxContentLength`) for both search and read_note actions.
+- Decision: Same parameter names (`includeContent`, `childLimit`, `depth`, `maxContentLength`) are used for both
+  search and read_note actions, with shared mode semantics.
   Rationale: Consistency for API consumers — learn once, use everywhere.
   Date/Author: 2026-02-21 / Robert + Mei
+
+- Decision: Add `headline` as a display-oriented field while retaining `title` and `detail`.
+  Rationale: `headline` keeps list rendering, markdown rendering, and structured-node rendering consistent, while
+  `title` / `detail` remain semantically useful for downstream consumers.
+  Date/Author: 2026-02-24 / Robert + Mei
 
 ## Outcomes & Retrospective
 
@@ -116,11 +138,12 @@ Current interfaces:
     interface SearchParams {
       query: string;
       limit?: number;
-      includeContent?: boolean;
+      includeContent?: 'none' | 'markdown' | 'structured';
     }
 
     interface ReadNoteParams {
       remId: string;
+      includeContent?: 'none' | 'markdown' | 'structured';
       depth?: number;
     }
 
@@ -134,9 +157,11 @@ Current interfaces:
       remId: string;
       title: string;
       detail?: string;
+      headline: string;
       remType: RemClassification;
       cardDirection?: CardDirection;
       content?: string;
+      contentTree?: ContentNode[];
     }
 
 Constants:
@@ -267,7 +292,16 @@ In `src/api/rem-adapter.ts`, add after `getAliases`:
 This returns the human-readable delimiter string that represents the card separator for a given Rem type. Only used
 when a Rem has both title and detail (front/back).
 
-#### 1c. Add `renderContentMarkdown()` private method
+#### 1c. Add `formatHeadline()` private method
+
+Add a shared formatter used by search results, markdown rendering, and structured nodes:
+
+    private formatHeadline(parts: { title: string; detail?: string; remType: RemClassification }): string {
+      if (!parts.detail) return parts.title;
+      return `${parts.title}${this.getRemTypeDelimiter(parts.remType)}${parts.detail}`;
+    }
+
+#### 1d. Add `renderContentMarkdown()` private method
 
 This is the core new method. It recursively traverses children, rendering each as an indented markdown bullet, and
 tracks how many children were visited.
@@ -292,10 +326,8 @@ tracks how many children were visited.
           const remType = await this.classifyRem(child);
           const indent = '  '.repeat(currentDepth);
 
-          let line = `${indent}- ${title}`;
-          if (detail) {
-            line += `${this.getRemTypeDelimiter(remType)}${detail}`;
-          }
+          const headline = this.formatHeadline({ title, detail, remType });
+          const line = `${indent}- ${headline}`;
           lines.push(line);
           childrenRendered++;
           if (currentDepth > maxDepthReached) maxDepthReached = currentDepth;
@@ -316,7 +348,7 @@ Key behaviors:
 - `maxDepthReached` records the deepest level actually visited (may be less than `options.depth`).
 - Depth 0 = direct children of the target Rem.
 
-#### 1d. Add `countChildren()` private method
+#### 1e. Add `countChildren()` private method
 
 For `contentProperties.childrenTotal`, we need a fast count capped at 2000:
 
@@ -338,7 +370,7 @@ For `contentProperties.childrenTotal`, we need a fast count capped at 2000:
 
 This uses iterative depth-first traversal (avoids deep call stacks) and stops as soon as `cap` is reached.
 
-#### 1e. Update interfaces
+#### 1f. Update interfaces
 
 In `src/api/rem-adapter.ts`, update the existing interfaces and add new ones:
 
@@ -347,6 +379,7 @@ Add a new `ContentProperties` interface:
     export interface ContentProperties {
       childrenRendered: number;
       childrenTotal: number;
+      contentTruncated?: boolean;
     }
 
 Update `SearchParams`:
@@ -354,7 +387,7 @@ Update `SearchParams`:
     export interface SearchParams {
       query: string;
       limit?: number;
-      includeContent?: boolean;
+      includeContent?: 'none' | 'markdown' | 'structured';
       childLimit?: number;
       depth?: number;
       maxContentLength?: number;
@@ -364,26 +397,38 @@ Update `ReadNoteParams`:
 
     export interface ReadNoteParams {
       remId: string;
+      includeContent?: 'none' | 'markdown' | 'structured';
       depth?: number;
       childLimit?: number;
       maxContentLength?: number;
-      includeChildren?: boolean;
     }
 
 Update `SearchResultItem`:
+
+    export interface ContentTreeNode {
+      remId: string;
+      remType: RemClassification;
+      cardDirection?: CardDirection;
+      title: string;
+      detail?: string;
+      headline: string;
+      children: ContentTreeNode[];
+    }
 
     export interface SearchResultItem {
       remId: string;
       title: string;
       detail?: string;
+      headline: string;
       aliases?: string[];
       remType: RemClassification;
       cardDirection?: CardDirection;
       content?: string;
+      contentTree?: ContentTreeNode[];
       contentProperties?: ContentProperties;
     }
 
-#### 1f. Update constants
+#### 1g. Update constants
 
 Replace existing constants:
 
@@ -397,7 +442,7 @@ Add new constants:
     const DEFAULT_SEARCH_MAX_CONTENT_LENGTH = 3000;
     const DEFAULT_READ_MAX_CONTENT_LENGTH = 100000;
 
-#### 1g. Update MockRem for aliases
+#### 1h. Update MockRem for aliases
 
 In `test/helpers/mocks.ts`, add to `MockRem`:
 
@@ -411,7 +456,7 @@ In `test/helpers/mocks.ts`, add to `MockRem`:
       return this._aliases;
     }
 
-#### 1h. Tests for Milestone 1
+#### 1i. Tests for Milestone 1
 
 Add new test sections in `test/unit/rem-adapter.test.ts`:
 
@@ -439,8 +484,8 @@ Recommendation: implement Milestones 1 and 2 together (they are naturally couple
 ### Milestone 2: Bridge Integration — Wire New Methods into search() and readNote()
 
 This milestone modifies the two public methods to use the new rendering pipeline. At the end, `search()` and
-`readNote()` return the new `content`, `contentProperties`, and `aliases` fields. The `children` field in `readNote()`
-becomes opt-in.
+`readNote()` support `includeContent` modes (`none` / `markdown` / `structured`) and return `headline`, `aliases`, and
+mode-appropriate content fields (`content` or `contentTree`) plus `contentProperties`.
 
 #### 2a. Update `readNote()` method
 
@@ -448,10 +493,12 @@ Replace the current implementation body of `readNote()` in `src/api/rem-adapter.
 
 1. Resolve the Rem and extract `title`, `detail`, `remType`, `cardDirection`, `aliases` (same as today for
    title/detail/remType/cardDirection, plus new aliases).
-2. Render content markdown using `renderContentMarkdown()` with resolved `childLimit`, `depth`.
-3. Truncate to `maxContentLength` if exceeded.
-4. Count total children via `countChildren()`.
-5. Only build structured `children` tree if `includeChildren` is true.
+2. Resolve `includeContent` mode (`none` / `markdown` / `structured`).
+3. For `markdown`, render content markdown using `renderContentMarkdown()` with resolved `childLimit`, `depth`.
+4. For `structured`, build a rich `contentTree` hierarchy (with `headline` on each node) with the same depth/limit
+   knobs.
+5. Truncate markdown `content` to `maxContentLength` if exceeded and set `contentProperties.contentTruncated=true`.
+6. Count total children via `countChildren()`.
 
 New return type:
 
@@ -462,9 +509,10 @@ New return type:
       aliases?: string[];
       remType: RemClassification;
       cardDirection?: CardDirection;
-      content: string;
-      contentProperties: ContentProperties;
-      children?: NoteChild[];
+      headline: string;
+      content?: string;
+      contentTree?: ContentTreeNode[];
+      contentProperties?: ContentProperties;
     }>
 
 Implementation sketch:
@@ -473,6 +521,7 @@ Implementation sketch:
       const depth = params.depth ?? DEFAULT_DEPTH;
       const childLimit = params.childLimit ?? DEFAULT_CHILD_LIMIT;
       const maxContentLength = params.maxContentLength ?? DEFAULT_READ_MAX_CONTENT_LENGTH;
+      const includeContent = params.includeContent ?? 'markdown';
 
       const rem = await this.plugin.rem.findOne(params.remId);
       if (!rem) throw new Error(`Note not found: ${params.remId}`);
@@ -507,9 +556,7 @@ Implementation sketch:
         contentProperties: { childrenRendered, childrenTotal },
       };
 
-      if (params.includeChildren) {
-        result.children = await this.getChildrenRecursive(rem, depth);
-      }
+      // `includeContent` mode now controls whether markdown content or structured `contentTree` is returned.
 
       return result as any; // TypeScript will be satisfied via explicit return type
     }
@@ -518,9 +565,11 @@ Implementation sketch:
 
 Modify the per-result processing in `search()`:
 
-1. Always resolve `aliases`.
-2. When `includeContent` is true, render content via `renderContentMarkdown()` instead of `getContentPreview()`.
-3. Add `contentProperties` when content is rendered.
+1. Always resolve `aliases` and `headline`.
+2. Resolve `includeContent` mode (`none` / `markdown` / `structured`) per result.
+3. For `markdown`, render content via `renderContentMarkdown()` instead of `getContentPreview()`.
+4. For `structured`, return `contentTree` nodes with the same semantic metadata fields as read mode.
+5. Add `contentProperties` when content is requested.
 
 The search-specific defaults differ from read: `maxContentLength` defaults to 3000.
 
@@ -530,7 +579,7 @@ In the per-result loop, after the existing `Promise.all` block that resolves tit
 
     let content: string | undefined;
     let contentProperties: ContentProperties | undefined;
-    if (params.includeContent) {
+    if (params.includeContent === 'markdown') {
       const searchDepth = params.depth ?? DEFAULT_DEPTH;
       const searchChildLimit = params.childLimit ?? DEFAULT_CHILD_LIMIT;
       const searchMaxContentLength = params.maxContentLength ?? DEFAULT_SEARCH_MAX_CONTENT_LENGTH;
@@ -569,7 +618,9 @@ Extend `test/unit/rem-adapter.test.ts` with:
 - Verify `contentProperties.childrenRendered` matches actual rendered children.
 - Verify `contentProperties.childrenTotal` reflects the full subtree count.
 - Verify `content` is truncated when `maxContentLength` is exceeded, and `childrenRendered` still reflects all rendered.
-- Verify `children` is absent by default, present when `includeChildren: true`.
+- Verify `readNote` defaults to `includeContent: "markdown"` and returns markdown `content`.
+- Verify `readNote` with `includeContent: "none"` omits `content`/`contentTree`.
+- Verify `readNote` with `includeContent: "structured"` returns `contentTree`.
 - Verify `aliases` appears when Rem has aliases, omitted when none.
 - Verify default depth is now 5 (create a 6-level tree; level 6 should not appear).
 - Verify `childLimit` stops rendering after N total children across levels.
@@ -583,14 +634,16 @@ Extend `test/unit/rem-adapter.test.ts` with:
 
 **search unified content tests**:
 
-- Verify search with `includeContent: true` returns rendered markdown `content` and `contentProperties`.
-- Verify search without `includeContent` omits `content` and `contentProperties`.
+- Verify search with `includeContent: "markdown"` returns rendered markdown `content` and `contentProperties`.
+- Verify search with `includeContent: "structured"` returns `contentTree` and `contentProperties`.
+- Verify search with `includeContent: "none"` (or omitted) omits `content`, `contentTree`, and `contentProperties`.
 - Verify search always includes `aliases` when available.
 - Verify search respects `childLimit`, `depth`, `maxContentLength` params.
 
 **Backward compatibility tests**:
 
-- Verify readNote with `includeChildren: true` still returns structured `children` array matching old behavior.
+- Verify search result ordering is unchanged across all `includeContent` modes.
+- Verify `headline` formatting is consistent between search item display and markdown renderer.
 - Verify search result ordering is unchanged.
 
 ### Milestone 3: MCP Server — Schema and Tool Definition Updates
@@ -607,7 +660,8 @@ Update `SearchSchema`:
     export const SearchSchema = z.object({
       query: z.string().describe('Search query text'),
       limit: z.number().int().min(1).max(150).default(50).describe('Maximum results'),
-      includeContent: z.boolean().default(false).describe('Include rendered content in results'),
+      includeContent: z.enum(['none', 'markdown', 'structured']).default('none')
+        .describe('Content mode: none, markdown, or structured'),
       childLimit: z.number().int().min(1).max(500).default(100)
         .describe('Max children to render across all levels'),
       depth: z.number().int().min(0).max(10).default(5)
@@ -620,13 +674,13 @@ Update `ReadNoteSchema`:
 
     export const ReadNoteSchema = z.object({
       remId: z.string().describe('The Rem ID to read'),
+      includeContent: z.enum(['none', 'markdown', 'structured']).default('markdown')
+        .describe('Content mode: none, markdown, or structured'),
       depth: z.number().int().min(0).max(10).default(5).describe('Max depth of children'),
       childLimit: z.number().int().min(1).max(1000).default(100)
         .describe('Max children to render across all levels'),
       maxContentLength: z.number().int().min(100).max(500000).default(100000)
         .describe('Max characters in rendered content'),
-      includeChildren: z.boolean().default(false)
-        .describe('Include structured children array (default: false)'),
     });
 
 #### 3b. Update tool inputSchema definitions
@@ -651,7 +705,7 @@ Update `SEARCH_TOOL.inputSchema.properties` to add:
 Update `READ_NOTE_TOOL.inputSchema.properties`:
 
 - Change `depth` description to reflect new default: `'Max depth of children (0-10, default: 5)'`
-- Add `childLimit`, `maxContentLength`, `includeChildren`:
+- Add `includeContent`, `childLimit`, `maxContentLength`:
 
     childLimit: {
       type: 'number',
@@ -661,15 +715,20 @@ Update `READ_NOTE_TOOL.inputSchema.properties`:
       type: 'number',
       description: 'Max characters in rendered content string (100-500000, default: 100000)',
     },
-    includeChildren: {
-      type: 'boolean',
-      description: 'Include structured children array in response (default: false)',
+    includeContent: {
+      type: 'string',
+      enum: ['none', 'markdown', 'structured'],
+      description: 'Content mode: none, markdown, or structured (default: markdown)',
     },
 
 #### 3c. Update tool outputSchema definitions
 
 Update `SEARCH_TOOL.outputSchema` items properties to add:
 
+    headline: {
+      type: 'string',
+      description: 'Display-ready line combining title + delimiter + detail (when present)',
+    },
     aliases: {
       type: 'array',
       items: { type: 'string' },
@@ -686,9 +745,10 @@ Update `SEARCH_TOOL.outputSchema` items properties to add:
 
 Update `READ_NOTE_TOOL.outputSchema` properties:
 
-- Change `content` description to: `'Rendered markdown of child subtree with type-aware delimiters'`
+- Add `headline` and describe it as a display-oriented field for MCP clients (`title` / `detail` remain semantic).
+- Change `content` description to: `'Rendered markdown of child subtree with type-aware delimiters (when includeContent=markdown)'`
+- Add `contentTree` description for `includeContent=structured`.
 - Add `aliases` and `contentProperties` (same shape as search).
-- Update `children` description to: `'Structured child tree (only when includeChildren=true)'`
 
 #### 3d. Verification
 
@@ -710,17 +770,19 @@ In `../remnote-cli/src/commands/search.ts`:
 
 Add CLI options:
 
+    .option('--include-content <mode>', 'Content mode: none | markdown | structured')
     .option('--child-limit <n>', 'Max children to render in content (default: 100)')
     .option('--depth <n>', 'Max depth of children in content (default: 5)')
     .option('--max-content-length <n>', 'Max content characters (default: 3000)')
 
 Pass through to payload:
 
+    if (opts.includeContent) payload.includeContent = opts.includeContent;
     if (opts.childLimit) payload.childLimit = parseInt(opts.childLimit, 10);
     if (opts.depth) payload.depth = parseInt(opts.depth, 10);
     if (opts.maxContentLength) payload.maxContentLength = parseInt(opts.maxContentLength, 10);
 
-Update text formatter to include `aliases` when present:
+Update text formatter to include `aliases` when present and prefer `headline` for display:
 
     let aliasesSuffix = '';
     if (note.aliases && Array.isArray(note.aliases) && note.aliases.length > 0) {
@@ -736,15 +798,15 @@ Change `--depth` default from `'1'` to `'5'`.
 
 Add CLI options:
 
+    .option('--include-content <mode>', 'Content mode: none | markdown | structured (default: markdown)')
     .option('--child-limit <n>', 'Max children to render (default: 100)')
     .option('--max-content-length <n>', 'Max content characters (default: 100000)')
-    .option('--include-children', 'Include structured children array')
 
 Pass through to payload:
 
+    if (opts.includeContent) payload.includeContent = opts.includeContent;
     if (opts.childLimit) payload.childLimit = parseInt(opts.childLimit, 10);
     if (opts.maxContentLength) payload.maxContentLength = parseInt(opts.maxContentLength, 10);
-    if (opts.includeChildren) payload.includeChildren = true;
 
 Update text formatter to render the new `content` field as the main body:
 
@@ -797,7 +859,7 @@ In `docs/reference/remnote/bridge-search-read-contract.md`, add new sections:
 no aliases exist.
 
 **`content`** — Rendered markdown representation of the Rem's child subtree. For `remnote_read_note`, this is always
-present (may be empty string if no children). For `remnote_search`, present only when `includeContent=true`. Rendering
+present when `includeContent="markdown"` (`remnote_search` or `remnote_read_note`). Rendering
 uses indented bullets (`- `) with 2-space indentation per depth level. When a child Rem has a detail (back text),
 the title and detail are joined by a type-aware delimiter: `::` for concepts, `;;` for descriptors, `>>` for all other
 types.
@@ -805,8 +867,11 @@ types.
 **`contentProperties`** — Object with `childrenRendered` (number of children included in `content`) and `childrenTotal`
 (total children in subtree, capped at 2000). Present whenever `content` is rendered.
 
-**`children` (optional)** — Structured recursive array of `{ remId, text, children }`. For `remnote_read_note`, present
-only when `includeChildren=true`. Not available in search results.
+**`contentTree` (optional)** — Structured recursive array of content nodes (`remId`, `remType`, `cardDirection?`,
+`title`, `detail?`, `headline`, `children`). Present when `includeContent="structured"`.
+
+**`headline`** — Display-oriented full line (`title + delimiter + detail` when detail exists). Provided to keep list
+rendering, markdown rendering, and structured-node rendering consistent while preserving `title`/`detail` semantics.
 
 Update existing `content` description in search section to reference the new rendering behavior. Remove or update any
 references to the old "first 5 children" behavior.
@@ -819,19 +884,22 @@ Under `[Unreleased]`, add entries:
 
 - `remnote_read_note` now returns rendered markdown content with type-aware delimiters (`::`/`;;`/`>>`) in the `content`
   field instead of echoing the title.
-- `remnote_search` content preview (when `includeContent=true`) now uses the same unified markdown renderer with
+- `remnote_search` content preview (when `includeContent="markdown"`) now uses the same unified markdown renderer with
   hierarchy and type-aware delimiters.
 - New `aliases` field in search and read results surfaces alternate Rem names from `getAliases()`.
 - New `contentProperties` metadata reports `childrenRendered` and `childrenTotal` (capped at 2000) for content
   rendering awareness.
 - New parameters for both search and read: `childLimit` (total children across all levels), `maxContentLength`
   (character cap for rendered content).
-- New `includeChildren` parameter for `remnote_read_note` to opt-in to structured children array.
+- `includeContent` is now a mode enum (`none` / `markdown` / `structured`) for both search and read, enabling a
+  structured content tree response mode.
+- New `headline` field in search/read responses (and structured content nodes) provides display-ready title+detail
+  rendering while preserving `title`/`detail` fields.
 
 **Changed**:
 
 - Default depth increased from 3 to 5 for both `remnote_search` and `remnote_read_note`.
-- `children` array in `remnote_read_note` is now opt-in (via `includeChildren` parameter) instead of always included.
+- `includeContent` contract changes from boolean to string mode enum as part of a coordinated `0.x` cross-repo release.
 
 #### 5d. MCP Server and CLI quality checks
 
@@ -927,8 +995,9 @@ Run `npm run test` in the bridge repo. Expect all tests to pass, including:
 - **maxContentLength**: readNote with `maxContentLength: 20` truncates content to 20 characters.
 - **contentProperties**: readNote returns `{ childrenRendered: 5, childrenTotal: 10 }` for a tree with 10 total
   children and 5 rendered within limits.
-- **includeChildren**: readNote without `includeChildren` omits `children`; with `includeChildren: true` includes it.
-- **Search content**: search with `includeContent: true` returns rendered content with contentProperties.
+- **Content modes**: readNote defaults to `includeContent: "markdown"`; `"none"` omits content fields; `"structured"` returns `contentTree`.
+- **Search content (markdown)**: search with `includeContent: "markdown"` returns rendered content with contentProperties.
+- **Search content (structured)**: search with `includeContent: "structured"` returns `contentTree` with contentProperties.
 - **Default depth**: readNote on a 6-level tree with default params renders levels 0-4, not level 5.
 
 ### Manual Verification
@@ -936,8 +1005,8 @@ Run `npm run test` in the bridge repo. Expect all tests to pass, including:
 With the bridge plugin running in RemNote dev mode and the MCP server connected:
 
 1. Call `remnote_read_note` with a known Rem ID that has nested children. Verify `content` contains indented markdown.
-2. Call `remnote_search` with `includeContent: true`. Verify results include rendered content previews.
-3. Call `remnote_read_note` with `includeChildren: true`. Verify structured `children` array is present.
+2. Call `remnote_search` with `includeContent: "markdown"`. Verify results include rendered content previews.
+3. Call `remnote_read_note` with `includeContent: "structured"`. Verify `contentTree` is present with `headline` on nodes.
 4. Use `remnote-cli read <id>` and verify the terminal output shows the rendered content tree.
 
 ### Build Verification
@@ -1010,12 +1079,14 @@ Updated exports (changed fields shown):
       // ... existing fields ...
       childLimit?: number;
       maxContentLength?: number;
-      includeChildren?: boolean;
+      includeContent?: 'none' | 'markdown' | 'structured';
     }
 
     export interface SearchResultItem {
       // ... existing fields ...
+      headline: string;
       aliases?: string[];
+      contentTree?: ContentTreeNode[];
       contentProperties?: ContentProperties;
     }
 
@@ -1044,12 +1115,13 @@ New/changed constants:
 
 ### MCP Server (`src/schemas/remnote-schemas.ts`)
 
-Updated Zod schemas add fields: `childLimit`, `depth` (search only), `maxContentLength`, `includeChildren` (read only).
+Updated Zod schemas add fields: `includeContent` (string mode enum), `childLimit`, `depth`, `maxContentLength`, and
+mode-dependent output fields (`content` / `contentTree`).
 Default values: see Milestone 3a above.
 
 ### CLI (`src/commands/search.ts`, `src/commands/read.ts`)
 
-New CLI options: `--child-limit`, `--depth` (search only), `--max-content-length`, `--include-children` (read only).
+New CLI options: `--include-content <none|markdown|structured>`, `--child-limit`, `--depth`, `--max-content-length`.
 Read command `--depth` default changes from `'1'` to `'5'`.
 
 ### Test Helpers (`test/helpers/mocks.ts`)
