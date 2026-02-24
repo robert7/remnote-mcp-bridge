@@ -75,31 +75,20 @@ Model](https://github.com/robert7/remnote-mcp-server/blob/main/docs/architecture
 
 ### 1. Install the RemNote Plugin (This Repository)
 
-**Currently, this plugin is only available for local development installation.** Future releases may be published
-to RemNote's plugin marketplace.
+Choose the install path that fits your use case:
 
-**Development Installation:**
+- **Recommended for most users (marketplace install):**
+  - [Install the Plugin via RemNote Marketplace (Beginner Guide)](docs/guides/install-plugin-via-marketplace-beginner.md)
+- **For developers / local plugin testing from source:**
+  - [Run The Plugin Locally (Beginner Guide)](docs/guides/development-run-plugin-locally.md)
 
-1. Clone and build the plugin:
-   ```bash
-   git clone https://github.com/robert7/remnote-mcp-bridge.git
-   cd remnote-mcp-bridge
-   npm install
-   npm run dev
-   ```
+After plugin installation (either path), open the control panel in RemNote:
 
-2. In RemNote:
-   - Go to **Settings > Plugins**
-   - Click **"Develop from localhost"**
-   - Click **"Develop"**
-   - The Automation Bridge (MCP, OpenClaw...) plugin will now be active
-3. Access the control panel:
-   - Look for the **MCP icon** in RemNote's right sidebar toolbar
-   - Click the icon to open the control panel
+- Look for the **MCP** icon in RemNote's right sidebar toolbar
+- Click the icon to open the Automation Bridge panel
 
-Beginner walkthrough with screenshots:
+Related setup/testing guide:
 
-- [Run The Plugin Locally (Beginner Guide)](docs/guides/development-run-plugin-locally.md)
 - [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](docs/guides/development-execute-bridge-commands-screenshots.md)
 
 ### 2. Install the MCP Server
@@ -115,6 +104,9 @@ npm install -g remnote-mcp-server
 
 For detailed installation instructions, configuration, and troubleshooting, see the **[RemNote MCP Server
 repository](https://github.com/robert7/remnote-mcp-server)**.
+
+Alternative companion path (instead of MCP server): use **[RemNote CLI](https://github.com/robert7/remnote-cli)** for
+OpenClaw and other agentic workflows. Installation and demo links are included in both plugin install guides above.
 
 ## Important Limitations
 
