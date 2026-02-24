@@ -2,11 +2,17 @@
 
 This guide shows how to run `remnote-mcp-bridge` from source code and load it into RemNote for local development/testing.
 
+> **Most users should use the marketplace install instead:** see
+> [Install the Plugin via RemNote Marketplace (Beginner Guide)](./install-plugin-via-marketplace-beginner.md).
+
 ## Prerequisites
 
 - Node.js + npm installed
 - RemNote desktop app or RemNote web app opened in browser
 - Terminal access
+- A plan to run a required companion component after plugin install:
+  - [RemNote MCP Server](https://github.com/robert7/remnote-mcp-server) or
+  - [RemNote CLI](https://github.com/robert7/remnote-cli)
 
 If your shell cannot find Node.js in this repo environment, run:
 
@@ -94,6 +100,21 @@ Use RemNote's right sidebar:
 
 ![Open plugin sidebar panel](./images/run-plugin-locally-07-open-plugin-sidebar-panel.jpg)
 
+## 8. Install and run the required companion component
+
+This step is **required**. Running the plugin locally is not enough by itself.
+
+Choose one path:
+
+- **MCP Server path (for AI assistants via MCP):**
+  - Install guide: [RemNote MCP Server Installation](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/installation.md)
+  - Demo: [RemNote MCP Server Demo](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)
+- **CLI path (for OpenClaw / automation workflows):**
+  - Install guide: [RemNote CLI Installation](https://github.com/robert7/remnote-cli/blob/main/docs/guides/installation.md)
+  - Demo: [RemNote CLI Demo](https://github.com/robert7/remnote-cli/blob/main/docs/demo.md)
+
+When the companion component is running, open the bridge sidebar panel and verify it connects.
+
 ## Common troubleshooting
 
 - Nothing loads from localhost:
@@ -104,8 +125,11 @@ Use RemNote's right sidebar:
   - Keep dev server running; refresh RemNote after source changes if hot reload misses an update.
 - Need to test console helpers from docs:
   - Use plugin iframe context in DevTools, and keep the bridge sidebar widget open so listeners are registered.
+- Plugin panel shows disconnected:
+  - The plugin is installed, but a companion component is not running yet. Start the MCP server or RemNote CLI.
 
 ## Related guides
 
+- [Install the Plugin via RemNote Marketplace (Beginner Guide)](./install-plugin-via-marketplace-beginner.md)
 - [Execute Bridge Commands from RemNote Developer Console](./development-execute-bridge-commands.md)
 - [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](./development-execute-bridge-commands-screenshots.md)

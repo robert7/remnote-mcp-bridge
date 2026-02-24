@@ -16,6 +16,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Updated `docs/reference/remnote/bridge-search-read-contract.md` to reflect the revised `remnote_search` ordering
   contract.
+- Added a new beginner guide for installing the plugin via the RemNote marketplace with screenshot walkthrough.
+- Updated local-development plugin install guide to cross-link the marketplace guide and emphasize required companion
+  MCP server / CLI setup (with install+demo links for both paths).
+- Updated `README.md` installation docs to surface both plugin install paths (marketplace vs local development).
 
 ## [0.5.0] - 2026-02-21
 
