@@ -20,6 +20,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Updated local-development plugin install guide to cross-link the marketplace guide and emphasize required companion
   MCP server / CLI setup (with install+demo links for both paths).
 - Updated `README.md` installation docs to surface both plugin install paths (marketplace vs local development).
+- Added a canonical bridge/consumer version compatibility guide for `0.x` semver and linked it from plugin install + companion setup docs.
 
 ## [0.5.0] - 2026-02-21
 

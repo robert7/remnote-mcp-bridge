@@ -29,6 +29,8 @@ This project is a bridge layer with two consumer paths:
 
 **For both paths always 2 components are required - the bridge and either the MCP server or the CLI app.**
 
+**Version compatibility warning (`0.x` semver):** install a server/CLI version that matches your installed bridge plugin version (prefer the same minor line). See the [Bridge / Consumer Version Compatibility Guide](docs/guides/bridge-consumer-version-compatibility.md).
+
 ## What is MCP?
 
 [Model Context Protocol](https://modelcontextprotocol.io/) is an open standard by Anthropic that allows AI assistants
@@ -98,6 +100,8 @@ Server](https://github.com/robert7/remnote-mcp-server), which connects your AI a
 
 Install the server globally:
 
+> **Version compatibility (important):** before installing/upgrading the MCP server (or the CLI companion), check the [Bridge / Consumer Version Compatibility Guide](docs/guides/bridge-consumer-version-compatibility.md).
+
 ```bash
 npm install -g remnote-mcp-server
 ```
@@ -107,6 +111,7 @@ repository](https://github.com/robert7/remnote-mcp-server)**.
 
 Alternative companion path (instead of MCP server): use **[RemNote CLI](https://github.com/robert7/remnote-cli)** for
 OpenClaw and other agentic workflows. Installation and demo links are included in both plugin install guides above.
+For version matching across bridge/server/CLI releases, use the [Bridge / Consumer Version Compatibility Guide](docs/guides/bridge-consumer-version-compatibility.md).
 
 ## Important Limitations
 

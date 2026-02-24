@@ -15,6 +15,8 @@ For the full solution to work, you also **must** install and run one companion c
 Without one of these companion apps, the plugin can install successfully but it will not connect and cannot do useful
 work.
 
+**Before installing or upgrading the companion app:** check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) so your server/CLI version matches your installed bridge plugin version.
+
 ## 1. Open RemNote Plugins and search the marketplace
 
 In RemNote:
@@ -58,6 +60,8 @@ Use the right sidebar in RemNote:
 This step is **required**. The plugin alone is not enough.
 
 Choose one path:
+
+- First check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) to pick a compatible server/CLI version for your installed bridge plugin version.
 
 - **MCP Server path (for AI assistants via MCP):**
   - Install guide: [RemNote MCP Server Installation](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/installation.md)

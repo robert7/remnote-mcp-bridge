@@ -13,6 +13,7 @@ This guide shows how to run `remnote-mcp-bridge` from source code and load it in
 - A plan to run a required companion component after plugin install:
   - [RemNote MCP Server](https://github.com/robert7/remnote-mcp-server) or
   - [RemNote CLI](https://github.com/robert7/remnote-cli)
+- Version match your companion app to your bridge plugin (`0.x` semver can break on minor bumps); see [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md)
 
 If your shell cannot find Node.js in this repo environment, run:
 
@@ -106,6 +107,8 @@ This step is **required**. Running the plugin locally is not enough by itself.
 
 Choose one path:
 
+- First check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) to pick a compatible server/CLI version for your installed bridge plugin version.
+
 - **MCP Server path (for AI assistants via MCP):**
   - Install guide: [RemNote MCP Server Installation](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/installation.md)
   - Demo: [RemNote MCP Server Demo](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)
@@ -130,6 +133,7 @@ When the companion component is running, open the bridge sidebar panel and verif
 
 ## Related guides
 
+- [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md)
 - [Install the Plugin via RemNote Marketplace (Beginner Guide)](./install-plugin-via-marketplace-beginner.md)
 - [Execute Bridge Commands from RemNote Developer Console](./development-execute-bridge-commands.md)
 - [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](./development-execute-bridge-commands-screenshots.md)
