@@ -74,6 +74,7 @@ export class MockRem implements Partial<Rem> {
   private _isDocument = false;
   private _powerups: string[] = [];
   private _practiceDirection: 'forward' | 'backward' | 'both' | 'none' = 'none';
+  private _aliases: MockRem[] = [];
 
   constructor(id: string, text: string) {
     this._id = id;
@@ -93,6 +94,19 @@ export class MockRem implements Partial<Rem> {
   /** Set the mock practice direction */
   setPracticeDirectionMock(dir: 'forward' | 'backward' | 'both' | 'none'): void {
     this._practiceDirection = dir;
+  }
+
+  /** Set mock aliases (pass RichTextInterface arrays which become MockRem .text) */
+  setAliasesMock(aliases: RichTextInterface[]): void {
+    this._aliases = aliases.map((rt, idx) => {
+      const aliasRem = new MockRem(`${this._id}_alias_${idx}`, '');
+      aliasRem.text = rt;
+      return aliasRem;
+    });
+  }
+
+  async getAliases(): Promise<MockRem[]> {
+    return this._aliases;
   }
 
   async isDocument(): Promise<boolean> {

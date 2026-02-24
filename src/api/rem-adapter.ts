@@ -15,6 +15,8 @@ import { MCPSettings, DEFAULT_JOURNAL_PREFIX } from '../settings';
 // Build-time constant injected by webpack DefinePlugin
 declare const __PLUGIN_VERSION__: string;
 
+export type IncludeContentMode = 'none' | 'markdown';
+
 export interface CreateNoteParams {
   title: string;
   content?: string;
@@ -30,12 +32,18 @@ export interface AppendJournalParams {
 export interface SearchParams {
   query: string;
   limit?: number;
-  includeContent?: boolean;
+  includeContent?: IncludeContentMode;
+  depth?: number;
+  childLimit?: number;
+  maxContentLength?: number;
 }
 
 export interface ReadNoteParams {
   remId: string;
   depth?: number;
+  includeContent?: IncludeContentMode;
+  childLimit?: number;
+  maxContentLength?: number;
 }
 
 export interface UpdateNoteParams {
@@ -46,19 +54,22 @@ export interface UpdateNoteParams {
   removeTags?: string[];
 }
 
-export interface NoteChild {
-  remId: string;
-  text: string;
-  children: NoteChild[];
+export interface ContentProperties {
+  childrenRendered: number;
+  childrenTotal: number;
+  contentTruncated: boolean;
 }
 
 export interface SearchResultItem {
   remId: string;
   title: string;
+  headline: string;
   detail?: string;
+  aliases?: string[];
   remType: RemClassification;
   cardDirection?: CardDirection;
   content?: string;
+  contentProperties?: ContentProperties;
 }
 
 export type RemClassification =
@@ -74,11 +85,26 @@ export type CardDirection = 'forward' | 'reverse' | 'bidirectional';
 /** Default number of search results when no limit is specified. */
 const DEFAULT_SEARCH_LIMIT = 50;
 
-/** Maximum child Rems included in search content preview. */
-const SEARCH_CONTENT_CHILD_LIMIT = 5;
+/** Default recursion depth for read operations. */
+const DEFAULT_DEPTH = 5;
 
-/** Default recursion depth for reading child Rems. */
-const DEFAULT_READ_DEPTH = 3;
+/** Default child limit per level for content rendering. */
+const DEFAULT_CHILD_LIMIT = 100;
+
+/** Absolute cap for childrenTotal counting to prevent expensive full-tree traversal. */
+const CHILDREN_TOTAL_CAP = 2000;
+
+/** Default max content length for search markdown rendering. */
+const DEFAULT_SEARCH_MAX_CONTENT_LENGTH = 3000;
+
+/** Default max content length for read markdown rendering. */
+const DEFAULT_READ_MAX_CONTENT_LENGTH = 100000;
+
+/** Default depth for search content rendering. */
+const DEFAULT_SEARCH_DEPTH = 3;
+
+/** Default child limit for search content rendering. */
+const DEFAULT_SEARCH_CHILD_LIMIT = 20;
 
 /** Type priority for search result sorting (lower = higher priority). */
 const TYPE_PRIORITY: Record<RemClassification, number> = {
@@ -89,6 +115,22 @@ const TYPE_PRIORITY: Record<RemClassification, number> = {
   portal: 2,
   text: 4,
 };
+
+/** Type-aware delimiter strings for headline formatting. */
+const REM_TYPE_DELIMITERS: Partial<Record<RemClassification, string>> = {
+  concept: '::',
+  descriptor: ';;',
+};
+
+/** Default delimiter for types not in the map. */
+const DEFAULT_DELIMITER = '>>';
+
+/** Internal result from renderContentMarkdown. */
+interface RenderResult {
+  content: string;
+  childrenRendered: number;
+  truncatedByLength: boolean;
+}
 
 export class RemAdapter {
   private settings: MCPSettings;
@@ -328,16 +370,157 @@ export class RemAdapter {
     return { title };
   }
 
-  private async getContentPreview(rem: Rem): Promise<string | undefined> {
-    const children = await rem.getChildrenRem();
-    if (!children || children.length === 0) return undefined;
+  /**
+   * Get alternate names for a Rem via the SDK aliases API.
+   * The SDK returns alias Rems whose `.text` contains the alias content.
+   */
+  private async getAliases(rem: Rem): Promise<string[]> {
+    if (!('getAliases' in rem) || typeof rem.getAliases !== 'function') return [];
+    const aliasRems: Rem[] = await rem.getAliases();
+    if (!aliasRems || aliasRems.length === 0) return [];
 
-    const childTexts = await Promise.all(
-      children
-        .slice(0, SEARCH_CONTENT_CHILD_LIMIT)
-        .map(async (child) => this.extractText(child.text))
-    );
-    return childTexts.join('\n');
+    const results: string[] = [];
+    for (const aliasRem of aliasRems) {
+      const text = await this.extractText(aliasRem.text);
+      if (text) results.push(text);
+    }
+    return results;
+  }
+
+  /**
+   * Get the type-aware delimiter string for headline formatting.
+   */
+  private getRemTypeDelimiter(remType: RemClassification): string {
+    return REM_TYPE_DELIMITERS[remType] ?? DEFAULT_DELIMITER;
+  }
+
+  /**
+   * Format a display-oriented headline from title, detail, and remType.
+   * Example: "Term :: Definition" or "Question >> Answer"
+   */
+  private formatHeadline(
+    title: string,
+    detail: string | undefined,
+    remType: RemClassification
+  ): string {
+    if (!detail) return title;
+    const delimiter = this.getRemTypeDelimiter(remType);
+    return `${title} ${delimiter} ${detail}`;
+  }
+
+  /**
+   * Render a Rem's child subtree as indented markdown.
+   *
+   * Walks children recursively up to `depth` levels, respecting `childLimit` per level.
+   * Each line is prefixed with `indentLevel * 2` spaces and a `- ` bullet.
+   * Rems with a detail (flashcard) include a type-aware delimiter in the line.
+   *
+   * Truncation: if the accumulated output exceeds `maxContentLength`, rendering stops
+   * at the last complete line boundary before the limit.
+   */
+  private async renderContentMarkdown(
+    rem: Rem,
+    depth: number,
+    childLimit: number,
+    maxContentLength: number,
+    indentLevel: number = 0,
+    accumulated: string = ''
+  ): Promise<RenderResult> {
+    if (depth <= 0) {
+      return { content: accumulated, childrenRendered: 0, truncatedByLength: false };
+    }
+
+    const children = await rem.getChildrenRem();
+    if (!children || children.length === 0) {
+      return { content: accumulated, childrenRendered: 0, truncatedByLength: false };
+    }
+
+    const limitedChildren = children.slice(0, childLimit);
+    let content = accumulated;
+    let childrenRendered = 0;
+    let truncatedByLength = false;
+
+    for (const child of limitedChildren) {
+      const [{ title, detail }, childRemType] = await Promise.all([
+        this.getTitleAndDetail(child),
+        this.classifyRem(child),
+      ]);
+
+      const headline = this.formatHeadline(title, detail, childRemType);
+      const indent = '  '.repeat(indentLevel);
+      const line = `${indent}- ${headline}\n`;
+
+      // Check if adding this line would exceed the limit
+      if (content.length + line.length > maxContentLength) {
+        truncatedByLength = true;
+        break;
+      }
+
+      content += line;
+      childrenRendered++;
+
+      // Recurse into grandchildren
+      const subResult = await this.renderContentMarkdown(
+        child,
+        depth - 1,
+        childLimit,
+        maxContentLength,
+        indentLevel + 1,
+        content
+      );
+
+      if (subResult.truncatedByLength) {
+        content = subResult.content;
+        childrenRendered += subResult.childrenRendered;
+        truncatedByLength = true;
+        break;
+      }
+
+      content = subResult.content;
+      childrenRendered += subResult.childrenRendered;
+    }
+
+    return { content, childrenRendered, truncatedByLength };
+  }
+
+  /**
+   * Count total children in a Rem's subtree, capped at CHILDREN_TOTAL_CAP.
+   */
+  private async countChildren(rem: Rem, depth: number): Promise<number> {
+    if (depth <= 0) return 0;
+
+    const children = await rem.getChildrenRem();
+    if (!children || children.length === 0) return 0;
+
+    let total = children.length;
+    if (total >= CHILDREN_TOTAL_CAP) return CHILDREN_TOTAL_CAP;
+
+    for (const child of children) {
+      total += await this.countChildren(child, depth - 1);
+      if (total >= CHILDREN_TOTAL_CAP) return CHILDREN_TOTAL_CAP;
+    }
+
+    return total;
+  }
+
+  /**
+   * Build contentProperties for a rendered result.
+   * Only counts total children when rendering was truncated (optimization).
+   */
+  private async buildContentProperties(
+    rem: Rem,
+    renderResult: RenderResult,
+    depth: number
+  ): Promise<ContentProperties> {
+    const childrenTotal = renderResult.truncatedByLength
+      ? await this.countChildren(rem, depth)
+      : renderResult.childrenRendered;
+
+    return {
+      childrenRendered: renderResult.childrenRendered,
+      childrenTotal,
+      contentTruncated: renderResult.truncatedByLength,
+    };
   }
 
   /**
@@ -463,6 +646,10 @@ export class RemAdapter {
    */
   async search(params: SearchParams): Promise<{ results: SearchResultItem[] }> {
     const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
+    const includeContent = params.includeContent ?? 'none';
+    const depth = params.depth ?? DEFAULT_SEARCH_DEPTH;
+    const childLimit = params.childLimit ?? DEFAULT_SEARCH_CHILD_LIMIT;
+    const maxContentLength = params.maxContentLength ?? DEFAULT_SEARCH_MAX_CONTENT_LENGTH;
 
     // Use the search API - query must be RichTextInterface
     const searchResults = await this.plugin.search.search(
@@ -479,22 +666,43 @@ export class RemAdapter {
       if (seen.has(rem._id)) continue;
       seen.add(rem._id);
 
-      const [{ title, detail }, remType, cardDirection, content] = await Promise.all([
+      const [{ title, detail }, remType, cardDirection, aliases] = await Promise.all([
         this.getTitleAndDetail(rem),
         this.classifyRem(rem),
         rem.backText
           ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
           : Promise.resolve(undefined),
-        params.includeContent ? this.getContentPreview(rem) : Promise.resolve(undefined),
+        this.getAliases(rem),
       ]);
+
+      const headline = this.formatHeadline(title, detail, remType);
+
+      let content: string | undefined;
+      let contentProperties: ContentProperties | undefined;
+
+      if (includeContent === 'markdown') {
+        const renderResult = await this.renderContentMarkdown(
+          rem,
+          depth,
+          childLimit,
+          maxContentLength
+        );
+        if (renderResult.content) {
+          content = renderResult.content;
+          contentProperties = await this.buildContentProperties(rem, renderResult, depth);
+        }
+      }
 
       const item: SearchResultItem & { _sourceIndex: number } = {
         remId: rem._id,
         title,
+        headline,
         ...(detail ? { detail } : {}),
+        ...(aliases.length > 0 ? { aliases } : {}),
         remType,
         ...(cardDirection ? { cardDirection } : {}),
         ...(content ? { content } : {}),
+        ...(contentProperties ? { contentProperties } : {}),
         _sourceIndex: sourceIndex++,
       };
 
@@ -516,67 +724,70 @@ export class RemAdapter {
   }
 
   /**
-   * Read a note by its ID
+   * Read a note by its ID.
+   *
+   * Returns metadata (title, detail, headline, aliases, remType, cardDirection) and optionally
+   * rendered markdown content of the child subtree.
    */
   async readNote(params: ReadNoteParams): Promise<{
     remId: string;
     title: string;
+    headline: string;
     detail?: string;
+    aliases?: string[];
     remType: RemClassification;
     cardDirection?: CardDirection;
-    content: string;
-    children: NoteChild[];
+    content?: string;
+    contentProperties?: ContentProperties;
   }> {
-    const depth = params.depth ?? DEFAULT_READ_DEPTH;
+    const depth = params.depth ?? DEFAULT_DEPTH;
+    const includeContent = params.includeContent ?? 'markdown';
+    const childLimit = params.childLimit ?? DEFAULT_CHILD_LIMIT;
+    const maxContentLength = params.maxContentLength ?? DEFAULT_READ_MAX_CONTENT_LENGTH;
+
     const rem = await this.plugin.rem.findOne(params.remId);
 
     if (!rem) {
       throw new Error(`Note not found: ${params.remId}`);
     }
 
-    const [{ title, detail }, remType, cardDirection] = await Promise.all([
+    const [{ title, detail }, remType, cardDirection, aliases] = await Promise.all([
       this.getTitleAndDetail(rem),
       this.classifyRem(rem),
       rem.backText
         ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
         : Promise.resolve(undefined),
+      this.getAliases(rem),
     ]);
-    const children = await this.getChildrenRecursive(rem, depth);
+
+    const headline = this.formatHeadline(title, detail, remType);
+
+    let content: string | undefined;
+    let contentProperties: ContentProperties | undefined;
+
+    if (includeContent === 'markdown') {
+      const renderResult = await this.renderContentMarkdown(
+        rem,
+        depth,
+        childLimit,
+        maxContentLength
+      );
+      // Always include content for markdown mode (even if empty string)
+      content = renderResult.content;
+      contentProperties = await this.buildContentProperties(rem, renderResult, depth);
+    }
 
     return {
       remId: rem._id,
       title,
+      headline,
       ...(detail ? { detail } : {}),
+      ...(aliases.length > 0 ? { aliases } : {}),
       remType,
       ...(cardDirection ? { cardDirection } : {}),
-      content: title,
-      children,
+      ...(content !== undefined ? { content } : {}),
+      ...(contentProperties ? { contentProperties } : {}),
     };
-  }
-
-  /**
-   * Recursively get children of a Rem
-   */
-  private async getChildrenRecursive(rem: Rem, depth: number): Promise<NoteChild[]> {
-    if (depth <= 0) return [];
-
-    const children = await rem.getChildrenRem();
-    if (!children || children.length === 0) return [];
-
-    const result: NoteChild[] = [];
-
-    for (const child of children) {
-      const text = await this.extractText(child.text);
-      const grandchildren = await this.getChildrenRecursive(child, depth - 1);
-
-      result.push({
-        remId: child._id,
-        text,
-        children: grandchildren,
-      });
-    }
-
-    return result;
   }
 
   /**

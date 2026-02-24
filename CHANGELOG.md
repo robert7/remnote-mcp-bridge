@@ -7,15 +7,33 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Enhanced
+
+- **Unified content rendering**: `remnote_read_note` now returns rendered markdown content of the child subtree in
+  the `content` field (replaces redundant title echo and removed `children` array).
+- `remnote_search` supports `includeContent: "markdown"` to render child subtrees as indented markdown previews.
+- New `headline` field in both search and read outputs: display-oriented full line with type-aware delimiters
+  (concept = `::`, descriptor = `;;`, others = `>>`).
+- New `aliases` field surfaces alternate names from `rem.getAliases()`.
+- New `contentProperties` object reports `childrenRendered`, `childrenTotal` (capped at 2000), and `contentTruncated`.
+- New tuning parameters: `childLimit` (per-level child cap), `maxContentLength` (character limit for rendered content).
+
 ### Changed
 
+- **BREAKING**: `includeContent` parameter changed from `boolean` to `'none' | 'markdown'` string enum.
+- **BREAKING**: `children` array removed from `readNote` response (use `content` in markdown mode instead).
+- **BREAKING**: `content` field in `readNote` changed from echoing `title` to rendered markdown of child subtree.
+- Default `depth` for `readNote` increased from 3 to 5.
+- Search defaults: `depth=3`, `childLimit=20`, `maxContentLength=3000`.
+- Read defaults: `depth=5`, `childLimit=100`, `maxContentLength=100000`.
+- Removed internal `getContentPreview()`, `getChildrenRecursive()`, and `NoteChild` interface.
 - Updated `remnote_search` ordering priority to `document`/`concept` (same top level), then
   `dailyDocument`, `portal`, `descriptor`, and `text`; ties within each priority bucket continue to preserve SDK order.
 
 ### Documentation
 
-- Updated `docs/reference/remnote/bridge-search-read-contract.md` to reflect the revised `remnote_search` ordering
-  contract.
+- Updated `docs/reference/remnote/bridge-search-read-contract.md` with new fields (`headline`, `aliases`,
+  `content`, `contentProperties`), rendering modes, parameter defaults, and breaking change summary.
 - Added a new beginner guide for installing the plugin via the RemNote marketplace with screenshot walkthrough.
 - Updated local-development plugin install guide to cross-link the marketplace guide and emphasize required companion
   MCP server / CLI setup (with install+demo links for both paths).

@@ -20,6 +20,14 @@ safe and predictable.
 - It should resolve reference-like rich text where possible (for example Rem references/global names), rather than
   dropping content.
 
+### `headline`
+
+- `headline` is a display-oriented full line combining `title`, a type-aware delimiter, and `detail`.
+- Format: `"title delimiter detail"` (e.g. `"Term :: Definition"`, `"Question >> Answer"`).
+- Delimiter selection: concept = `::`, descriptor = `;;`, all others = `>>`.
+- When no `detail` exists, `headline` equals `title`.
+- Present in both search and read outputs.
+
 ### `detail` (optional)
 
 - `detail` is the secondary/back representation for flashcard/CDF-style Rems.
@@ -27,6 +35,12 @@ safe and predictable.
   1. `rem.backText` (canonical SDK source)
   2. Fallback from right side of inline card delimiter when `backText` is unavailable
 - If no secondary/back content exists, omit `detail`.
+
+### `aliases` (optional)
+
+- `aliases` is an array of alternate names for the Rem, surfaced from `rem.getAliases()`.
+- Omitted when no aliases exist.
+- Present in both search and read outputs.
 
 ### `remType`
 
@@ -49,6 +63,24 @@ safe and predictable.
   - `bidirectional`
 - Omit when SDK reports no direction (`none`) or when the Rem is not a flashcard.
 
+### `content` (optional)
+
+- Rendered markdown representation of the Rem's child subtree.
+- Controlled by `includeContent` parameter:
+  - `"none"` — omits `content` field entirely.
+  - `"markdown"` — renders children as indented markdown with bullet prefixes and type-aware delimiters.
+- Default: `"markdown"` for `readNote`, `"none"` for `search`.
+- Rendering respects `depth`, `childLimit`, and `maxContentLength` parameters.
+- Truncation occurs at line boundaries; incomplete lines are never included.
+
+### `contentProperties` (optional)
+
+- Present when `content` is rendered (i.e. `includeContent` is `"markdown"`).
+- Fields:
+  - `childrenRendered` — number of children included in the rendered content.
+  - `childrenTotal` — total children in the subtree (capped at 2000 to avoid expensive counting).
+  - `contentTruncated` — boolean indicating whether content was clipped by `maxContentLength`.
+
 ## Rich text rendering invariants
 
 The adapter-level renderer should preserve meaning over exact visual fidelity:
@@ -61,10 +93,31 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 ## Search behavior contract
 
 - Default search limit in bridge is 50 unless caller provides `limit`.
+- Default `includeContent` for search is `"none"`.
+- Default `depth` for search content rendering is 3.
+- Default `childLimit` for search content rendering is 20.
+- Default `maxContentLength` for search is 3000.
 - Result ordering:
   1. grouped by `remType` priority (`document`/`concept` > `dailyDocument` > `portal` > `descriptor` > `text`)
   2. preserves SDK-provided intra-group ordering as relevance proxy
 - Search may still return fewer results than requested due to SDK-side internal limits.
+
+## Read behavior contract
+
+- Default `includeContent` for read is `"markdown"`.
+- Default `depth` for read is 5.
+- Default `childLimit` for read is 100.
+- Default `maxContentLength` for read is 100000.
+- The `children` array and `NoteChild` type have been removed. Use `content` (markdown mode) instead.
+
+## Breaking changes (from pre-0.6.0)
+
+- `includeContent` changed from `boolean` to `'none' | 'markdown'` string enum.
+- `children` array removed from `readNote` response.
+- `content` in `readNote` changed from echoing `title` to rendered markdown of child subtree.
+- Default `depth` for `readNote` changed from 3 to 5.
+- New required fields in output: `headline`.
+- New optional fields in output: `aliases`, `contentProperties`.
 
 ## Cross-repo compatibility notes
 

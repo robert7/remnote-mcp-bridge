@@ -36,16 +36,17 @@ breaks are acceptable for this release line. See `docs/guides/bridge-consumer-ve
 
 ## Progress
 
-- [ ] Initial ExecPlan authored.
-- [ ] Milestone 1: Bridge — aliases, delimiters, renderContentMarkdown, updated interfaces.
-- [ ] Milestone 2: Bridge — integrate unified rendering into search() and readNote().
-- [ ] Milestone 3: MCP Server — schema and tool definition updates.
-- [ ] Milestone 4: CLI — command option and formatter updates.
-- [ ] Milestone 5: Tests, documentation, code quality.
+- [x] Initial ExecPlan authored.
+- [x] Milestone 1+2 (merged): Bridge — aliases, delimiters, renderContentMarkdown, updated interfaces, integrated into search() and readNote().
+- [x] Milestone 3: MCP Server — schema and tool definition updates.
+- [x] Milestone 4: CLI — command option and formatter updates.
+- [x] Milestone 5: Tests, documentation, code quality.
 
 ## Surprises & Discoveries
 
-(None yet — to be populated during implementation.)
+- SDK `getAliases()` returns `Rem[]` (alias Rems), not `RichTextInterface[]`. Adjusted adapter to extract `.text` from each alias Rem.
+- `structured` mode deferred per plan review; only `none` + `markdown` shipped.
+- Milestones 1+2 merged since they're naturally coupled and untestable independently.
 
 ## Decision Log
 
@@ -55,10 +56,11 @@ breaks are acceptable for this release line. See `docs/guides/bridge-consumer-ve
   matching is documented in `docs/guides/bridge-consumer-version-compatibility.md`.
   Date/Author: 2026-02-24 / Robert + Mei
 
-- Decision: `includeContent` becomes a string mode parameter with values `"none" | "markdown" | "structured"`
-  (hard swap from boolean; no deprecated alias).
+- Decision: `includeContent` becomes a string mode parameter with values `"none" | "markdown"` initially
+  (hard swap from boolean; no deprecated alias). `"structured"` mode deferred to follow-up.
   Rationale: A single mode parameter cleanly expresses output shape selection for both search and read without stacking
-  booleans (`includeContent` + `includeChildren`) or mode-specific exceptions.
+  booleans (`includeContent` + `includeChildren`) or mode-specific exceptions. Deferring `structured` mode reduces
+  surface area until markdown mode is proven.
   Date/Author: 2026-02-24 / Robert + Mei
 
 - Decision: `contentProperties` uses `childrenRendered` and `childrenTotal` (capped at 2000), plus a truncation

@@ -171,7 +171,13 @@ function MCPBridgeWidget() {
           const result = await adapter.search({
             query: payload.query as string,
             limit: payload.limit as number | undefined,
-            includeContent: payload.includeContent as boolean | undefined,
+            includeContent: payload.includeContent as string | undefined as
+              | 'none'
+              | 'markdown'
+              | undefined,
+            depth: payload.depth as number | undefined,
+            childLimit: payload.childLimit as number | undefined,
+            maxContentLength: payload.maxContentLength as number | undefined,
           });
           setStats((prev) => ({ ...prev, searches: prev.searches + 1 }));
           addHistoryEntry('search', `Search: "${payload.query}"`);
@@ -182,6 +188,12 @@ function MCPBridgeWidget() {
           const result = await adapter.readNote({
             remId: payload.remId as string,
             depth: payload.depth as number | undefined,
+            includeContent: payload.includeContent as string | undefined as
+              | 'none'
+              | 'markdown'
+              | undefined,
+            childLimit: payload.childLimit as number | undefined,
+            maxContentLength: payload.maxContentLength as number | undefined,
           });
           addHistoryEntry('read', result.title, result.remId);
           return result;
