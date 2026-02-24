@@ -45,6 +45,8 @@ npm install -g remnote-cli@0.5.0
 - Upgrade the bridge plugin and companion app together when possible.
 - After any upgrade, verify connection and run a simple test (`status`, then a small `search` or `create`).
 - If behavior changes after an upgrade, check for a version mismatch before deeper debugging.
+- If you checkout the `master` branch in any repo, read `CHANGELOG.md` first: the `Unreleased`
+  section may already include breaking changes before the next published version.
 
 ## Typical mismatch symptoms
 
