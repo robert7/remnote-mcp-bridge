@@ -22,19 +22,12 @@ safe and predictable.
 
 ### `headline`
 
-- `headline` is a display-oriented full line combining `title`, a type-aware delimiter, and `detail`.
-- Format: `"title delimiter detail"` (e.g. `"Term :: Definition"`, `"Question >> Answer"`).
+- `headline` is a display-oriented full line combining `title`, a type-aware delimiter, and internal secondary/back
+  content when present.
+- Format: `"title delimiter back-content"` (e.g. `"Term :: Definition"`, `"Question >> Answer"`).
 - Delimiter selection: concept = `::`, descriptor = `;;`, all others = `>>`.
-- When no `detail` exists, `headline` equals `title`.
+- When no secondary/back content exists, `headline` equals `title`.
 - Present in both search and read outputs.
-
-### `detail` (optional)
-
-- `detail` is the secondary/back representation for flashcard/CDF-style Rems.
-- Source priority:
-  1. `rem.backText` (canonical SDK source)
-  2. Fallback from right side of inline card delimiter when `backText` is unavailable
-- If no secondary/back content exists, omit `detail`.
 
 ### `aliases` (optional)
 
@@ -94,7 +87,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - Default search limit in bridge is 50 unless caller provides `limit`.
 - Default `includeContent` for search is `"none"`.
-- Default `depth` for search content rendering is 3.
+- Default `depth` for search content rendering is 1.
 - Default `childLimit` for search content rendering is 20.
 - Default `maxContentLength` for search is 3000.
 - Result ordering:
@@ -118,6 +111,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 - Default `depth` for `readNote` changed from 3 to 5.
 - New required fields in output: `headline`.
 - New optional fields in output: `aliases`, `contentProperties`.
+- `detail` field removed from `search` and `read_note` outputs; use `headline` for display-ready back-content rendering.
 
 ## Cross-repo compatibility notes
 

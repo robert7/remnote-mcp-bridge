@@ -64,7 +64,6 @@ export interface SearchResultItem {
   remId: string;
   title: string;
   headline: string;
-  detail?: string;
   aliases?: string[];
   remType: RemClassification;
   cardDirection?: CardDirection;
@@ -101,7 +100,7 @@ const DEFAULT_SEARCH_MAX_CONTENT_LENGTH = 3000;
 const DEFAULT_READ_MAX_CONTENT_LENGTH = 100000;
 
 /** Default depth for search content rendering. */
-const DEFAULT_SEARCH_DEPTH = 3;
+const DEFAULT_SEARCH_DEPTH = 1;
 
 /** Default child limit for search content rendering. */
 const DEFAULT_SEARCH_CHILD_LIMIT = 20;
@@ -697,7 +696,6 @@ export class RemAdapter {
         remId: rem._id,
         title,
         headline,
-        ...(detail ? { detail } : {}),
         ...(aliases.length > 0 ? { aliases } : {}),
         remType,
         ...(cardDirection ? { cardDirection } : {}),
@@ -726,14 +724,13 @@ export class RemAdapter {
   /**
    * Read a note by its ID.
    *
-   * Returns metadata (title, detail, headline, aliases, remType, cardDirection) and optionally
+   * Returns metadata (title, headline, aliases, remType, cardDirection) and optionally
    * rendered markdown content of the child subtree.
    */
   async readNote(params: ReadNoteParams): Promise<{
     remId: string;
     title: string;
     headline: string;
-    detail?: string;
     aliases?: string[];
     remType: RemClassification;
     cardDirection?: CardDirection;
@@ -781,7 +778,6 @@ export class RemAdapter {
       remId: rem._id,
       title,
       headline,
-      ...(detail ? { detail } : {}),
       ...(aliases.length > 0 ? { aliases } : {}),
       remType,
       ...(cardDirection ? { cardDirection } : {}),

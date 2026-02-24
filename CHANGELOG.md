@@ -28,8 +28,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - **BREAKING**: `includeContent` parameter changed from `boolean` to `'none' | 'markdown'` string enum.
 - **BREAKING**: `children` array removed from `readNote` response (use `content` in markdown mode instead).
 - **BREAKING**: `content` field in `readNote` changed from echoing `title` to rendered markdown of child subtree.
+- **BREAKING**: `detail` field removed from `remnote_search` and `remnote_read_note` outputs (use `headline` for display rendering).
 - Default `depth` for `readNote` increased from 3 to 5.
-- Search defaults: `depth=3`, `childLimit=20`, `maxContentLength=3000`.
+- Search defaults: `depth=1`, `childLimit=20`, `maxContentLength=3000`.
 - Read defaults: `depth=5`, `childLimit=100`, `maxContentLength=100000`.
 - Removed internal `getContentPreview()`, `getChildrenRecursive()`, and `NoteChild` interface.
 - Updated `remnote_search` ordering priority to `document`/`concept` (same top level), then
@@ -39,6 +40,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Updated `docs/reference/remnote/bridge-search-read-contract.md` with new fields (`headline`, `aliases`,
   `content`, `contentProperties`), rendering modes, parameter defaults, and breaking change summary.
+- Updated search/read contract docs to reflect `detail` field removal and search content preview default depth of 1.
 - Added a new beginner guide for installing the plugin via the RemNote marketplace with screenshot walkthrough.
 - Updated local-development plugin install guide to cross-link the marketplace guide and emphasize required companion
   MCP server / CLI setup (with install+demo links for both paths).

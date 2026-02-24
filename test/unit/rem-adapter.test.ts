@@ -243,6 +243,26 @@ describe('RemAdapter', () => {
       }
     });
 
+    it('should default search markdown depth to 1 level', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_depth_default_parent', 'Parent');
+      const child = new MockRem('search_depth_default_child', 'Child');
+      const grandchild = new MockRem('search_depth_default_grandchild', 'Grandchild');
+      await child.setParent(parent);
+      await grandchild.setParent(child);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'markdown',
+      });
+
+      const item = result.results[0];
+      expect(item.content).toContain('Child');
+      expect(item.content).not.toContain('Grandchild');
+    });
+
     it('should not include content when includeContent is none', async () => {
       const result = await adapter.search({
         query: 'note',
@@ -904,7 +924,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.readNote({ remId: 'skip_test' });
       expect(result.title).toBe('before');
-      expect(result.detail).toBe('after');
+      expect(result.headline).toBe('before >> after');
     });
 
     it('should reveal cloze content as plain text', async () => {
@@ -976,40 +996,40 @@ describe('RemAdapter', () => {
       expect(result.remType).toBe('dailyDocument');
     });
 
-    it('should include detail from backText', async () => {
+    it('should include backText in headline', async () => {
       const rem = plugin.addTestRem('detail_test', 'Front text');
       rem.backText = ['Back text explanation'];
       rem.setPracticeDirectionMock('forward');
 
       const result = await adapter.readNote({ remId: 'detail_test' });
       expect(result.title).toBe('Front text');
-      expect(result.detail).toBe('Back text explanation');
+      expect(result.headline).toBe('Front text >> Back text explanation');
     });
 
-    it('should split title/detail from delimiter when backText is unavailable', async () => {
+    it('should build headline from delimiter fallback when backText is unavailable', async () => {
       const rem = plugin.addTestRem('delimiter_detail_test', '');
       rem.text = ['Front text', { i: 's' }, 'Fallback detail'] as unknown as string[];
 
       const result = await adapter.readNote({ remId: 'delimiter_detail_test' });
       expect(result.title).toBe('Front text');
-      expect(result.detail).toBe('Fallback detail');
+      expect(result.headline).toBe('Front text >> Fallback detail');
     });
 
-    it('should prefer backText over delimiter right side when both exist', async () => {
+    it('should prefer backText over delimiter right side for headline', async () => {
       const rem = plugin.addTestRem('prefer_back_text_test', '');
       rem.text = ['Front text', { i: 's' }, 'inline detail'] as unknown as string[];
       rem.backText = ['canonical back detail'];
 
       const result = await adapter.readNote({ remId: 'prefer_back_text_test' });
       expect(result.title).toBe('Front text');
-      expect(result.detail).toBe('canonical back detail');
+      expect(result.headline).toBe('Front text >> canonical back detail');
     });
 
-    it('should omit detail when no backText', async () => {
+    it('should omit detail field from read output', async () => {
       plugin.addTestRem('no_detail_test', 'No back text');
 
       const result = await adapter.readNote({ remId: 'no_detail_test' });
-      expect(result.detail).toBeUndefined();
+      expect(result).not.toHaveProperty('detail');
     });
 
     it('should map forward card direction', async () => {
@@ -1067,12 +1087,12 @@ describe('RemAdapter', () => {
       expect(item).toBeDefined();
       expect(item!.title).toBe('Concept Rem');
       expect(item!.headline).toBe('Concept Rem :: explanation text');
-      expect(item!.detail).toBe('explanation text');
+      expect(item).not.toHaveProperty('detail');
       expect(item!.remType).toBe('concept');
       expect(item!.cardDirection).toBe('forward');
     });
 
-    it('should split title/detail in search from delimiter fallback', async () => {
+    it('should build search headline from delimiter fallback', async () => {
       const rem = plugin.addTestRem('search_delim_detail', '');
       rem.text = ['Concept Head', { i: 's' }, 'descriptor detail'] as unknown as string[];
 
@@ -1081,7 +1101,8 @@ describe('RemAdapter', () => {
 
       expect(item).toBeDefined();
       expect(item!.title).toBe('Concept Head');
-      expect(item!.detail).toBe('descriptor detail');
+      expect(item!.headline).toBe('Concept Head >> descriptor detail');
+      expect(item).not.toHaveProperty('detail');
     });
   });
 
