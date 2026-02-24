@@ -16,6 +16,7 @@ import { MCPSettings, DEFAULT_JOURNAL_PREFIX } from '../settings';
 declare const __PLUGIN_VERSION__: string;
 
 export type IncludeContentMode = 'none' | 'markdown';
+export type SearchIncludeContentMode = IncludeContentMode | 'structured';
 
 export interface CreateNoteParams {
   title: string;
@@ -32,7 +33,7 @@ export interface AppendJournalParams {
 export interface SearchParams {
   query: string;
   limit?: number;
-  includeContent?: IncludeContentMode;
+  includeContent?: SearchIncludeContentMode;
   depth?: number;
   childLimit?: number;
   maxContentLength?: number;
@@ -68,7 +69,18 @@ export interface SearchResultItem {
   remType: RemClassification;
   cardDirection?: CardDirection;
   content?: string;
+  contentStructured?: StructuredContentNode[];
   contentProperties?: ContentProperties;
+}
+
+export interface StructuredContentNode {
+  remId: string;
+  title: string;
+  headline: string;
+  remType: RemClassification;
+  aliases?: string[];
+  cardDirection?: CardDirection;
+  children: StructuredContentNode[];
 }
 
 export type RemClassification =
@@ -83,6 +95,8 @@ export type CardDirection = 'forward' | 'reverse' | 'bidirectional';
 
 /** Default number of search results when no limit is specified. */
 const DEFAULT_SEARCH_LIMIT = 50;
+/** Fetch extra search results from SDK before dedupe to reduce underfilled unique result sets. */
+const SEARCH_OVERSAMPLE_FACTOR = 2;
 
 /** Default recursion depth for read operations. */
 const DEFAULT_DEPTH = 5;
@@ -130,6 +144,13 @@ interface RenderResult {
   childrenRendered: number;
   truncatedByLength: boolean;
 }
+
+const SEARCH_INCLUDE_CONTENT_MODES: readonly SearchIncludeContentMode[] = [
+  'none',
+  'markdown',
+  'structured',
+];
+const READ_INCLUDE_CONTENT_MODES: readonly IncludeContentMode[] = ['none', 'markdown'];
 
 export class RemAdapter {
   private settings: MCPSettings;
@@ -522,6 +543,75 @@ export class RemAdapter {
     };
   }
 
+  private parseSearchIncludeContentMode(
+    includeContent: SearchParams['includeContent']
+  ): SearchIncludeContentMode {
+    const mode = includeContent ?? 'none';
+    if ((SEARCH_INCLUDE_CONTENT_MODES as readonly string[]).includes(mode)) {
+      return mode;
+    }
+    throw new Error(
+      `Invalid includeContent for search: ${String(
+        includeContent
+      )}. Expected one of: ${SEARCH_INCLUDE_CONTENT_MODES.join(', ')}`
+    );
+  }
+
+  private parseReadIncludeContentMode(
+    includeContent: ReadNoteParams['includeContent']
+  ): IncludeContentMode {
+    const mode = includeContent ?? 'markdown';
+    if ((READ_INCLUDE_CONTENT_MODES as readonly string[]).includes(mode)) {
+      return mode;
+    }
+    throw new Error(
+      `Invalid includeContent for read_note: ${String(
+        includeContent
+      )}. Expected one of: ${READ_INCLUDE_CONTENT_MODES.join(', ')}`
+    );
+  }
+
+  private getSearchSdkFetchLimit(requestedLimit: number): number {
+    return Math.max(requestedLimit, Math.trunc(requestedLimit * SEARCH_OVERSAMPLE_FACTOR));
+  }
+
+  private async renderContentStructured(
+    rem: Rem,
+    depth: number,
+    childLimit: number
+  ): Promise<StructuredContentNode[]> {
+    if (depth <= 0) return [];
+
+    const children = await rem.getChildrenRem();
+    if (!children || children.length === 0) return [];
+
+    const limitedChildren = children.slice(0, childLimit);
+    const results: StructuredContentNode[] = [];
+
+    for (const child of limitedChildren) {
+      const [{ title, detail }, remType, cardDirection, aliases] = await Promise.all([
+        this.getTitleAndDetail(child),
+        this.classifyRem(child),
+        child.backText
+          ? child.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+          : Promise.resolve(undefined),
+        this.getAliases(child),
+      ]);
+
+      results.push({
+        remId: child._id,
+        title,
+        headline: this.formatHeadline(title, detail, remType),
+        remType,
+        ...(aliases.length > 0 ? { aliases } : {}),
+        ...(cardDirection ? { cardDirection } : {}),
+        children: await this.renderContentStructured(child, depth - 1, childLimit),
+      });
+    }
+
+    return results;
+  }
+
   /**
    * Convert plain text to RichTextInterface
    */
@@ -645,16 +735,17 @@ export class RemAdapter {
    */
   async search(params: SearchParams): Promise<{ results: SearchResultItem[] }> {
     const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
-    const includeContent = params.includeContent ?? 'none';
+    const includeContent = this.parseSearchIncludeContentMode(params.includeContent);
     const depth = params.depth ?? DEFAULT_SEARCH_DEPTH;
     const childLimit = params.childLimit ?? DEFAULT_SEARCH_CHILD_LIMIT;
     const maxContentLength = params.maxContentLength ?? DEFAULT_SEARCH_MAX_CONTENT_LENGTH;
+    const sdkFetchLimit = this.getSearchSdkFetchLimit(limit);
 
     // Use the search API - query must be RichTextInterface
     const searchResults = await this.plugin.search.search(
       this.textToRichText(params.query),
       undefined,
-      { numResults: limit }
+      { numResults: sdkFetchLimit }
     );
 
     const collected: Array<SearchResultItem & { _sourceIndex: number }> = [];
@@ -677,6 +768,7 @@ export class RemAdapter {
       const headline = this.formatHeadline(title, detail, remType);
 
       let content: string | undefined;
+      let contentStructured: StructuredContentNode[] | undefined;
       let contentProperties: ContentProperties | undefined;
 
       if (includeContent === 'markdown') {
@@ -690,6 +782,11 @@ export class RemAdapter {
           content = renderResult.content;
           contentProperties = await this.buildContentProperties(rem, renderResult, depth);
         }
+      } else if (includeContent === 'structured') {
+        const structuredChildren = await this.renderContentStructured(rem, depth, childLimit);
+        if (structuredChildren.length > 0) {
+          contentStructured = structuredChildren;
+        }
       }
 
       const item: SearchResultItem & { _sourceIndex: number } = {
@@ -700,6 +797,7 @@ export class RemAdapter {
         remType,
         ...(cardDirection ? { cardDirection } : {}),
         ...(content ? { content } : {}),
+        ...(contentStructured ? { contentStructured } : {}),
         ...(contentProperties ? { contentProperties } : {}),
         _sourceIndex: sourceIndex++,
       };
@@ -716,7 +814,9 @@ export class RemAdapter {
     });
 
     // Strip internal _sourceIndex before returning
-    const results: SearchResultItem[] = collected.map(({ _sourceIndex, ...rest }) => rest);
+    const results: SearchResultItem[] = collected
+      .map(({ _sourceIndex, ...rest }) => rest)
+      .slice(0, limit);
 
     return { results };
   }
@@ -738,7 +838,7 @@ export class RemAdapter {
     contentProperties?: ContentProperties;
   }> {
     const depth = params.depth ?? DEFAULT_DEPTH;
-    const includeContent = params.includeContent ?? 'markdown';
+    const includeContent = this.parseReadIncludeContentMode(params.includeContent);
     const childLimit = params.childLimit ?? DEFAULT_CHILD_LIMIT;
     const maxContentLength = params.maxContentLength ?? DEFAULT_READ_MAX_CONTENT_LENGTH;
 

@@ -66,6 +66,21 @@ safe and predictable.
 - Rendering respects `depth`, `childLimit`, and `maxContentLength` parameters.
 - Truncation occurs at line boundaries; incomplete lines are never included.
 
+### `contentStructured` (optional, search only)
+
+- Structured child subtree for `remnote_search` results.
+- Present when `includeContent` is `"structured"`.
+- Value is an array of child nodes (not the root note itself), each with:
+  - `remId`
+  - `title`
+  - `headline`
+  - `remType`
+  - optional `aliases`
+  - optional `cardDirection`
+  - `children` (same shape recursively)
+- Rendering respects `depth` and `childLimit` parameters.
+- `maxContentLength` does not apply to structured mode.
+
 ### `contentProperties` (optional)
 
 - Present when `content` is rendered (i.e. `includeContent` is `"markdown"`).
@@ -87,6 +102,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - Default search limit in bridge is 50 unless caller provides `limit`.
 - Default `includeContent` for search is `"none"`.
+- Search `includeContent` modes: `"none" | "markdown" | "structured"`.
 - Default `depth` for search content rendering is 1.
 - Default `childLimit` for search content rendering is 20.
 - Default `maxContentLength` for search is 3000.
@@ -94,6 +110,8 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
   1. grouped by `remType` priority (`document`/`concept` > `dailyDocument` > `portal` > `descriptor` > `text`)
   2. preserves SDK-provided intra-group ordering as relevance proxy
 - Search may still return fewer results than requested due to SDK-side internal limits.
+- Bridge search oversamples SDK requests (2x requested limit), deduplicates by `remId`, then trims back to requested
+  `limit` to reduce underfilled unique result sets caused by duplicate SDK hits.
 
 ## Read behavior contract
 
@@ -105,7 +123,8 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 ## Breaking changes (from pre-0.6.0)
 
-- `includeContent` changed from `boolean` to `'none' | 'markdown'` string enum.
+- `includeContent` changed from `boolean` to string enum (`search`: `'none' | 'markdown' | 'structured'`; `read`:
+  `'none' | 'markdown'`).
 - `children` array removed from `readNote` response.
 - `content` in `readNote` changed from echoing `title` to rendered markdown of child subtree.
 - Default `depth` for `readNote` changed from 3 to 5.

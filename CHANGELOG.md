@@ -17,6 +17,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - **Unified content rendering**: `remnote_read_note` now returns rendered markdown content of the child subtree in
   the `content` field (replaces redundant title echo and removed `children` array).
 - `remnote_search` supports `includeContent: "markdown"` to render child subtrees as indented markdown previews.
+- `remnote_search` now also supports `includeContent: "structured"` via `contentStructured` (child subtree with
+  nested `remId`s and metadata for follow-up reads/navigation).
 - New `headline` field in both search and read outputs: display-oriented full line with type-aware delimiters
   (concept = `::`, descriptor = `;;`, others = `>>`).
 - New `aliases` field surfaces alternate names from `rem.getAliases()`.
@@ -35,12 +37,18 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Removed internal `getContentPreview()`, `getChildrenRecursive()`, and `NoteChild` interface.
 - Updated `remnote_search` ordering priority to `document`/`concept` (same top level), then
   `dailyDocument`, `portal`, `descriptor`, and `text`; ties within each priority bucket continue to preserve SDK order.
+- `remnote_search` now oversamples SDK requests by 2x requested `limit`, deduplicates by `remId`, and trims back to
+  requested `limit` to reduce underfilled unique result sets from duplicate SDK hits.
+- Search/read now reject unsupported `includeContent` values with explicit errors instead of silently omitting content.
 
 ### Documentation
 
 - Updated `docs/reference/remnote/bridge-search-read-contract.md` with new fields (`headline`, `aliases`,
   `content`, `contentProperties`), rendering modes, parameter defaults, and breaking change summary.
+- Extended search/read contract docs and DevTools execution guides for `search includeContent: "structured"` and the
+  search oversample+dedupe+trim behavior.
 - Updated search/read contract docs to reflect `detail` field removal and search content preview default depth of 1.
+- Updated DevTools JS command snippets for `search` / `read_note` to use string `includeContent` and show all content-rendering parameters.
 - Added a new beginner guide for installing the plugin via the RemNote marketplace with screenshot walkthrough.
 - Updated local-development plugin install guide to cross-link the marketplace guide and emphasize required companion
   MCP server / CLI setup (with install+demo links for both paths).

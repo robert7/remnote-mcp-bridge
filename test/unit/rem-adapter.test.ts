@@ -243,6 +243,43 @@ describe('RemAdapter', () => {
       }
     });
 
+    it('should include structured child content when includeContent is structured', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_struct_parent', 'Parent');
+      const child = new MockRem('search_struct_child', 'Child');
+      const grandchild = new MockRem('search_struct_grandchild', 'Grandchild');
+      await child.setParent(parent);
+      await grandchild.setParent(child);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'structured',
+        depth: 2,
+      });
+
+      expect(result.results[0].content).toBeUndefined();
+      expect(result.results[0].contentProperties).toBeUndefined();
+      expect(result.results[0].contentStructured).toEqual([
+        {
+          remId: 'search_struct_child',
+          title: 'Child',
+          headline: 'Child',
+          remType: 'text',
+          children: [
+            {
+              remId: 'search_struct_grandchild',
+              title: 'Grandchild',
+              headline: 'Grandchild',
+              remType: 'text',
+              children: [],
+            },
+          ],
+        },
+      ]);
+    });
+
     it('should default search markdown depth to 1 level', async () => {
       plugin.clearTestData();
       const parent = plugin.addTestRem('search_depth_default_parent', 'Parent');
@@ -270,6 +307,7 @@ describe('RemAdapter', () => {
       });
 
       expect(result.results[0].content).toBeUndefined();
+      expect(result.results[0].contentStructured).toBeUndefined();
       expect(result.results[0].contentProperties).toBeUndefined();
     });
 
@@ -318,8 +356,38 @@ describe('RemAdapter', () => {
       expect(plugin.search.search).toHaveBeenCalledWith(
         expect.anything(),
         undefined,
-        expect.objectContaining({ numResults: 50 })
+        expect.objectContaining({ numResults: 100 })
       );
+    });
+
+    it('should oversample search requests by 2x before dedupe', async () => {
+      await adapter.search({ query: 'test', limit: 7 });
+
+      expect(plugin.search.search).toHaveBeenCalledWith(
+        expect.anything(),
+        undefined,
+        expect.objectContaining({ numResults: 14 })
+      );
+    });
+
+    it('should trim results back to requested limit after dedupe and sorting', async () => {
+      plugin.clearTestData();
+
+      const r1 = plugin.addTestRem('r1', 'R1');
+      const r2 = plugin.addTestRem('r2', 'R2');
+      const r3 = plugin.addTestRem('r3', 'R3');
+      const r4 = plugin.addTestRem('r4', 'R4');
+
+      plugin.search.search.mockResolvedValueOnce([r1, r1, r2, r3, r4]);
+
+      const result = await adapter.search({ query: 'r', limit: 3 });
+      expect(result.results.map((r) => r.remId)).toEqual(['r1', 'r2', 'r3']);
+    });
+
+    it('should reject unsupported search includeContent mode', async () => {
+      await expect(
+        adapter.search({ query: 'note', includeContent: 'weird' as 'none' })
+      ).rejects.toThrow('Invalid includeContent for search');
     });
 
     it('should sort results by remType priority', async () => {
@@ -480,6 +548,14 @@ describe('RemAdapter', () => {
 
       expect(result.content).toBeUndefined();
       expect(result.contentProperties).toBeUndefined();
+    });
+
+    it('should reject unsupported read_note includeContent mode', async () => {
+      plugin.addTestRem('bad_mode_note', 'Note');
+
+      await expect(
+        adapter.readNote({ remId: 'bad_mode_note', includeContent: 'structured' as 'none' })
+      ).rejects.toThrow('Invalid includeContent for read_note');
     });
 
     it('should render children as indented markdown', async () => {

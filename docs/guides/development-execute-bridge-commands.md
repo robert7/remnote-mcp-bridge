@@ -32,6 +32,9 @@ Then run it once in the Developer Console.
 ## Command examples
 
 All commands below call the same bridge action names supported in `handleRequest`.
+The `read_note` and `search` snippets are full-parameter examples so you can quickly toggle values while debugging.
+For `search`, `includeContent` supports `"none"` (default), `"markdown"`, and `"structured"`.
+The default content-preview depth is `1` for both `"markdown"` and `"structured"` search content modes.
 
 ### 1) `get_status`
 
