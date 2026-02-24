@@ -273,9 +273,34 @@ describe('RemAdapter', () => {
               title: 'Grandchild',
               headline: 'Grandchild',
               remType: 'text',
-              children: [],
             },
           ],
+        },
+      ]);
+    });
+
+    it('should omit empty children arrays and trim trailing empty text leaf in structured content', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_struct_trim_parent', 'Parent');
+      const child1 = new MockRem('search_struct_trim_child1', 'Child 1');
+      const emptyTail = new MockRem('search_struct_trim_empty', '');
+      await child1.setParent(parent);
+      await emptyTail.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'structured',
+        depth: 1,
+      });
+
+      expect(result.results[0].contentStructured).toEqual([
+        {
+          remId: 'search_struct_trim_child1',
+          title: 'Child 1',
+          headline: 'Child 1',
+          remType: 'text',
         },
       ]);
     });
@@ -489,6 +514,59 @@ describe('RemAdapter', () => {
       expect(item.content).toContain('Child 2');
       expect(item.content).not.toContain('Child 3');
       expect(item.contentProperties!.childrenRendered).toBe(2);
+    });
+
+    it('should filter powerup property nodes from structured and markdown content', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_filter_parent', 'Parent');
+      const propertyNode = new MockRem('search_filter_property', 'Status');
+      propertyNode.type = RemType.DESCRIPTOR;
+      propertyNode.setPowerupPropertyMock(true);
+      const userNode = new MockRem('search_filter_user', 'Visible child');
+      await propertyNode.setParent(parent);
+      await userNode.setParent(parent);
+
+      plugin.search.search.mockResolvedValue([parent]);
+
+      const structured = await adapter.search({
+        query: 'Parent',
+        includeContent: 'structured',
+      });
+      expect(structured.results[0].contentStructured).toEqual([
+        {
+          remId: 'search_filter_user',
+          title: 'Visible child',
+          headline: 'Visible child',
+          remType: 'text',
+        },
+      ]);
+
+      const markdown = await adapter.search({
+        query: 'Parent',
+        includeContent: 'markdown',
+      });
+      expect(markdown.results[0].content).toBe('- Visible child\n');
+      expect(markdown.results[0].content).not.toContain('Status');
+    });
+
+    it('should trim trailing empty text leaf from markdown content', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_md_trim_parent', 'Parent');
+      const child = new MockRem('search_md_trim_child', 'Visible child');
+      const emptyTail = new MockRem('search_md_trim_empty', '');
+      await child.setParent(parent);
+      await emptyTail.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'markdown',
+        depth: 1,
+      });
+
+      expect(result.results[0].content).toBe('- Visible child\n');
+      expect(result.results[0].content).not.toContain('- \n');
     });
   });
 

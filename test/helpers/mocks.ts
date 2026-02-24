@@ -75,6 +75,10 @@ export class MockRem implements Partial<Rem> {
   private _powerups: string[] = [];
   private _practiceDirection: 'forward' | 'backward' | 'both' | 'none' = 'none';
   private _aliases: MockRem[] = [];
+  private _isPowerupProperty = false;
+  private _isPowerupPropertyListItem = false;
+  private _isPowerupSlot = false;
+  private _isPowerupEnum = false;
 
   constructor(id: string, text: string) {
     this._id = id;
@@ -109,6 +113,22 @@ export class MockRem implements Partial<Rem> {
     return this._aliases;
   }
 
+  setPowerupPropertyMock(val: boolean): void {
+    this._isPowerupProperty = val;
+  }
+
+  setPowerupPropertyListItemMock(val: boolean): void {
+    this._isPowerupPropertyListItem = val;
+  }
+
+  setPowerupSlotMock(val: boolean): void {
+    this._isPowerupSlot = val;
+  }
+
+  setPowerupEnumMock(val: boolean): void {
+    this._isPowerupEnum = val;
+  }
+
   async isDocument(): Promise<boolean> {
     return this._isDocument;
   }
@@ -119,6 +139,22 @@ export class MockRem implements Partial<Rem> {
 
   async getPracticeDirection(): Promise<'forward' | 'backward' | 'both' | 'none'> {
     return this._practiceDirection;
+  }
+
+  async isPowerupProperty(): Promise<boolean> {
+    return this._isPowerupProperty;
+  }
+
+  async isPowerupPropertyListItem(): Promise<boolean> {
+    return this._isPowerupPropertyListItem;
+  }
+
+  async isPowerupSlot(): Promise<boolean> {
+    return this._isPowerupSlot;
+  }
+
+  async isPowerupEnum(): Promise<boolean> {
+    return this._isPowerupEnum;
   }
 
   async setText(text: RichTextInterface): Promise<void> {

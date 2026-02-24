@@ -40,6 +40,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - `remnote_search` now oversamples SDK requests by 2x requested `limit`, deduplicates by `remId`, and trims back to
   requested `limit` to reduce underfilled unique result sets from duplicate SDK hits.
 - Search/read now reject unsupported `includeContent` values with explicit errors instead of silently omitting content.
+- Search/read content rendering now filters RemNote powerup/property metadata children (for example aliases/status UI
+  rows) and trims trailing empty leaf text nodes to reduce internal/noise artifacts in markdown and structured output.
 
 ### Documentation
 
@@ -47,6 +49,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   `content`, `contentProperties`), rendering modes, parameter defaults, and breaking change summary.
 - Extended search/read contract docs and DevTools execution guides for `search includeContent: "structured"` and the
   search oversample+dedupe+trim behavior.
+- Refined search/read contract docs for structured child rendering cleanup (`children` omitted when empty, internal
+  property rows filtered, trailing empty leaf nodes trimmed).
 - Updated search/read contract docs to reflect `detail` field removal and search content preview default depth of 1.
 - Updated DevTools JS command snippets for `search` / `read_note` to use string `includeContent` and show all content-rendering parameters.
 - Added a new beginner guide for installing the plugin via the RemNote marketplace with screenshot walkthrough.

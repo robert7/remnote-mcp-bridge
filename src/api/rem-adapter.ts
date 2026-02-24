@@ -80,7 +80,7 @@ export interface StructuredContentNode {
   remType: RemClassification;
   aliases?: string[];
   cardDirection?: CardDirection;
-  children: StructuredContentNode[];
+  children?: StructuredContentNode[];
 }
 
 export type RemClassification =
@@ -450,12 +450,10 @@ export class RemAdapter {
       return { content: accumulated, childrenRendered: 0, truncatedByLength: false };
     }
 
-    const children = await rem.getChildrenRem();
-    if (!children || children.length === 0) {
+    const limitedChildren = await this.getRenderableChildren(rem, childLimit);
+    if (limitedChildren.length === 0) {
       return { content: accumulated, childrenRendered: 0, truncatedByLength: false };
     }
-
-    const limitedChildren = children.slice(0, childLimit);
     let content = accumulated;
     let childrenRendered = 0;
     let truncatedByLength = false;
@@ -543,6 +541,58 @@ export class RemAdapter {
     };
   }
 
+  private async isPowerupContentMetadataRem(rem: Rem): Promise<boolean> {
+    const checks = [
+      'isPowerupProperty',
+      'isPowerupPropertyListItem',
+      'isPowerupSlot',
+      'isPowerupEnum',
+    ] as const;
+
+    for (const checkName of checks) {
+      const check = (rem as unknown as Record<string, unknown>)[checkName];
+      if (typeof check !== 'function') continue;
+      try {
+        if (await (check as (this: Rem) => Promise<boolean>).call(rem)) return true;
+      } catch {
+        // Ignore SDK/mocking gaps and fall back to keeping the node visible.
+      }
+    }
+
+    return false;
+  }
+
+  private async isEmptyTextLeaf(rem: Rem): Promise<boolean> {
+    const remType = await this.classifyRem(rem);
+    if (remType !== 'text') return false;
+
+    const { title, detail } = await this.getTitleAndDetail(rem);
+    if (title !== '' || detail) return false;
+
+    const children = await rem.getChildrenRem();
+    return !children || children.length === 0;
+  }
+
+  private async getRenderableChildren(rem: Rem, childLimit: number): Promise<Rem[]> {
+    const children = await rem.getChildrenRem();
+    if (!children || children.length === 0) return [];
+
+    const visibleChildren: Rem[] = [];
+    for (const child of children) {
+      if (await this.isPowerupContentMetadataRem(child)) continue;
+      visibleChildren.push(child);
+    }
+
+    const limitedChildren = visibleChildren.slice(0, childLimit);
+    while (limitedChildren.length > 0) {
+      const last = limitedChildren[limitedChildren.length - 1];
+      if (!(await this.isEmptyTextLeaf(last))) break;
+      limitedChildren.pop();
+    }
+
+    return limitedChildren;
+  }
+
   private parseSearchIncludeContentMode(
     includeContent: SearchParams['includeContent']
   ): SearchIncludeContentMode {
@@ -582,10 +632,8 @@ export class RemAdapter {
   ): Promise<StructuredContentNode[]> {
     if (depth <= 0) return [];
 
-    const children = await rem.getChildrenRem();
-    if (!children || children.length === 0) return [];
-
-    const limitedChildren = children.slice(0, childLimit);
+    const limitedChildren = await this.getRenderableChildren(rem, childLimit);
+    if (limitedChildren.length === 0) return [];
     const results: StructuredContentNode[] = [];
 
     for (const child of limitedChildren) {
@@ -598,6 +646,8 @@ export class RemAdapter {
         this.getAliases(child),
       ]);
 
+      const children = await this.renderContentStructured(child, depth - 1, childLimit);
+
       results.push({
         remId: child._id,
         title,
@@ -605,7 +655,7 @@ export class RemAdapter {
         remType,
         ...(aliases.length > 0 ? { aliases } : {}),
         ...(cardDirection ? { cardDirection } : {}),
-        children: await this.renderContentStructured(child, depth - 1, childLimit),
+        ...(children.length > 0 ? { children } : {}),
       });
     }
 

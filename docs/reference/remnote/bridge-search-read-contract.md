@@ -77,9 +77,12 @@ safe and predictable.
   - `remType`
   - optional `aliases`
   - optional `cardDirection`
-  - `children` (same shape recursively)
+  - optional `children` (same shape recursively; omitted when empty)
 - Rendering respects `depth` and `childLimit` parameters.
 - `maxContentLength` does not apply to structured mode.
+- Bridge omits RemNote powerup/property metadata children (for example aliases/property rows) from both structured and
+  markdown content rendering to avoid redundant/internal noise in retrieval output.
+- Bridge trims trailing empty leaf text nodes from rendered child lists (structured and markdown modes).
 
 ### `contentProperties` (optional)
 
