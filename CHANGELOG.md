@@ -11,6 +11,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - **Automatic version compatibility**: Bridge sends a `hello` message with its version on WebSocket connect, enabling
   consumers (MCP server, CLI) to detect version mismatches and warn users.
+- Added `run-prod-build.sh` to build a production `dist/` bundle and serve it locally with CORS, without creating
+  `PluginZip.zip` and without hot reload.
 
 ### Enhanced
 
@@ -66,6 +68,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   MCP server / CLI setup (with install+demo links for both paths).
 - Updated `README.md` installation docs to surface both plugin install paths (marketplace vs local development).
 - Added a canonical bridge/consumer version compatibility guide for `0.x` semver and linked it from plugin install + companion setup docs.
+- Updated `README.md` development commands to include `./run-prod-build.sh` for local production-bundle serving.
 
 ## [0.5.0] - 2026-02-21
 
