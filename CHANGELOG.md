@@ -7,20 +7,68 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Automatic version compatibility**: Bridge sends a `hello` message with its version on WebSocket connect, enabling
+  consumers (MCP server, CLI) to detect version mismatches and warn users.
+- Added `run-prod-build.sh` to build a production `dist/` bundle and serve it locally with CORS, without creating
+  `PluginZip.zip` and without hot reload.
+
+### Enhanced
+
+- **Unified content rendering**: `remnote_read_note` now returns rendered markdown content of the child subtree in
+  the `content` field (replaces redundant title echo and removed `children` array).
+- `remnote_search` supports `includeContent: "markdown"` to render child subtrees as indented markdown previews.
+- `remnote_search` now also supports `includeContent: "structured"` via `contentStructured` (child subtree with
+  nested `remId`s and metadata for follow-up reads/navigation).
+- Added `search_by_tag` bridge action with `includeContent`/`depth`/`childLimit`/`maxContentLength` options, returning
+  resolved ancestor context targets (nearest document/daily document, otherwise nearest non-document ancestor).
+- New `headline` field in both search and read outputs: display-oriented full line with type-aware delimiters
+  (concept = `::`, descriptor = `;;`, others = `>>`).
+- New `aliases` field surfaces alternate names from `rem.getAliases()`.
+- New parent-context fields in `remnote_search` and `remnote_read_note`: `parentRemId` and `parentTitle`
+  (omitted for top-level Rems).
+- New `contentProperties` object reports `childrenRendered`, `childrenTotal` (capped at 2000), and `contentTruncated`.
+- New tuning parameters: `childLimit` (per-level child cap), `maxContentLength` (character limit for rendered content).
+
 ### Changed
 
+- **BREAKING**: `includeContent` parameter changed from `boolean` to `'none' | 'markdown'` string enum.
+- **BREAKING**: `children` array removed from `readNote` response (use `content` in markdown mode instead).
+- **BREAKING**: `content` field in `readNote` changed from echoing `title` to rendered markdown of child subtree.
+- **BREAKING**: `detail` field removed from `remnote_search` and `remnote_read_note` outputs (use `headline` for display rendering).
+- Default `depth` for `readNote` increased from 3 to 5.
+- Search defaults: `depth=1`, `childLimit=20`, `maxContentLength=3000`.
+- Read defaults: `depth=5`, `childLimit=100`, `maxContentLength=100000`.
+- Removed internal `getContentPreview()`, `getChildrenRecursive()`, and `NoteChild` interface.
 - Updated `remnote_search` ordering priority to `document`/`concept` (same top level), then
   `dailyDocument`, `portal`, `descriptor`, and `text`; ties within each priority bucket continue to preserve SDK order.
+- `remnote_search` now oversamples SDK requests by 2x requested `limit`, deduplicates by `remId`, and trims back to
+  requested `limit` to reduce underfilled unique result sets from duplicate SDK hits.
+- Search/read now reject unsupported `includeContent` values with explicit errors instead of silently omitting content.
+- Search/read content rendering now filters RemNote powerup/property metadata children (for example aliases/status UI
+  rows) and trims trailing empty leaf text nodes to reduce internal/noise artifacts in markdown and structured output.
+- Root shell scripts now source `node-check.sh` at startup; `code-quality.sh` was updated accordingly and `build-plugin-zip.sh` now sources once at the beginning instead of late fallback sourcing.
 
 ### Documentation
 
-- Updated `docs/reference/remnote/bridge-search-read-contract.md` to reflect the revised `remnote_search` ordering
-  contract.
+- Updated `docs/reference/remnote/bridge-search-read-contract.md` with new fields (`headline`, `aliases`,
+  `content`, `contentProperties`), rendering modes, parameter defaults, and breaking change summary.
+- Extended `docs/reference/remnote/bridge-search-read-contract.md` with `remnote_search_by_tag` contract semantics,
+  including ancestor-target resolution rules and tag input normalization (`tag`/`#tag`).
+- Extended search/read contract docs and DevTools execution guides for `search includeContent: "structured"` and the
+  search oversample+dedupe+trim behavior.
+- Refined search/read contract docs for structured child rendering cleanup (`children` omitted when empty, internal
+  property rows filtered, trailing empty leaf nodes trimmed).
+- Updated search/read contract docs to reflect `detail` field removal and search content preview default depth of 1.
+- Updated DevTools JS command snippets for `search` / `read_note` to use string `includeContent` and show all content-rendering parameters.
+- Added DevTools bridge execution snippet for `search_by_tag` in `docs/guides/development-execute-bridge-commands.md`.
 - Added a new beginner guide for installing the plugin via the RemNote marketplace with screenshot walkthrough.
 - Updated local-development plugin install guide to cross-link the marketplace guide and emphasize required companion
   MCP server / CLI setup (with install+demo links for both paths).
 - Updated `README.md` installation docs to surface both plugin install paths (marketplace vs local development).
 - Added a canonical bridge/consumer version compatibility guide for `0.x` semver and linked it from plugin install + companion setup docs.
+- Updated `README.md` development commands to include `./run-prod-build.sh` for local production-bundle serving.
 
 ## [0.5.0] - 2026-02-21
 

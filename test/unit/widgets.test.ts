@@ -380,10 +380,20 @@ describe('Widget UI (mcp_bridge_popup.tsx)', () => {
 
     it('should route search action correctly', () => {
       const action = 'search';
-      const payload = { query: 'test', limit: 10, includeContent: true };
+      const payload = { query: 'test', limit: 10, includeContent: 'markdown' };
 
       expect(action).toBe('search');
       expect(payload).toHaveProperty('query');
+      expect(payload).toHaveProperty('limit');
+      expect(payload).toHaveProperty('includeContent');
+    });
+
+    it('should route search_by_tag action correctly', () => {
+      const action = 'search_by_tag';
+      const payload = { tag: '#daily', limit: 10, includeContent: 'structured' };
+
+      expect(action).toBe('search_by_tag');
+      expect(payload).toHaveProperty('tag');
       expect(payload).toHaveProperty('limit');
       expect(payload).toHaveProperty('includeContent');
     });

@@ -1,5 +1,5 @@
-await runBridge('search', {
-  query: 'AI assisted coding',
+await runBridge('search_by_tag', {
+  tag: 'mcp-test-tag',
   limit: 5,
   includeContent: 'markdown',
   depth: 1,

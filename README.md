@@ -208,6 +208,9 @@ npm install
 # Run in development mode (hot reload)
 npm run dev
 
+# Run production bundle locally (no zip, no hot reload)
+./run-prod-build.sh
+
 # Build for production
 npm run build
 

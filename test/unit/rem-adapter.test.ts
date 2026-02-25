@@ -216,26 +216,158 @@ describe('RemAdapter', () => {
       expect(result.results).toBeDefined();
     });
 
-    it('should include content when requested', async () => {
+    it('should include headline in results', async () => {
+      const result = await adapter.search({
+        query: 'note',
+        limit: 10,
+      });
+
+      expect(result.results[0].headline).toBe('First note');
+    });
+
+    it('should include parent context in search results when parent exists', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_parent_ctx', 'Parent context note');
+      const child = new MockRem('search_child_ctx', 'Child note');
+      await child.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([child]);
+
+      const result = await adapter.search({
+        query: 'Child',
+      });
+
+      expect(result.results[0].parentRemId).toBe('search_parent_ctx');
+      expect(result.results[0].parentTitle).toBe('Parent context note');
+    });
+
+    it('should omit parent context in search results for top-level rems', async () => {
+      plugin.clearTestData();
+      const rem = plugin.addTestRem('search_root_ctx', 'Top level');
+      plugin.search.search.mockResolvedValueOnce([rem]);
+
+      const result = await adapter.search({
+        query: 'Top',
+      });
+
+      expect(result.results[0].parentRemId).toBeUndefined();
+      expect(result.results[0].parentTitle).toBeUndefined();
+    });
+
+    it('should include content when includeContent is markdown', async () => {
       const parentRem = plugin.addTestRem('parent_search', 'Parent');
       const childRem = new MockRem('child_search', 'Child content');
       await childRem.setParent(parentRem);
 
       const result = await adapter.search({
         query: 'Parent',
-        includeContent: true,
+        includeContent: 'markdown',
       });
 
       const parentResult = result.results.find((r) => r.remId === 'parent_search');
       if (parentResult) {
         expect(parentResult.content).toBeDefined();
+        expect(parentResult.content).toContain('Child content');
+        expect(parentResult.contentProperties).toBeDefined();
       }
     });
 
-    it('should not include content when not requested', async () => {
+    it('should include structured child content when includeContent is structured', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_struct_parent', 'Parent');
+      const child = new MockRem('search_struct_child', 'Child');
+      const grandchild = new MockRem('search_struct_grandchild', 'Grandchild');
+      await child.setParent(parent);
+      await grandchild.setParent(child);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'structured',
+        depth: 2,
+      });
+
+      expect(result.results[0].content).toBeUndefined();
+      expect(result.results[0].contentProperties).toBeUndefined();
+      expect(result.results[0].contentStructured).toEqual([
+        {
+          remId: 'search_struct_child',
+          title: 'Child',
+          headline: 'Child',
+          remType: 'text',
+          children: [
+            {
+              remId: 'search_struct_grandchild',
+              title: 'Grandchild',
+              headline: 'Grandchild',
+              remType: 'text',
+            },
+          ],
+        },
+      ]);
+    });
+
+    it('should omit empty children arrays and trim trailing empty text leaf in structured content', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_struct_trim_parent', 'Parent');
+      const child1 = new MockRem('search_struct_trim_child1', 'Child 1');
+      const emptyTail = new MockRem('search_struct_trim_empty', '');
+      await child1.setParent(parent);
+      await emptyTail.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'structured',
+        depth: 1,
+      });
+
+      expect(result.results[0].contentStructured).toEqual([
+        {
+          remId: 'search_struct_trim_child1',
+          title: 'Child 1',
+          headline: 'Child 1',
+          remType: 'text',
+        },
+      ]);
+    });
+
+    it('should default search markdown depth to 1 level', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_depth_default_parent', 'Parent');
+      const child = new MockRem('search_depth_default_child', 'Child');
+      const grandchild = new MockRem('search_depth_default_grandchild', 'Grandchild');
+      await child.setParent(parent);
+      await grandchild.setParent(child);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'markdown',
+      });
+
+      const item = result.results[0];
+      expect(item.content).toContain('Child');
+      expect(item.content).not.toContain('Grandchild');
+    });
+
+    it('should not include content when includeContent is none', async () => {
       const result = await adapter.search({
         query: 'note',
-        includeContent: false,
+        includeContent: 'none',
+      });
+
+      expect(result.results[0].content).toBeUndefined();
+      expect(result.results[0].contentStructured).toBeUndefined();
+      expect(result.results[0].contentProperties).toBeUndefined();
+    });
+
+    it('should default includeContent to none for search', async () => {
+      const result = await adapter.search({
+        query: 'note',
       });
 
       expect(result.results[0].content).toBeUndefined();
@@ -278,8 +410,38 @@ describe('RemAdapter', () => {
       expect(plugin.search.search).toHaveBeenCalledWith(
         expect.anything(),
         undefined,
-        expect.objectContaining({ numResults: 50 })
+        expect.objectContaining({ numResults: 100 })
       );
+    });
+
+    it('should oversample search requests by 2x before dedupe', async () => {
+      await adapter.search({ query: 'test', limit: 7 });
+
+      expect(plugin.search.search).toHaveBeenCalledWith(
+        expect.anything(),
+        undefined,
+        expect.objectContaining({ numResults: 14 })
+      );
+    });
+
+    it('should trim results back to requested limit after dedupe and sorting', async () => {
+      plugin.clearTestData();
+
+      const r1 = plugin.addTestRem('r1', 'R1');
+      const r2 = plugin.addTestRem('r2', 'R2');
+      const r3 = plugin.addTestRem('r3', 'R3');
+      const r4 = plugin.addTestRem('r4', 'R4');
+
+      plugin.search.search.mockResolvedValueOnce([r1, r1, r2, r3, r4]);
+
+      const result = await adapter.search({ query: 'r', limit: 3 });
+      expect(result.results.map((r) => r.remId)).toEqual(['r1', 'r2', 'r3']);
+    });
+
+    it('should reject unsupported search includeContent mode', async () => {
+      await expect(
+        adapter.search({ query: 'note', includeContent: 'weird' as 'none' })
+      ).rejects.toThrow('Invalid includeContent for search');
     });
 
     it('should sort results by remType priority', async () => {
@@ -341,10 +503,196 @@ describe('RemAdapter', () => {
       // Documents grouped first (doc_a before doc_b preserving SDK order), then text
       expect(ids).toEqual(['doc_a', 'doc_b', 't1']);
     });
+
+    it('should include aliases in search results when present', async () => {
+      plugin.clearTestData();
+      const rem = plugin.addTestRem('alias_search', 'Main Name');
+      rem.setAliasesMock([['Alt Name 1'], ['Alt Name 2']]);
+
+      plugin.search.search.mockResolvedValueOnce([rem]);
+
+      const result = await adapter.search({ query: 'main' });
+      expect(result.results[0].aliases).toEqual(['Alt Name 1', 'Alt Name 2']);
+    });
+
+    it('should omit aliases when empty', async () => {
+      const result = await adapter.search({ query: 'note' });
+      expect(result.results[0].aliases).toBeUndefined();
+    });
+
+    it('should pass depth and childLimit to markdown rendering', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_render', 'Parent');
+      const child1 = new MockRem('sc1', 'Child 1');
+      const child2 = new MockRem('sc2', 'Child 2');
+      const child3 = new MockRem('sc3', 'Child 3');
+      await child1.setParent(parent);
+      await child2.setParent(parent);
+      await child3.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'test',
+        includeContent: 'markdown',
+        childLimit: 2,
+      });
+
+      const item = result.results[0];
+      expect(item.content).toContain('Child 1');
+      expect(item.content).toContain('Child 2');
+      expect(item.content).not.toContain('Child 3');
+      expect(item.contentProperties!.childrenRendered).toBe(2);
+    });
+
+    it('should filter powerup property nodes from structured and markdown content', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_filter_parent', 'Parent');
+      const propertyNode = new MockRem('search_filter_property', 'Status');
+      propertyNode.type = RemType.DESCRIPTOR;
+      propertyNode.setPowerupPropertyMock(true);
+      const userNode = new MockRem('search_filter_user', 'Visible child');
+      await propertyNode.setParent(parent);
+      await userNode.setParent(parent);
+
+      plugin.search.search.mockResolvedValue([parent]);
+
+      const structured = await adapter.search({
+        query: 'Parent',
+        includeContent: 'structured',
+      });
+      expect(structured.results[0].contentStructured).toEqual([
+        {
+          remId: 'search_filter_user',
+          title: 'Visible child',
+          headline: 'Visible child',
+          remType: 'text',
+        },
+      ]);
+
+      const markdown = await adapter.search({
+        query: 'Parent',
+        includeContent: 'markdown',
+      });
+      expect(markdown.results[0].content).toBe('- Visible child\n');
+      expect(markdown.results[0].content).not.toContain('Status');
+    });
+
+    it('should trim trailing empty text leaf from markdown content', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_md_trim_parent', 'Parent');
+      const child = new MockRem('search_md_trim_child', 'Visible child');
+      const emptyTail = new MockRem('search_md_trim_empty', '');
+      await child.setParent(parent);
+      await emptyTail.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([parent]);
+
+      const result = await adapter.search({
+        query: 'Parent',
+        includeContent: 'markdown',
+        depth: 1,
+      });
+
+      expect(result.results[0].content).toBe('- Visible child\n');
+      expect(result.results[0].content).not.toContain('- \n');
+    });
+  });
+
+  describe('searchByTag', () => {
+    it('should return nearest document ancestor for tagged rems', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_daily', 'daily', 'daily');
+      const doc = plugin.addTestRem('doc_parent', 'Parent Document');
+      doc.setIsDocumentMock(true);
+      const child = new MockRem('tagged_child_doc', 'Tagged child');
+      await child.setParent(doc);
+      tag.setTaggedRemsMock([child]);
+
+      const result = await adapter.searchByTag({ tag: 'daily' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('doc_parent');
+      expect(result.results[0].title).toBe('Parent Document');
+    });
+
+    it('should fallback to nearest non-document ancestor when no document exists', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_task', 'task', 'task');
+      const parent = plugin.addTestRem('non_doc_parent', 'Grouping Parent');
+      const child = new MockRem('tagged_child_non_doc', 'Tagged child');
+      await child.setParent(parent);
+      tag.setTaggedRemsMock([child]);
+
+      const result = await adapter.searchByTag({ tag: 'task' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('non_doc_parent');
+      expect(result.results[0].title).toBe('Grouping Parent');
+    });
+
+    it('should deduplicate resolved ancestors', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_dedupe', 'dedupe', 'dedupe');
+      const parent = plugin.addTestRem('dedupe_parent', 'Shared Parent');
+      const childA = new MockRem('tagged_child_a', 'Tagged child A');
+      const childB = new MockRem('tagged_child_b', 'Tagged child B');
+      await childA.setParent(parent);
+      await childB.setParent(parent);
+      tag.setTaggedRemsMock([childA, childB]);
+
+      const result = await adapter.searchByTag({ tag: 'dedupe' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('dedupe_parent');
+    });
+
+    it('should support hash-prefixed tag lookup', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_hash', 'daily', 'daily');
+      const note = plugin.addTestRem('hash_target', 'Hash Target');
+      tag.setTaggedRemsMock([note]);
+
+      const result = await adapter.searchByTag({ tag: '#daily' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('hash_target');
+    });
+
+    it('should support search content rendering modes', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_mode', 'mode', 'mode');
+      const parent = plugin.addTestRem('mode_parent', 'Mode Parent');
+      const child = new MockRem('mode_child', 'Mode Child');
+      await child.setParent(parent);
+      tag.setTaggedRemsMock([child]);
+
+      const markdown = await adapter.searchByTag({ tag: 'mode', includeContent: 'markdown' });
+      expect(markdown.results[0].content).toBeDefined();
+      expect(markdown.results[0].content).toContain('Mode Child');
+      expect(markdown.results[0].contentProperties).toBeDefined();
+
+      const structured = await adapter.searchByTag({ tag: 'mode', includeContent: 'structured' });
+      expect(structured.results[0].contentStructured).toEqual([
+        {
+          remId: 'mode_child',
+          title: 'Mode Child',
+          headline: 'Mode Child',
+          remType: 'text',
+        },
+      ]);
+      expect(structured.results[0].content).toBeUndefined();
+
+      const none = await adapter.searchByTag({ tag: 'mode', includeContent: 'none' });
+      expect(none.results[0].content).toBeUndefined();
+      expect(none.results[0].contentStructured).toBeUndefined();
+    });
+
+    it('should return empty results when tag is not found', async () => {
+      plugin.clearTestData();
+      const result = await adapter.searchByTag({ tag: 'missing-tag' });
+      expect(result.results).toEqual([]);
+    });
   });
 
   describe('readNote', () => {
-    it('should read a note by ID', async () => {
+    it('should read a note by ID with headline', async () => {
       plugin.addTestRem('read_test', 'Test content');
 
       const result = await adapter.readNote({
@@ -353,7 +701,31 @@ describe('RemAdapter', () => {
 
       expect(result.remId).toBe('read_test');
       expect(result.title).toBe('Test content');
-      expect(result.content).toBe('Test content');
+      expect(result.headline).toBe('Test content');
+    });
+
+    it('should include parent context in read results when parent exists', async () => {
+      const parent = plugin.addTestRem('read_parent_ctx', 'Parent title');
+      const child = plugin.addTestRem('read_child_ctx', 'Child title');
+      await child.setParent(parent);
+
+      const result = await adapter.readNote({
+        remId: 'read_child_ctx',
+      });
+
+      expect(result.parentRemId).toBe('read_parent_ctx');
+      expect(result.parentTitle).toBe('Parent title');
+    });
+
+    it('should omit parent context in read results for top-level rems', async () => {
+      plugin.addTestRem('read_root_ctx', 'Root title');
+
+      const result = await adapter.readNote({
+        remId: 'read_root_ctx',
+      });
+
+      expect(result.parentRemId).toBeUndefined();
+      expect(result.parentTitle).toBeUndefined();
     });
 
     it('should throw error for non-existent note', async () => {
@@ -362,17 +734,63 @@ describe('RemAdapter', () => {
       );
     });
 
-    it('should read children with default depth', async () => {
-      const parent = plugin.addTestRem('parent_read', 'Parent');
-      const child = new MockRem('child_read', 'Child');
+    it('should default includeContent to markdown for readNote', async () => {
+      const parent = plugin.addTestRem('read_default', 'Parent');
+      const child = new MockRem('read_child', 'Child text');
       await child.setParent(parent);
 
+      const result = await adapter.readNote({ remId: 'read_default' });
+
+      expect(result.content).toBeDefined();
+      expect(result.content).toContain('Child text');
+      expect(result.contentProperties).toBeDefined();
+    });
+
+    it('should return empty content for leaf note in markdown mode', async () => {
+      plugin.addTestRem('no_children', 'Leaf note');
+
       const result = await adapter.readNote({
-        remId: 'parent_read',
+        remId: 'no_children',
       });
 
-      expect(result.children).toBeDefined();
-      expect(Array.isArray(result.children)).toBe(true);
+      expect(result.content).toBe('');
+      expect(result.contentProperties).toEqual({
+        childrenRendered: 0,
+        childrenTotal: 0,
+        contentTruncated: false,
+      });
+    });
+
+    it('should omit content when includeContent is none', async () => {
+      plugin.addTestRem('no_content', 'Note');
+
+      const result = await adapter.readNote({
+        remId: 'no_content',
+        includeContent: 'none',
+      });
+
+      expect(result.content).toBeUndefined();
+      expect(result.contentProperties).toBeUndefined();
+    });
+
+    it('should reject unsupported read_note includeContent mode', async () => {
+      plugin.addTestRem('bad_mode_note', 'Note');
+
+      await expect(
+        adapter.readNote({ remId: 'bad_mode_note', includeContent: 'structured' as 'none' })
+      ).rejects.toThrow('Invalid includeContent for read_note');
+    });
+
+    it('should render children as indented markdown', async () => {
+      const parent = plugin.addTestRem('md_test', 'Parent');
+      const child = new MockRem('md_child', 'Child line');
+      const grandchild = new MockRem('md_grandchild', 'Grandchild line');
+      await child.setParent(parent);
+      await grandchild.setParent(child);
+
+      const result = await adapter.readNote({ remId: 'md_test' });
+
+      expect(result.content).toBe('- Child line\n  - Grandchild line\n');
     });
 
     it('should respect depth parameter', async () => {
@@ -388,26 +806,109 @@ describe('RemAdapter', () => {
         depth: 1,
       });
 
-      expect(shallowResult.children).toHaveLength(1);
-      expect(shallowResult.children[0].children).toHaveLength(0);
+      expect(shallowResult.content).toBe('- Child\n');
+      expect(shallowResult.contentProperties!.childrenRendered).toBe(1);
 
       const deepResult = await adapter.readNote({
         remId: 'depth_test',
         depth: 2,
       });
 
-      expect(deepResult.children).toHaveLength(1);
-      expect(deepResult.children[0].children).toHaveLength(1);
+      expect(deepResult.content).toBe('- Child\n  - Grandchild\n');
+      expect(deepResult.contentProperties!.childrenRendered).toBe(2);
     });
 
-    it('should handle notes with no children', async () => {
-      plugin.addTestRem('no_children', 'Leaf note');
+    it('should respect childLimit', async () => {
+      const parent = plugin.addTestRem('limit_test', 'Parent');
+      for (let i = 0; i < 5; i++) {
+        const child = new MockRem(`limit_child_${i}`, `Child ${i}`);
+        await child.setParent(parent);
+      }
 
       const result = await adapter.readNote({
-        remId: 'no_children',
+        remId: 'limit_test',
+        childLimit: 3,
       });
 
-      expect(result.children).toHaveLength(0);
+      expect(result.content).toContain('Child 0');
+      expect(result.content).toContain('Child 1');
+      expect(result.content).toContain('Child 2');
+      expect(result.content).not.toContain('Child 3');
+      expect(result.contentProperties!.childrenRendered).toBe(3);
+    });
+
+    it('should truncate content at maxContentLength', async () => {
+      const parent = plugin.addTestRem('trunc_test', 'Parent');
+      for (let i = 0; i < 10; i++) {
+        const child = new MockRem(`trunc_child_${i}`, `Child number ${i} with some text`);
+        await child.setParent(parent);
+      }
+
+      const result = await adapter.readNote({
+        remId: 'trunc_test',
+        maxContentLength: 80,
+      });
+
+      expect(result.content!.length).toBeLessThanOrEqual(80);
+      expect(result.contentProperties!.contentTruncated).toBe(true);
+      expect(result.contentProperties!.childrenRendered).toBeLessThan(10);
+      // childrenTotal should reflect the actual count (not just rendered)
+      expect(result.contentProperties!.childrenTotal).toBe(10);
+    });
+
+    it('should include aliases when present', async () => {
+      const rem = plugin.addTestRem('alias_read', 'Primary Name');
+      rem.setAliasesMock([['Alias One'], ['Alias Two']]);
+
+      const result = await adapter.readNote({ remId: 'alias_read' });
+      expect(result.aliases).toEqual(['Alias One', 'Alias Two']);
+    });
+
+    it('should omit aliases when none exist', async () => {
+      plugin.addTestRem('no_alias', 'No Aliases');
+
+      const result = await adapter.readNote({ remId: 'no_alias' });
+      expect(result.aliases).toBeUndefined();
+    });
+
+    it('should include type-aware delimiter in headline for concept with detail', async () => {
+      const rem = plugin.addTestRem('concept_hl', 'Term');
+      rem.type = RemType.CONCEPT;
+      rem.backText = ['Definition'];
+      rem.setPracticeDirectionMock('forward');
+
+      const result = await adapter.readNote({ remId: 'concept_hl' });
+      expect(result.headline).toBe('Term :: Definition');
+    });
+
+    it('should include type-aware delimiter in headline for descriptor with detail', async () => {
+      const rem = plugin.addTestRem('desc_hl', 'Property');
+      rem.type = RemType.DESCRIPTOR;
+      rem.backText = ['Value'];
+      rem.setPracticeDirectionMock('forward');
+
+      const result = await adapter.readNote({ remId: 'desc_hl' });
+      expect(result.headline).toBe('Property ;; Value');
+    });
+
+    it('should use >> delimiter for text type with detail', async () => {
+      const rem = plugin.addTestRem('text_hl', 'Question');
+      rem.backText = ['Answer'];
+      rem.setPracticeDirectionMock('forward');
+
+      const result = await adapter.readNote({ remId: 'text_hl' });
+      expect(result.headline).toBe('Question >> Answer');
+    });
+
+    it('should render child headlines with type-aware delimiters in markdown', async () => {
+      const parent = plugin.addTestRem('hl_parent', 'Parent');
+      const child = new MockRem('hl_child', '');
+      child.type = RemType.CONCEPT;
+      child.text = ['Term', { i: 's' }, 'Definition'] as unknown as string[];
+      await child.setParent(parent);
+
+      const result = await adapter.readNote({ remId: 'hl_parent' });
+      expect(result.content).toContain('Term :: Definition');
     });
   });
 
@@ -722,7 +1223,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.readNote({ remId: 'skip_test' });
       expect(result.title).toBe('before');
-      expect(result.detail).toBe('after');
+      expect(result.headline).toBe('before >> after');
     });
 
     it('should reveal cloze content as plain text', async () => {
@@ -794,40 +1295,40 @@ describe('RemAdapter', () => {
       expect(result.remType).toBe('dailyDocument');
     });
 
-    it('should include detail from backText', async () => {
+    it('should include backText in headline', async () => {
       const rem = plugin.addTestRem('detail_test', 'Front text');
       rem.backText = ['Back text explanation'];
       rem.setPracticeDirectionMock('forward');
 
       const result = await adapter.readNote({ remId: 'detail_test' });
       expect(result.title).toBe('Front text');
-      expect(result.detail).toBe('Back text explanation');
+      expect(result.headline).toBe('Front text >> Back text explanation');
     });
 
-    it('should split title/detail from delimiter when backText is unavailable', async () => {
+    it('should build headline from delimiter fallback when backText is unavailable', async () => {
       const rem = plugin.addTestRem('delimiter_detail_test', '');
       rem.text = ['Front text', { i: 's' }, 'Fallback detail'] as unknown as string[];
 
       const result = await adapter.readNote({ remId: 'delimiter_detail_test' });
       expect(result.title).toBe('Front text');
-      expect(result.detail).toBe('Fallback detail');
+      expect(result.headline).toBe('Front text >> Fallback detail');
     });
 
-    it('should prefer backText over delimiter right side when both exist', async () => {
+    it('should prefer backText over delimiter right side for headline', async () => {
       const rem = plugin.addTestRem('prefer_back_text_test', '');
       rem.text = ['Front text', { i: 's' }, 'inline detail'] as unknown as string[];
       rem.backText = ['canonical back detail'];
 
       const result = await adapter.readNote({ remId: 'prefer_back_text_test' });
       expect(result.title).toBe('Front text');
-      expect(result.detail).toBe('canonical back detail');
+      expect(result.headline).toBe('Front text >> canonical back detail');
     });
 
-    it('should omit detail when no backText', async () => {
+    it('should omit detail field from read output', async () => {
       plugin.addTestRem('no_detail_test', 'No back text');
 
       const result = await adapter.readNote({ remId: 'no_detail_test' });
-      expect(result.detail).toBeUndefined();
+      expect(result).not.toHaveProperty('detail');
     });
 
     it('should map forward card direction', async () => {
@@ -884,12 +1385,13 @@ describe('RemAdapter', () => {
 
       expect(item).toBeDefined();
       expect(item!.title).toBe('Concept Rem');
-      expect(item!.detail).toBe('explanation text');
+      expect(item!.headline).toBe('Concept Rem :: explanation text');
+      expect(item).not.toHaveProperty('detail');
       expect(item!.remType).toBe('concept');
       expect(item!.cardDirection).toBe('forward');
     });
 
-    it('should split title/detail in search from delimiter fallback', async () => {
+    it('should build search headline from delimiter fallback', async () => {
       const rem = plugin.addTestRem('search_delim_detail', '');
       rem.text = ['Concept Head', { i: 's' }, 'descriptor detail'] as unknown as string[];
 
@@ -898,7 +1400,8 @@ describe('RemAdapter', () => {
 
       expect(item).toBeDefined();
       expect(item!.title).toBe('Concept Head');
-      expect(item!.detail).toBe('descriptor detail');
+      expect(item!.headline).toBe('Concept Head >> descriptor detail');
+      expect(item).not.toHaveProperty('detail');
     });
   });
 

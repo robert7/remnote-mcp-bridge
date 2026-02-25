@@ -17,8 +17,14 @@ export interface BridgeResponse {
   error?: string;
 }
 
+export interface HelloMessage {
+  type: 'hello';
+  version: string;
+}
+
 export interface WebSocketClientConfig {
   url: string;
+  pluginVersion: string;
   maxReconnectAttempts?: number;
   initialReconnectDelay?: number;
   maxReconnectDelay?: number;
@@ -42,6 +48,7 @@ export class WebSocketClient {
   constructor(config: WebSocketClientConfig) {
     this.config = {
       url: config.url,
+      pluginVersion: config.pluginVersion,
       maxReconnectAttempts: config.maxReconnectAttempts ?? 10,
       initialReconnectDelay: config.initialReconnectDelay ?? 1000,
       maxReconnectDelay: config.maxReconnectDelay ?? 30000,
@@ -61,6 +68,19 @@ export class WebSocketClient {
     }
   }
 
+  private sendHello(): void {
+    const hello: HelloMessage = {
+      type: 'hello',
+      version: this.config.pluginVersion,
+    };
+    try {
+      this.ws?.send(JSON.stringify(hello));
+      this.log(`Sent hello (v${this.config.pluginVersion})`);
+    } catch (error) {
+      this.log(`Failed to send hello: ${error}`, 'warn');
+    }
+  }
+
   connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN || this.ws?.readyState === WebSocket.CONNECTING) {
       return;
@@ -77,6 +97,7 @@ export class WebSocketClient {
         this.log('Connected to MCP server');
         this.reconnectAttempts = 0;
         this.setStatus('connected');
+        this.sendHello();
       };
 
       this.ws.onmessage = async (event) => {
