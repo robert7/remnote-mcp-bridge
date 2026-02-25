@@ -2,7 +2,7 @@
  * Mock implementations for testing
  */
 import { vi } from 'vitest';
-import type { ReactRNPlugin, RichTextInterface, Rem } from '@remnote/plugin-sdk';
+import type { ReactRNPlugin, RichTextInterface, PluginRem } from '@remnote/plugin-sdk';
 import { RemType } from '@remnote/plugin-sdk';
 import { BridgeRequest } from '../../src/bridge/websocket-client';
 
@@ -63,7 +63,7 @@ export class MockWebSocket {
 /**
  * Mock Rem implementation
  */
-export class MockRem implements Partial<Rem> {
+export class MockRem implements Partial<PluginRem> {
   _id: string;
   text: RichTextInterface;
   backText?: RichTextInterface;
