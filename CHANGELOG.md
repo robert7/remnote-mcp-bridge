@@ -7,6 +7,11 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+
+- Clarified `setCustomCSS` troubleshooting wording: issue is currently observed in hot-reload development runs
+  (`npm run dev` / `./run-dev.sh`), and `./run-prod-build.sh` is the recommended production-style local validation path.
+
 ## [0.6.0] - 2026-02-25
 
 ### Added

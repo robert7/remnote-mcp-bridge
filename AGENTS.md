@@ -181,8 +181,10 @@ See `package.json` for complete dependency list.
 
 ## Common Issues
 
-- "Invalid event setCustomCSS" errors in development are cosmetic and don't affect functionality (won't appear in
-  production)
+- "Invalid event setCustomCSS" is currently observed in hot-reload development runs (`npm run dev` / `./run-dev.sh`)
+  and appears non-blocking.
+- For production-style local verification, run `./run-prod-build.sh` (no hot reload) and treat this as current
+  observed behavior, not a permanent guarantee.
 - Connection failures: Verify MCP server is running and WebSocket URL is correct
 - Widget not appearing: Check widget registration in `index.tsx` and RemNote's plugin settings
 - MCP server connection issues: Check MCP logs at `~/.claude/debug/mcp-*.log`

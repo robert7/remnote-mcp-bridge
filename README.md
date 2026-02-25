@@ -208,6 +208,9 @@ npm install
 # Run in development mode (hot reload)
 npm run dev
 
+# Run development helper script (same hot-reload workflow)
+./run-dev.sh
+
 # Run production bundle locally (no zip, no hot reload)
 ./run-prod-build.sh
 
@@ -237,9 +240,10 @@ npm run build
 
 **"Invalid event setCustomCSS" errors:**
 
-- Cosmetic errors from development mode
-- Don't affect functionality
-- Won't appear in production builds
+- Currently observed in hot-reload development runs (`npm run dev` or `./run-dev.sh`)
+- Appears non-blocking (bridge functionality continues after dismissing the overlay)
+- For production-style local verification, use `./run-prod-build.sh` (no hot reload)
+- Treat this as current observed behavior, not a permanent guarantee across SDK/runtime updates
 
 **Notes not appearing:**
 
