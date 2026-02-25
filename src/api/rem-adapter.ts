@@ -65,6 +65,8 @@ export interface SearchResultItem {
   remId: string;
   title: string;
   headline: string;
+  parentRemId?: string;
+  parentTitle?: string;
   aliases?: string[];
   remType: RemClassification;
   cardDirection?: CardDirection;
@@ -405,6 +407,34 @@ export class RemAdapter {
       if (text) results.push(text);
     }
     return results;
+  }
+
+  /**
+   * Resolve parent metadata for a Rem.
+   * Returns empty object for top-level rems.
+   */
+  private async getParentContext(rem: Rem): Promise<{
+    parentRemId?: string;
+    parentTitle?: string;
+  }> {
+    let parentRem: Rem | undefined;
+
+    if ('getParentRem' in rem && typeof rem.getParentRem === 'function') {
+      parentRem = await rem.getParentRem();
+    } else {
+      const parentId = (rem as unknown as { parent?: string | null }).parent;
+      if (parentId) {
+        parentRem = (await this.plugin.rem.findOne(parentId)) ?? undefined;
+      }
+    }
+
+    if (!parentRem) return {};
+
+    const { title: parentTitle } = await this.getTitleAndDetail(parentRem);
+    return {
+      parentRemId: parentRem._id,
+      parentTitle,
+    };
   }
 
   /**
@@ -806,14 +836,17 @@ export class RemAdapter {
       if (seen.has(rem._id)) continue;
       seen.add(rem._id);
 
-      const [{ title, detail }, remType, cardDirection, aliases] = await Promise.all([
-        this.getTitleAndDetail(rem),
-        this.classifyRem(rem),
-        rem.backText
-          ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
-          : Promise.resolve(undefined),
-        this.getAliases(rem),
-      ]);
+      const [{ title, detail }, remType, cardDirection, aliases, parentContext] = await Promise.all(
+        [
+          this.getTitleAndDetail(rem),
+          this.classifyRem(rem),
+          rem.backText
+            ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+            : Promise.resolve(undefined),
+          this.getAliases(rem),
+          this.getParentContext(rem),
+        ]
+      );
 
       const headline = this.formatHeadline(title, detail, remType);
 
@@ -843,6 +876,7 @@ export class RemAdapter {
         remId: rem._id,
         title,
         headline,
+        ...parentContext,
         ...(aliases.length > 0 ? { aliases } : {}),
         remType,
         ...(cardDirection ? { cardDirection } : {}),
@@ -881,6 +915,8 @@ export class RemAdapter {
     remId: string;
     title: string;
     headline: string;
+    parentRemId?: string;
+    parentTitle?: string;
     aliases?: string[];
     remType: RemClassification;
     cardDirection?: CardDirection;
@@ -898,13 +934,14 @@ export class RemAdapter {
       throw new Error(`Note not found: ${params.remId}`);
     }
 
-    const [{ title, detail }, remType, cardDirection, aliases] = await Promise.all([
+    const [{ title, detail }, remType, cardDirection, aliases, parentContext] = await Promise.all([
       this.getTitleAndDetail(rem),
       this.classifyRem(rem),
       rem.backText
         ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
         : Promise.resolve(undefined),
       this.getAliases(rem),
+      this.getParentContext(rem),
     ]);
 
     const headline = this.formatHeadline(title, detail, remType);
@@ -928,6 +965,7 @@ export class RemAdapter {
       remId: rem._id,
       title,
       headline,
+      ...parentContext,
       ...(aliases.length > 0 ? { aliases } : {}),
       remType,
       ...(cardDirection ? { cardDirection } : {}),

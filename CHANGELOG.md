@@ -22,6 +22,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - New `headline` field in both search and read outputs: display-oriented full line with type-aware delimiters
   (concept = `::`, descriptor = `;;`, others = `>>`).
 - New `aliases` field surfaces alternate names from `rem.getAliases()`.
+- New parent-context fields in `remnote_search` and `remnote_read_note`: `parentRemId` and `parentTitle`
+  (omitted for top-level Rems).
 - New `contentProperties` object reports `childrenRendered`, `childrenTotal` (capped at 2000), and `contentTruncated`.
 - New tuning parameters: `childLimit` (per-level child cap), `maxContentLength` (character limit for rendered content).
 
@@ -42,6 +44,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Search/read now reject unsupported `includeContent` values with explicit errors instead of silently omitting content.
 - Search/read content rendering now filters RemNote powerup/property metadata children (for example aliases/status UI
   rows) and trims trailing empty leaf text nodes to reduce internal/noise artifacts in markdown and structured output.
+- Root shell scripts now source `node-check.sh` at startup; `code-quality.sh` was updated accordingly and `build-plugin-zip.sh` now sources once at the beginning instead of late fallback sourcing.
 
 ### Documentation
 

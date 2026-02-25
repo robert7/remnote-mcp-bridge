@@ -225,6 +225,35 @@ describe('RemAdapter', () => {
       expect(result.results[0].headline).toBe('First note');
     });
 
+    it('should include parent context in search results when parent exists', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_parent_ctx', 'Parent context note');
+      const child = new MockRem('search_child_ctx', 'Child note');
+      await child.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([child]);
+
+      const result = await adapter.search({
+        query: 'Child',
+      });
+
+      expect(result.results[0].parentRemId).toBe('search_parent_ctx');
+      expect(result.results[0].parentTitle).toBe('Parent context note');
+    });
+
+    it('should omit parent context in search results for top-level rems', async () => {
+      plugin.clearTestData();
+      const rem = plugin.addTestRem('search_root_ctx', 'Top level');
+      plugin.search.search.mockResolvedValueOnce([rem]);
+
+      const result = await adapter.search({
+        query: 'Top',
+      });
+
+      expect(result.results[0].parentRemId).toBeUndefined();
+      expect(result.results[0].parentTitle).toBeUndefined();
+    });
+
     it('should include content when includeContent is markdown', async () => {
       const parentRem = plugin.addTestRem('parent_search', 'Parent');
       const childRem = new MockRem('child_search', 'Child content');
@@ -581,6 +610,30 @@ describe('RemAdapter', () => {
       expect(result.remId).toBe('read_test');
       expect(result.title).toBe('Test content');
       expect(result.headline).toBe('Test content');
+    });
+
+    it('should include parent context in read results when parent exists', async () => {
+      const parent = plugin.addTestRem('read_parent_ctx', 'Parent title');
+      const child = plugin.addTestRem('read_child_ctx', 'Child title');
+      await child.setParent(parent);
+
+      const result = await adapter.readNote({
+        remId: 'read_child_ctx',
+      });
+
+      expect(result.parentRemId).toBe('read_parent_ctx');
+      expect(result.parentTitle).toBe('Parent title');
+    });
+
+    it('should omit parent context in read results for top-level rems', async () => {
+      plugin.addTestRem('read_root_ctx', 'Root title');
+
+      const result = await adapter.readNote({
+        remId: 'read_root_ctx',
+      });
+
+      expect(result.parentRemId).toBeUndefined();
+      expect(result.parentTitle).toBeUndefined();
     });
 
     it('should throw error for non-existent note', async () => {

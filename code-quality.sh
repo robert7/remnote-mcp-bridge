@@ -2,6 +2,9 @@
 
 set -e
 
+# Ensure Node.js is available via PATH or NVM
+source "$(dirname "$0")/node-check.sh" || exit 1
+
 echo "Step 1/5: Type checking..."
 npm run typecheck
 

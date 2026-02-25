@@ -172,6 +172,10 @@ export class MockRem implements Partial<Rem> {
     return this.children;
   }
 
+  async getParentRem(): Promise<MockRem | undefined> {
+    return this.parent ?? undefined;
+  }
+
   async addTag(tagId: string): Promise<void> {
     if (!this.tags.includes(tagId)) {
       this.tags.push(tagId);

@@ -29,6 +29,19 @@ safe and predictable.
 - When no secondary/back content exists, `headline` equals `title`.
 - Present in both search and read outputs.
 
+### `parentRemId` (optional)
+
+- `parentRemId` is the Rem ID of the note's direct parent.
+- Present in both search and read outputs when the note has a parent.
+- Omitted for top-level Rems.
+
+### `parentTitle` (optional)
+
+- `parentTitle` is the rendered title/front text of the direct parent Rem.
+- Present in both search and read outputs when the note has a parent.
+- Omitted for top-level Rems.
+- `parentTitle` is a single-hop parent label, not a full ancestry path.
+
 ### `aliases` (optional)
 
 - `aliases` is an array of alternate names for the Rem, surfaced from `rem.getAliases()`.
@@ -133,9 +146,11 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 - Default `depth` for `readNote` changed from 3 to 5.
 - New required fields in output: `headline`.
 - New optional fields in output: `aliases`, `contentProperties`.
+- New optional fields in output: `parentRemId`, `parentTitle`.
 - `detail` field removed from `search` and `read_note` outputs; use `headline` for display-ready back-content rendering.
 
 ## Cross-repo compatibility notes
 
 - MCP server should advertise these response fields in tool `outputSchema` so AI clients can plan tool usage correctly.
+- MCP server should advertise `parentRemId` and `parentTitle` in search/read `outputSchema`.
 - CLI text output may summarize/abbreviate some fields for readability; JSON output should preserve full bridge data.
