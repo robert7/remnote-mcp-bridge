@@ -599,6 +599,98 @@ describe('RemAdapter', () => {
     });
   });
 
+  describe('searchByTag', () => {
+    it('should return nearest document ancestor for tagged rems', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_daily', 'daily', 'daily');
+      const doc = plugin.addTestRem('doc_parent', 'Parent Document');
+      doc.setIsDocumentMock(true);
+      const child = new MockRem('tagged_child_doc', 'Tagged child');
+      await child.setParent(doc);
+      tag.setTaggedRemsMock([child]);
+
+      const result = await adapter.searchByTag({ tag: 'daily' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('doc_parent');
+      expect(result.results[0].title).toBe('Parent Document');
+    });
+
+    it('should fallback to nearest non-document ancestor when no document exists', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_task', 'task', 'task');
+      const parent = plugin.addTestRem('non_doc_parent', 'Grouping Parent');
+      const child = new MockRem('tagged_child_non_doc', 'Tagged child');
+      await child.setParent(parent);
+      tag.setTaggedRemsMock([child]);
+
+      const result = await adapter.searchByTag({ tag: 'task' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('non_doc_parent');
+      expect(result.results[0].title).toBe('Grouping Parent');
+    });
+
+    it('should deduplicate resolved ancestors', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_dedupe', 'dedupe', 'dedupe');
+      const parent = plugin.addTestRem('dedupe_parent', 'Shared Parent');
+      const childA = new MockRem('tagged_child_a', 'Tagged child A');
+      const childB = new MockRem('tagged_child_b', 'Tagged child B');
+      await childA.setParent(parent);
+      await childB.setParent(parent);
+      tag.setTaggedRemsMock([childA, childB]);
+
+      const result = await adapter.searchByTag({ tag: 'dedupe' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('dedupe_parent');
+    });
+
+    it('should support hash-prefixed tag lookup', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_hash', 'daily', 'daily');
+      const note = plugin.addTestRem('hash_target', 'Hash Target');
+      tag.setTaggedRemsMock([note]);
+
+      const result = await adapter.searchByTag({ tag: '#daily' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('hash_target');
+    });
+
+    it('should support search content rendering modes', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_mode', 'mode', 'mode');
+      const parent = plugin.addTestRem('mode_parent', 'Mode Parent');
+      const child = new MockRem('mode_child', 'Mode Child');
+      await child.setParent(parent);
+      tag.setTaggedRemsMock([child]);
+
+      const markdown = await adapter.searchByTag({ tag: 'mode', includeContent: 'markdown' });
+      expect(markdown.results[0].content).toBeDefined();
+      expect(markdown.results[0].content).toContain('Mode Child');
+      expect(markdown.results[0].contentProperties).toBeDefined();
+
+      const structured = await adapter.searchByTag({ tag: 'mode', includeContent: 'structured' });
+      expect(structured.results[0].contentStructured).toEqual([
+        {
+          remId: 'mode_child',
+          title: 'Mode Child',
+          headline: 'Mode Child',
+          remType: 'text',
+        },
+      ]);
+      expect(structured.results[0].content).toBeUndefined();
+
+      const none = await adapter.searchByTag({ tag: 'mode', includeContent: 'none' });
+      expect(none.results[0].content).toBeUndefined();
+      expect(none.results[0].contentStructured).toBeUndefined();
+    });
+
+    it('should return empty results when tag is not found', async () => {
+      plugin.clearTestData();
+      const result = await adapter.searchByTag({ tag: 'missing-tag' });
+      expect(result.results).toEqual([]);
+    });
+  });
+
   describe('readNote', () => {
     it('should read a note by ID with headline', async () => {
       plugin.addTestRem('read_test', 'Test content');

@@ -62,6 +62,10 @@ Use a known Rem ID (for example `testRemId` from `create_note`).
 
 - [`development-execute-bridge-commands-06-append-journal.js`](./js/development-execute-bridge-commands-06-append-journal.js)
 
+### 7) `search_by_tag`
+
+- [`development-execute-bridge-commands-07-search-by-tag.js`](./js/development-execute-bridge-commands-07-search-by-tag.js)
+
 ## Troubleshooting
 
 - `Timed out waiting for result...`: Usually wrong console execution context. Re-select plugin iframe context.

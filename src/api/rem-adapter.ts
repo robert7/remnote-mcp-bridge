@@ -39,6 +39,15 @@ export interface SearchParams {
   maxContentLength?: number;
 }
 
+export interface SearchByTagParams {
+  tag: string;
+  limit?: number;
+  includeContent?: SearchIncludeContentMode;
+  depth?: number;
+  childLimit?: number;
+  maxContentLength?: number;
+}
+
 export interface ReadNoteParams {
   remId: string;
   depth?: number;
@@ -145,6 +154,13 @@ interface RenderResult {
   content: string;
   childrenRendered: number;
   truncatedByLength: boolean;
+}
+
+interface SearchContentOptions {
+  includeContent: SearchIncludeContentMode;
+  depth: number;
+  childLimit: number;
+  maxContentLength: number;
 }
 
 const SEARCH_INCLUDE_CONTENT_MODES: readonly SearchIncludeContentMode[] = [
@@ -410,13 +426,9 @@ export class RemAdapter {
   }
 
   /**
-   * Resolve parent metadata for a Rem.
-   * Returns empty object for top-level rems.
+   * Resolve the direct parent Rem for a Rem.
    */
-  private async getParentContext(rem: Rem): Promise<{
-    parentRemId?: string;
-    parentTitle?: string;
-  }> {
+  private async getParentRem(rem: Rem): Promise<Rem | undefined> {
     let parentRem: Rem | undefined;
 
     if ('getParentRem' in rem && typeof rem.getParentRem === 'function') {
@@ -428,6 +440,18 @@ export class RemAdapter {
       }
     }
 
+    return parentRem;
+  }
+
+  /**
+   * Resolve parent metadata for a Rem.
+   * Returns empty object for top-level rems.
+   */
+  private async getParentContext(rem: Rem): Promise<{
+    parentRemId?: string;
+    parentTitle?: string;
+  }> {
+    const parentRem = await this.getParentRem(rem);
     if (!parentRem) return {};
 
     const { title: parentTitle } = await this.getTitleAndDetail(parentRem);
@@ -655,6 +679,118 @@ export class RemAdapter {
     return Math.max(requestedLimit, Math.trunc(requestedLimit * SEARCH_OVERSAMPLE_FACTOR));
   }
 
+  private getSearchContentOptions(
+    params: Pick<SearchParams, 'includeContent' | 'depth' | 'childLimit' | 'maxContentLength'>
+  ): SearchContentOptions {
+    return {
+      includeContent: this.parseSearchIncludeContentMode(params.includeContent),
+      depth: params.depth ?? DEFAULT_SEARCH_DEPTH,
+      childLimit: params.childLimit ?? DEFAULT_SEARCH_CHILD_LIMIT,
+      maxContentLength: params.maxContentLength ?? DEFAULT_SEARCH_MAX_CONTENT_LENGTH,
+    };
+  }
+
+  private async buildSearchResultItem(
+    rem: Rem,
+    sourceIndex: number,
+    options: SearchContentOptions
+  ): Promise<SearchResultItem & { _sourceIndex: number }> {
+    const [{ title, detail }, remType, cardDirection, aliases, parentContext] = await Promise.all([
+      this.getTitleAndDetail(rem),
+      this.classifyRem(rem),
+      rem.backText
+        ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+        : Promise.resolve(undefined),
+      this.getAliases(rem),
+      this.getParentContext(rem),
+    ]);
+
+    const headline = this.formatHeadline(title, detail, remType);
+
+    let content: string | undefined;
+    let contentStructured: StructuredContentNode[] | undefined;
+    let contentProperties: ContentProperties | undefined;
+
+    if (options.includeContent === 'markdown') {
+      const renderResult = await this.renderContentMarkdown(
+        rem,
+        options.depth,
+        options.childLimit,
+        options.maxContentLength
+      );
+      if (renderResult.content) {
+        content = renderResult.content;
+        contentProperties = await this.buildContentProperties(rem, renderResult, options.depth);
+      }
+    } else if (options.includeContent === 'structured') {
+      const structuredChildren = await this.renderContentStructured(
+        rem,
+        options.depth,
+        options.childLimit
+      );
+      if (structuredChildren.length > 0) {
+        contentStructured = structuredChildren;
+      }
+    }
+
+    return {
+      remId: rem._id,
+      title,
+      headline,
+      ...parentContext,
+      ...(aliases.length > 0 ? { aliases } : {}),
+      remType,
+      ...(cardDirection ? { cardDirection } : {}),
+      ...(content ? { content } : {}),
+      ...(contentStructured ? { contentStructured } : {}),
+      ...(contentProperties ? { contentProperties } : {}),
+      _sourceIndex: sourceIndex,
+    };
+  }
+
+  private async resolveSearchByTagTarget(rem: Rem): Promise<Rem> {
+    const remType = await this.classifyRem(rem);
+    if (remType === 'document' || remType === 'dailyDocument') {
+      return rem;
+    }
+
+    let current: Rem = rem;
+    let nearestNonDocumentAncestor: Rem | undefined;
+    let parentRem = await this.getParentRem(current);
+    while (parentRem) {
+      if (!nearestNonDocumentAncestor) {
+        nearestNonDocumentAncestor = parentRem;
+      }
+
+      const parentType = await this.classifyRem(parentRem);
+      if (parentType === 'document' || parentType === 'dailyDocument') {
+        return parentRem;
+      }
+
+      current = parentRem;
+      parentRem = await this.getParentRem(current);
+    }
+
+    return nearestNonDocumentAncestor ?? rem;
+  }
+
+  private async findTagRem(tag: string): Promise<Rem | null> {
+    const candidates = [tag];
+    if (tag.startsWith('#') && tag.length > 1) {
+      candidates.push(tag.slice(1));
+    } else if (!tag.startsWith('#')) {
+      candidates.push(`#${tag}`);
+    }
+
+    const uniqueCandidates = [...new Set(candidates)];
+    for (const candidate of uniqueCandidates) {
+      const match = await this.plugin.rem.findByName([candidate], null);
+      if (match) return match;
+    }
+
+    return null;
+  }
+
   private async renderContentStructured(
     rem: Rem,
     depth: number,
@@ -815,10 +951,7 @@ export class RemAdapter {
    */
   async search(params: SearchParams): Promise<{ results: SearchResultItem[] }> {
     const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
-    const includeContent = this.parseSearchIncludeContentMode(params.includeContent);
-    const depth = params.depth ?? DEFAULT_SEARCH_DEPTH;
-    const childLimit = params.childLimit ?? DEFAULT_SEARCH_CHILD_LIMIT;
-    const maxContentLength = params.maxContentLength ?? DEFAULT_SEARCH_MAX_CONTENT_LENGTH;
+    const options = this.getSearchContentOptions(params);
     const sdkFetchLimit = this.getSearchSdkFetchLimit(limit);
 
     // Use the search API - query must be RichTextInterface
@@ -836,56 +969,7 @@ export class RemAdapter {
       if (seen.has(rem._id)) continue;
       seen.add(rem._id);
 
-      const [{ title, detail }, remType, cardDirection, aliases, parentContext] = await Promise.all(
-        [
-          this.getTitleAndDetail(rem),
-          this.classifyRem(rem),
-          rem.backText
-            ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
-            : Promise.resolve(undefined),
-          this.getAliases(rem),
-          this.getParentContext(rem),
-        ]
-      );
-
-      const headline = this.formatHeadline(title, detail, remType);
-
-      let content: string | undefined;
-      let contentStructured: StructuredContentNode[] | undefined;
-      let contentProperties: ContentProperties | undefined;
-
-      if (includeContent === 'markdown') {
-        const renderResult = await this.renderContentMarkdown(
-          rem,
-          depth,
-          childLimit,
-          maxContentLength
-        );
-        if (renderResult.content) {
-          content = renderResult.content;
-          contentProperties = await this.buildContentProperties(rem, renderResult, depth);
-        }
-      } else if (includeContent === 'structured') {
-        const structuredChildren = await this.renderContentStructured(rem, depth, childLimit);
-        if (structuredChildren.length > 0) {
-          contentStructured = structuredChildren;
-        }
-      }
-
-      const item: SearchResultItem & { _sourceIndex: number } = {
-        remId: rem._id,
-        title,
-        headline,
-        ...parentContext,
-        ...(aliases.length > 0 ? { aliases } : {}),
-        remType,
-        ...(cardDirection ? { cardDirection } : {}),
-        ...(content ? { content } : {}),
-        ...(contentStructured ? { contentStructured } : {}),
-        ...(contentProperties ? { contentProperties } : {}),
-        _sourceIndex: sourceIndex++,
-      };
-
+      const item = await this.buildSearchResultItem(rem, sourceIndex++, options);
       collected.push(item);
     }
 
@@ -902,6 +986,56 @@ export class RemAdapter {
       .map(({ _sourceIndex, ...rest }) => rest)
       .slice(0, limit);
 
+    return { results };
+  }
+
+  /**
+   * Search by tag and return ancestor context targets (document-first fallback).
+   *
+   * For each tagged Rem:
+   * 1) Return the nearest ancestor document/daily document when available.
+   * 2) Otherwise, return the nearest non-document ancestor.
+   * 3) If no ancestor exists, return the tagged Rem itself.
+   */
+  async searchByTag(params: SearchByTagParams): Promise<{ results: SearchResultItem[] }> {
+    const tag = params.tag.trim();
+    if (!tag) {
+      throw new Error('Tag cannot be empty');
+    }
+
+    const tagRem = await this.findTagRem(tag);
+    if (!tagRem) {
+      return { results: [] };
+    }
+
+    const options = this.getSearchContentOptions(params);
+    const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
+    const taggedRems =
+      'taggedRem' in tagRem && typeof tagRem.taggedRem === 'function'
+        ? await tagRem.taggedRem()
+        : [];
+
+    const collected: Array<SearchResultItem & { _sourceIndex: number }> = [];
+    const seenTargets = new Set<string>();
+    let sourceIndex = 0;
+
+    for (const taggedRem of taggedRems) {
+      const targetRem = await this.resolveSearchByTagTarget(taggedRem);
+      if (seenTargets.has(targetRem._id)) continue;
+      seenTargets.add(targetRem._id);
+
+      const item = await this.buildSearchResultItem(targetRem, sourceIndex++, options);
+      collected.push(item);
+    }
+
+    collected.sort((a, b) => {
+      const pa = TYPE_PRIORITY[a.remType ?? 'text'] ?? 5;
+      const pb = TYPE_PRIORITY[b.remType ?? 'text'] ?? 5;
+      if (pa !== pb) return pa - pb;
+      return a._sourceIndex - b._sourceIndex;
+    });
+
+    const results = collected.map(({ _sourceIndex, ...rest }) => rest).slice(0, limit);
     return { results };
   }
 

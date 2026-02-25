@@ -1,15 +1,15 @@
 # Bridge Search/Read Contract
 
-Purpose: define the behavior contract for `remnote_search` and `remnote_read_note` outputs so future contributors and
-agents can reason about expected results without reverse-engineering adapter code.
+Purpose: define the behavior contract for `remnote_search`, `remnote_search_by_tag`, and `remnote_read_note` outputs
+so future contributors and agents can reason about expected results without reverse-engineering adapter code.
 
 This document describes output semantics, not implementation details.
 
 ## Why this exists
 
-`remnote_search` and `remnote_read_note` are consumed by multiple clients (MCP server, CLI, and AI tools). Small
-changes to field semantics can break downstream behavior even when code still compiles. This contract keeps iterations
-safe and predictable.
+`remnote_search`, `remnote_search_by_tag`, and `remnote_read_note` are consumed by multiple clients (MCP server, CLI,
+and AI tools). Small changes to field semantics can break downstream behavior even when code still compiles. This
+contract keeps iterations safe and predictable.
 
 ## Output field semantics
 
@@ -129,6 +129,24 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 - Bridge search oversamples SDK requests (2x requested limit), deduplicates by `remId`, then trims back to requested
   `limit` to reduce underfilled unique result sets caused by duplicate SDK hits.
 
+## Search-by-tag behavior contract
+
+- `remnote_search_by_tag` accepts:
+  - `tag` (required)
+  - `limit` (default: 50)
+  - `includeContent` (`"none" | "markdown" | "structured"`, default: `"none"`)
+  - `depth` (default: 1)
+  - `childLimit` (default: 20)
+  - `maxContentLength` (default: 3000; markdown mode only)
+- Tag lookup accepts either `tag` or `#tag` input.
+- For each tagged match, bridge resolves the returned result target as:
+  1. nearest ancestor `document` / `dailyDocument` (preferred),
+  2. otherwise nearest non-document ancestor,
+  3. otherwise the tagged Rem itself (no ancestor case).
+- Output item fields and content rendering semantics match `remnote_search`.
+- Results are deduplicated by resolved target `remId`.
+- Results are sorted with the same type-priority ordering as `remnote_search`.
+
 ## Read behavior contract
 
 - Default `includeContent` for read is `"markdown"`.
@@ -153,4 +171,5 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - MCP server should advertise these response fields in tool `outputSchema` so AI clients can plan tool usage correctly.
 - MCP server should advertise `parentRemId` and `parentTitle` in search/read `outputSchema`.
+- MCP server should keep `remnote_search_by_tag` output schema aligned with `remnote_search`.
 - CLI text output may summarize/abbreviate some fields for readability; JSON output should preserve full bridge data.

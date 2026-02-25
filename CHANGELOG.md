@@ -19,6 +19,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - `remnote_search` supports `includeContent: "markdown"` to render child subtrees as indented markdown previews.
 - `remnote_search` now also supports `includeContent: "structured"` via `contentStructured` (child subtree with
   nested `remId`s and metadata for follow-up reads/navigation).
+- Added `search_by_tag` bridge action with `includeContent`/`depth`/`childLimit`/`maxContentLength` options, returning
+  resolved ancestor context targets (nearest document/daily document, otherwise nearest non-document ancestor).
 - New `headline` field in both search and read outputs: display-oriented full line with type-aware delimiters
   (concept = `::`, descriptor = `;;`, others = `>>`).
 - New `aliases` field surfaces alternate names from `rem.getAliases()`.
@@ -50,12 +52,15 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Updated `docs/reference/remnote/bridge-search-read-contract.md` with new fields (`headline`, `aliases`,
   `content`, `contentProperties`), rendering modes, parameter defaults, and breaking change summary.
+- Extended `docs/reference/remnote/bridge-search-read-contract.md` with `remnote_search_by_tag` contract semantics,
+  including ancestor-target resolution rules and tag input normalization (`tag`/`#tag`).
 - Extended search/read contract docs and DevTools execution guides for `search includeContent: "structured"` and the
   search oversample+dedupe+trim behavior.
 - Refined search/read contract docs for structured child rendering cleanup (`children` omitted when empty, internal
   property rows filtered, trailing empty leaf nodes trimmed).
 - Updated search/read contract docs to reflect `detail` field removal and search content preview default depth of 1.
 - Updated DevTools JS command snippets for `search` / `read_note` to use string `includeContent` and show all content-rendering parameters.
+- Added DevTools bridge execution snippet for `search_by_tag` in `docs/guides/development-execute-bridge-commands.md`.
 - Added a new beginner guide for installing the plugin via the RemNote marketplace with screenshot walkthrough.
 - Updated local-development plugin install guide to cross-link the marketplace guide and emphasize required companion
   MCP server / CLI setup (with install+demo links for both paths).
