@@ -8,7 +8,12 @@
 
 declare const __PLUGIN_VERSION__: string;
 
-import { renderWidget, usePlugin, useTracker, ReactRNPlugin } from '@remnote/plugin-sdk';
+import {
+  renderWidget,
+  usePlugin,
+  useTrackerPlugin as useTracker,
+  ReactRNPlugin,
+} from '@remnote/plugin-sdk';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { WebSocketClient, ConnectionStatus, BridgeRequest } from '../bridge/websocket-client';
 import { RemAdapter } from '../api/rem-adapter';

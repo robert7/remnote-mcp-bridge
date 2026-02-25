@@ -7,10 +7,20 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Upgraded `@remnote/plugin-sdk` from the previously locked `0.0.14` to pinned `0.0.46` and removed `latest` indirection
+  for deterministic installs.
+- Migrated bridge SDK usages for `0.0.46` compatibility:
+  - `Rem` type imports now use `PluginRem`
+  - widget settings hook import now uses `useTrackerPlugin` (aliased locally as `useTracker`)
+
 ### Documentation
 
 - Clarified `setCustomCSS` troubleshooting wording: issue is currently observed in hot-reload development runs
   (`npm run dev` / `./run-dev.sh`), and `./run-prod-build.sh` is the recommended production-style local validation path.
+- Updated `.agents/.execplans/setcustomcss-validation-and-mitigation.md` with unconditional SDK-upgrade path and
+  concrete implementation checklist/evidence.
 
 ## [0.6.0] - 2026-02-25
 

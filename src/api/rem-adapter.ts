@@ -6,7 +6,7 @@
 import {
   ReactRNPlugin,
   RichTextInterface,
-  Rem,
+  PluginRem,
   RemType,
   BuiltInPowerupCodes,
 } from '@remnote/plugin-sdk';
@@ -345,7 +345,7 @@ export class RemAdapter {
   /**
    * Classify a Rem into a semantic type using SDK metadata.
    */
-  private async classifyRem(rem: Rem): Promise<RemClassification> {
+  private async classifyRem(rem: PluginRem): Promise<RemClassification> {
     if (await rem.hasPowerup(BuiltInPowerupCodes.DailyDocument)) return 'dailyDocument';
     if (rem.type === RemType.CONCEPT) return 'concept';
     if (rem.type === RemType.DESCRIPTOR) return 'descriptor';
@@ -384,7 +384,7 @@ export class RemAdapter {
     );
   }
 
-  private async getTitleAndDetail(rem: Rem): Promise<{ title: string; detail?: string }> {
+  private async getTitleAndDetail(rem: PluginRem): Promise<{ title: string; detail?: string }> {
     const delimiterIndex = this.getCardDelimiterIndex(rem.text);
     if (delimiterIndex >= 0 && Array.isArray(rem.text)) {
       const front = await this.extractText(rem.text.slice(0, delimiterIndex) as RichTextInterface);
@@ -412,9 +412,9 @@ export class RemAdapter {
    * Get alternate names for a Rem via the SDK aliases API.
    * The SDK returns alias Rems whose `.text` contains the alias content.
    */
-  private async getAliases(rem: Rem): Promise<string[]> {
+  private async getAliases(rem: PluginRem): Promise<string[]> {
     if (!('getAliases' in rem) || typeof rem.getAliases !== 'function') return [];
-    const aliasRems: Rem[] = await rem.getAliases();
+    const aliasRems: PluginRem[] = await rem.getAliases();
     if (!aliasRems || aliasRems.length === 0) return [];
 
     const results: string[] = [];
@@ -428,8 +428,8 @@ export class RemAdapter {
   /**
    * Resolve the direct parent Rem for a Rem.
    */
-  private async getParentRem(rem: Rem): Promise<Rem | undefined> {
-    let parentRem: Rem | undefined;
+  private async getParentRem(rem: PluginRem): Promise<PluginRem | undefined> {
+    let parentRem: PluginRem | undefined;
 
     if ('getParentRem' in rem && typeof rem.getParentRem === 'function') {
       parentRem = await rem.getParentRem();
@@ -447,7 +447,7 @@ export class RemAdapter {
    * Resolve parent metadata for a Rem.
    * Returns empty object for top-level rems.
    */
-  private async getParentContext(rem: Rem): Promise<{
+  private async getParentContext(rem: PluginRem): Promise<{
     parentRemId?: string;
     parentTitle?: string;
   }> {
@@ -493,7 +493,7 @@ export class RemAdapter {
    * at the last complete line boundary before the limit.
    */
   private async renderContentMarkdown(
-    rem: Rem,
+    rem: PluginRem,
     depth: number,
     childLimit: number,
     maxContentLength: number,
@@ -558,7 +558,7 @@ export class RemAdapter {
   /**
    * Count total children in a Rem's subtree, capped at CHILDREN_TOTAL_CAP.
    */
-  private async countChildren(rem: Rem, depth: number): Promise<number> {
+  private async countChildren(rem: PluginRem, depth: number): Promise<number> {
     if (depth <= 0) return 0;
 
     const children = await rem.getChildrenRem();
@@ -580,7 +580,7 @@ export class RemAdapter {
    * Only counts total children when rendering was truncated (optimization).
    */
   private async buildContentProperties(
-    rem: Rem,
+    rem: PluginRem,
     renderResult: RenderResult,
     depth: number
   ): Promise<ContentProperties> {
@@ -595,7 +595,7 @@ export class RemAdapter {
     };
   }
 
-  private async isPowerupContentMetadataRem(rem: Rem): Promise<boolean> {
+  private async isPowerupContentMetadataRem(rem: PluginRem): Promise<boolean> {
     const checks = [
       'isPowerupProperty',
       'isPowerupPropertyListItem',
@@ -607,7 +607,7 @@ export class RemAdapter {
       const check = (rem as unknown as Record<string, unknown>)[checkName];
       if (typeof check !== 'function') continue;
       try {
-        if (await (check as (this: Rem) => Promise<boolean>).call(rem)) return true;
+        if (await (check as (this: PluginRem) => Promise<boolean>).call(rem)) return true;
       } catch {
         // Ignore SDK/mocking gaps and fall back to keeping the node visible.
       }
@@ -616,7 +616,7 @@ export class RemAdapter {
     return false;
   }
 
-  private async isEmptyTextLeaf(rem: Rem): Promise<boolean> {
+  private async isEmptyTextLeaf(rem: PluginRem): Promise<boolean> {
     const remType = await this.classifyRem(rem);
     if (remType !== 'text') return false;
 
@@ -627,11 +627,11 @@ export class RemAdapter {
     return !children || children.length === 0;
   }
 
-  private async getRenderableChildren(rem: Rem, childLimit: number): Promise<Rem[]> {
+  private async getRenderableChildren(rem: PluginRem, childLimit: number): Promise<PluginRem[]> {
     const children = await rem.getChildrenRem();
     if (!children || children.length === 0) return [];
 
-    const visibleChildren: Rem[] = [];
+    const visibleChildren: PluginRem[] = [];
     for (const child of children) {
       if (await this.isPowerupContentMetadataRem(child)) continue;
       visibleChildren.push(child);
@@ -691,7 +691,7 @@ export class RemAdapter {
   }
 
   private async buildSearchResultItem(
-    rem: Rem,
+    rem: PluginRem,
     sourceIndex: number,
     options: SearchContentOptions
   ): Promise<SearchResultItem & { _sourceIndex: number }> {
@@ -748,14 +748,14 @@ export class RemAdapter {
     };
   }
 
-  private async resolveSearchByTagTarget(rem: Rem): Promise<Rem> {
+  private async resolveSearchByTagTarget(rem: PluginRem): Promise<PluginRem> {
     const remType = await this.classifyRem(rem);
     if (remType === 'document' || remType === 'dailyDocument') {
       return rem;
     }
 
-    let current: Rem = rem;
-    let nearestNonDocumentAncestor: Rem | undefined;
+    let current: PluginRem = rem;
+    let nearestNonDocumentAncestor: PluginRem | undefined;
     let parentRem = await this.getParentRem(current);
     while (parentRem) {
       if (!nearestNonDocumentAncestor) {
@@ -774,7 +774,7 @@ export class RemAdapter {
     return nearestNonDocumentAncestor ?? rem;
   }
 
-  private async findTagRem(tag: string): Promise<Rem | null> {
+  private async findTagRem(tag: string): Promise<PluginRem | null> {
     const candidates = [tag];
     if (tag.startsWith('#') && tag.length > 1) {
       candidates.push(tag.slice(1));
@@ -792,7 +792,7 @@ export class RemAdapter {
   }
 
   private async renderContentStructured(
-    rem: Rem,
+    rem: PluginRem,
     depth: number,
     childLimit: number
   ): Promise<StructuredContentNode[]> {
@@ -838,7 +838,7 @@ export class RemAdapter {
   /**
    * Add a tag to a Rem (helper function)
    */
-  private async addTagToRem(rem: Rem, tagName: string): Promise<void> {
+  private async addTagToRem(rem: PluginRem, tagName: string): Promise<void> {
     const tagRem = await this.plugin.rem.findByName([tagName], null);
     if (tagRem) {
       await rem.addTag(tagRem._id);
