@@ -7,6 +7,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+
+- Rewrote `AGENTS.md` as a contract-first repo map and aligned it to the shared cross-repo section template; updated
+  current bridge action surface (`search_by_tag`, `get_status`, `hello` handshake), corrected key file paths, and
+  reduced duplicated implementation detail in favor of stable navigation links.
+
 ## [0.6.1] - 2026-02-25
 
 ### Changed
