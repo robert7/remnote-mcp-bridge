@@ -7,6 +7,11 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed bridge widget startup on RemNote runtimes that expose tracker hooks under different SDK names by adding
+  compatibility resolution for `useTrackerPlugin` and `useTracker`, with a safe fallback path.
+
 ### Documentation
 
 - Rewrote `AGENTS.md` as a contract-first repo map and aligned it to the shared cross-repo section template; updated

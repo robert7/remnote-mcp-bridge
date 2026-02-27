@@ -8,16 +8,12 @@
 
 declare const __PLUGIN_VERSION__: string;
 
-import {
-  renderWidget,
-  usePlugin,
-  useTrackerPlugin as useTracker,
-  ReactRNPlugin,
-} from '@remnote/plugin-sdk';
+import { renderWidget, usePlugin, ReactRNPlugin } from '@remnote/plugin-sdk';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { WebSocketClient, ConnectionStatus, BridgeRequest } from '../bridge/websocket-client';
 import { RemAdapter } from '../api/rem-adapter';
 import { registerDevToolsBridgeExecutor } from './devtools-bridge-executor';
+import { useCompatibleTracker as useTracker } from './tracker-compat';
 import {
   SETTING_AUTO_TAG_ENABLED,
   SETTING_AUTO_TAG,
