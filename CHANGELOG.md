@@ -7,6 +7,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-01
+
 ### Changed
 
 - `remnote_read_note` now accepts `includeContent: "structured"` and returns `contentStructured` child trees (with
