@@ -391,12 +391,24 @@ describe('Widget UI (mcp_bridge_popup.tsx)', () => {
   describe('Request handling', () => {
     it('should route create_note action correctly', () => {
       const action = 'create_note';
-      const payload = { title: 'Test', content: 'Content', tags: ['tag1'] };
+      const payload = { title: 'Test', content: 'Content', tags: ['tag1'], backText: 'Back', isConcept: true, isDescriptor: false };
 
       expect(action).toBe('create_note');
       expect(payload).toHaveProperty('title');
       expect(payload).toHaveProperty('content');
       expect(payload).toHaveProperty('tags');
+      expect(payload).toHaveProperty('backText');
+      expect(payload).toHaveProperty('isConcept');
+      expect(payload).toHaveProperty('isDescriptor');
+    });
+
+    it('should route create_note_md action correctly', () => {
+      const action = 'create_note_md';
+      const payload = { content: '- bullet', title: 'Test Title' };
+
+      expect(action).toBe('create_note_md');
+      expect(payload).toHaveProperty('content');
+      expect(payload).toHaveProperty('title');
     });
 
     it('should route append_journal action correctly', () => {

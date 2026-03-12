@@ -148,6 +148,122 @@ describe('RemAdapter', () => {
       const children = await rem!.getChildrenRem();
       expect(children).toHaveLength(2);
     });
+
+    it('should create a concept flashcard note with backText', async () => {
+      const result = await adapter.createNote({
+        title: 'Flashcard Front',
+        backText: 'Flashcard Back'
+      });
+      const rem = await plugin.rem.findOne(result.remId);
+      expect(rem).toBeDefined();
+      expect(rem!.backText).toEqual(['Flashcard Back']);
+      expect(rem!.type).toBe(RemType.CONCEPT);
+    });
+
+    it('should create a descriptor flashcard note with backText', async () => {
+      const result = await adapter.createNote({
+        title: 'Flashcard Front',
+        backText: 'Flashcard Back',
+        isDescriptor: true
+      });
+      const rem = await plugin.rem.findOne(result.remId);
+      expect(rem).toBeDefined();
+      expect(rem!.backText).toEqual(['Flashcard Back']);
+      expect(rem!.type).toBe(RemType.DESCRIPTOR);
+    });
+  });
+
+  describe('createNoteMd', () => {
+    it('should reject createNoteMd when write operations are disabled', async () => {
+      adapter.updateSettings({ acceptWriteOperations: false });
+
+      await expect(
+        adapter.createNoteMd({
+          content: '- Blocked note'
+        })
+      ).rejects.toThrow('Write operations are disabled in Automation Bridge settings');
+    });
+
+    it('should create a basic md note tree', async () => {
+      const result = await adapter.createNoteMd({
+        content: '- bullet 1\n  - bullet 2'
+      });
+
+      expect(result.remIds).toHaveLength(1);
+      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalledWith('- bullet 1\n  - bullet 2', '');
+    });
+
+    it('should create md tree attached to a new title rem', async () => {
+      const result = await adapter.createNoteMd({
+        title: 'Root Node',
+        content: [
+          `- Flashcard Tree`,
+          `  - Basic Forward >> Answer`,
+          `  - Basic Backward << Answer`,
+          `  - Two-way :: Answer`,
+          `  - Disabled >- Answer`,
+          `  - Cloze with {{hidden}}{({hint text})} text`,
+          `  - Concept :: Definition`,
+          `  - Concept Forward :> Definition`,
+          `  - Concept Backward :< Definition`,
+          `  - Descriptor ;; Detail`,
+          `  - Multi-line >>>`,
+          `    - Card Item 1`,
+          `    - Card Item 2`,
+          `  - List-answer >>1.`,
+          `    - First list item`,
+          `    - Second list item`,
+          `  - Multiple-choice >>A)`,
+          `    - Correct option`,
+          `    - Wrong option`
+        ].join('\n')
+
+      });
+
+      expect(result.remIds).toHaveLength(2);
+      expect(result.title).toBe('Root Node');
+      const rootRem = await plugin.rem.findOne(result.remIds[0]);
+      expect(rootRem!.text).toEqual(['Root Node']);
+      const expectedContent = [
+        `- Flashcard Tree`,
+        `  - Basic Forward >> Answer`,
+        `  - Basic Backward << Answer`,
+        `  - Two-way :: Answer`,
+        `  - Disabled >- Answer`,
+        `  - Cloze with {{hidden}}{({hint text})} text`,
+        `  - Concept :: Definition`,
+        `  - Concept Forward :> Definition`,
+        `  - Concept Backward :< Definition`,
+        `  - Descriptor ;; Detail`,
+        `  - Multi-line >>>`,
+        `    - Card Item 1`,
+        `    - Card Item 2`,
+        `  - List-answer >>1.`,
+        `    - First list item`,
+        `    - Second list item`,
+        `  - Multiple-choice >>A)`,
+        `    - Correct option`,
+        `    - Wrong option`
+      ].join('\n');
+      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalledWith(expectedContent, rootRem!._id);
+    });
+
+    it('should add tags to all created rems in a tree', async () => {
+      // Pre-add tag so we can check for its ID
+      const tagRem = plugin.addTestRem('tag_id_1', 'tree-tag', 'tree-tag');
+
+      const result = await adapter.createNoteMd({
+        title: 'Tagged Root',
+        content: '- Child 1\n- Child 2',
+        tags: ['tree-tag']
+      });
+
+      expect(result.remIds.length).toBeGreaterThan(1);
+      for (const id of result.remIds) {
+        const rem = await plugin.rem.findOne(id);
+        expect(rem!.getTags()).toContain(tagRem._id);
+      }
+    });
   });
 
   describe('appendJournal', () => {

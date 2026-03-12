@@ -2,7 +2,7 @@
  * Mock implementations for testing
  */
 import { vi } from 'vitest';
-import type { ReactRNPlugin, RichTextInterface, PluginRem } from '@remnote/plugin-sdk';
+import type { ReactRNPlugin, RichTextInterface, PluginRem, SetRemType } from '@remnote/plugin-sdk';
 import { RemType } from '@remnote/plugin-sdk';
 import { BridgeRequest } from '../../src/bridge/websocket-client';
 
@@ -170,6 +170,14 @@ export class MockRem implements Partial<PluginRem> {
     this.text = text;
   }
 
+  async setBackText(text: RichTextInterface): Promise<void> {
+    this.backText = text;
+  }
+
+  async setType(type: SetRemType | RemType): Promise<void> {
+    this.type = type as RemType;
+  }
+
   async setParent(parent: Rem | Rem): Promise<void> {
     this.parent = parent as MockRem;
     if (!this.parent.children.includes(this)) {
@@ -231,6 +239,17 @@ export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
     findByName: vi.fn(async (names: string[], _parent: unknown): Promise<MockRem | null> => {
       const name = names[0];
       return this.remsByName.get(name) || null;
+    }),
+
+    createTreeWithMarkdown: vi.fn(async (markdown: string, parentId?: string): Promise<MockRem[]> => {
+      const id = `rem_md_${this.nextId++}`;
+      const rem = new MockRem(id, 'Mock markdown node');
+      this.rems.set(id, rem);
+      if (parentId) {
+        const parent = this.rems.get(parentId);
+        if (parent) await rem.setParent(parent as never);
+      }
+      return [rem];
     }),
   };
 

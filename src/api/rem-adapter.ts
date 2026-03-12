@@ -8,6 +8,7 @@ import {
   RichTextInterface,
   PluginRem,
   RemType,
+  SetRemType,
   BuiltInPowerupCodes,
 } from '@remnote/plugin-sdk';
 import {
@@ -27,6 +28,16 @@ export type SearchIncludeContentMode = IncludeContentMode;
 export interface CreateNoteParams {
   title: string;
   content?: string;
+  parentId?: string;
+  tags?: string[];
+  backText?: string;
+  isConcept?: boolean;
+  isDescriptor?: boolean;
+}
+
+export interface CreateNoteMdParams {
+  content: string;
+  title?: string; // Optional: if provided, creates a parent Rem first
   parentId?: string;
   tags?: string[];
 }
@@ -891,9 +902,12 @@ export class RemAdapter {
   }
 
   /**
-   * Create a new note in RemNote
+   * Create a new note (Rem) in RemNote.
+   * If backText is provided, it automatically becomes a card (defaulting to Concept type).
    */
-  async createNote(params: CreateNoteParams): Promise<{ remId: string; title: string }> {
+  async createNote(
+    params: CreateNoteParams
+  ): Promise<{ remId: string; title: string; backText?: string }> {
     if (!this.settings.acceptWriteOperations) {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
@@ -903,8 +917,28 @@ export class RemAdapter {
       throw new Error('Failed to create Rem');
     }
 
-    // Set the title
+    // Set the title (front text)
     await rem.setText(this.textToRichText(params.title));
+
+    // Handle back text and card type
+    if (params.backText !== undefined) {
+      await rem.setBackText(this.textToRichText(params.backText));
+
+      // Default to Concept type if backText is present, unless Descriptor is explicitly requested.
+      if (params.isDescriptor) {
+        await rem.setType(SetRemType.DESCRIPTOR);
+      } else {
+        // defaults to concept card as requested by user
+        await rem.setType(SetRemType.CONCEPT);
+      }
+    } else {
+      // If no backText but types are explicitly requested
+      if (params.isConcept) {
+        await rem.setType(SetRemType.CONCEPT);
+      } else if (params.isDescriptor) {
+        await rem.setType(SetRemType.DESCRIPTOR);
+      }
+    }
 
     // Add content as child if provided
     if (params.content) {
@@ -935,7 +969,72 @@ export class RemAdapter {
       await this.addTagToRem(rem, tagName);
     }
 
-    return { remId: rem._id, title: params.title };
+    return {
+      remId: rem._id,
+      title: params.title,
+      ...(params.backText ? { backText: params.backText } : {}),
+    };
+  }
+
+  /**
+   * Create a hierarchical note from markdown using RemNote's native createTreeWithMarkdown.
+   * accept markdown with flashcard syntax
+   */
+  async createNoteMd(params: CreateNoteMdParams): Promise<{ remIds: string[]; title?: string }> {
+    if (!this.settings.acceptWriteOperations) {
+      throw new Error('Write operations are disabled in Automation Bridge settings');
+    }
+
+    let finalParentId = params.parentId || this.settings.defaultParentId;
+    let rootRemId: string | undefined;
+
+    // If title is provided, create a Rem first and use it as the insertion point
+    if (params.title) {
+      const rootRem = await this.plugin.rem.createRem();
+      if (rootRem) {
+        await rootRem.setText(this.textToRichText(params.title));
+        if (finalParentId) {
+          const parentRem = await this.plugin.rem.findOne(finalParentId);
+          if (parentRem) await rootRem.setParent(parentRem);
+        }
+
+        // Set the title Rem as the parent for the markdown tree
+        finalParentId = rootRem._id;
+        rootRemId = rootRem._id;
+      }
+    }
+
+    // Use native SDK method to create the tree
+    const createdRems = await this.plugin.rem.createTreeWithMarkdown(
+      params.content,
+      finalParentId
+    );
+
+    // Return the IDs of the created Rems line by line, with the ID of the title Rem listed first
+    const remIds = createdRems?.map((r) => r._id) || [];
+    if (rootRemId) {
+      remIds.unshift(rootRemId);
+    }
+
+    // Collect all tags to add
+    const allTags = [...(params.tags || [])];
+
+    // Add auto-tag if enabled
+    if (this.settings.autoTagEnabled && this.settings.autoTag) {
+      if (!allTags.includes(this.settings.autoTag)) allTags.push(this.settings.autoTag);
+    }
+
+    // Add all tags to created Rems
+    for (const remId of remIds) {
+      const rem = await this.plugin.rem.findOne(remId);
+      if (rem) {
+        for (const tagName of allTags) {
+          await this.addTagToRem(rem, tagName);
+        }
+      }
+    }
+
+    return { remIds, title: params.title };
   }
 
   /**

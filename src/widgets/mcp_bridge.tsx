@@ -168,12 +168,32 @@ function AutomationBridgeWidget() {
         case 'create_note': {
           const result = await adapter.createNote({
             title: payload.title as string,
+            backText: payload.backText as string,
             content: payload.content as string | undefined,
             parentId: payload.parentId as string | undefined,
             tags: payload.tags as string[] | undefined,
+            isConcept: payload.isConcept as boolean | undefined,
+            isDescriptor: payload.isDescriptor as boolean | undefined,
           });
-          setStats((prev) => ({ ...prev, created: prev.created + 1 }));
-          addHistoryEntry('create', result.title, result.remId);
+          if (payload.backText) {
+            setStats((prev: SessionStats) => ({ ...prev, created: prev.created + 1 }));
+            addHistoryEntry('create', `Card: ${result.title}`, result.remId);
+          } else {
+            setStats((prev: SessionStats) => ({ ...prev, created: prev.created + 1 }));
+            addHistoryEntry('create', result.title, result.remId);
+          }
+          return result;
+        }
+
+        case 'create_note_md': {
+          const result = await adapter.createNoteMd({
+            title: payload.title as string | undefined,
+            content: payload.content as string,
+            parentId: payload.parentId as string | undefined,
+            tags: payload.tags as string[] | undefined,
+          });
+          setStats((prev: SessionStats) => ({ ...prev, created: prev.created + 1 }));
+          addHistoryEntry('create', `MD: ${result.title || 'Markdown Tree'}`, result.remIds[0]);
           return result;
         }
 

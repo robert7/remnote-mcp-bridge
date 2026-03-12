@@ -7,6 +7,14 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Enhanced `create_note` bridge action to support flashcard creation.
+  - If `backText` is provided, the Rem automatically becomes a Concept card (default).
+  - Supports `isConcept` and `isDescriptor` flags for explicit type control.
+- Added `create_note_md` action using RemNote's native `createTreeWithMarkdown` for hierarchical creation.
+- Added Card statistics and history tracking to the bridge widget (triggered when `create_note` creates a card).
+
 ## [0.8.0] - 2026-03-04
 
 ### Added
