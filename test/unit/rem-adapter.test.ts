@@ -224,7 +224,45 @@ describe('RemAdapter', () => {
       expect(result.title).toBe('Root Node');
       const rootRem = await plugin.rem.findOne(result.remIds[0]);
       expect(rootRem!.text).toEqual(['Root Node']);
-      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalledWith('- bullet 1', rootRem!._id);
+      const expectedContent = [
+        `- Flashcard Tree`,
+        `  - Basic Forward >> Answer`,
+        `  - Basic Backward << Answer`,
+        `  - Two-way :: Answer`,
+        `  - Disabled >- Answer`,
+        `  - Cloze with {{hidden}}{({hint text})} text`,
+        `  - Concept :: Definition`,
+        `  - Concept Forward :> Definition`,
+        `  - Concept Backward :< Definition`,
+        `  - Descriptor ;; Detail`,
+        `  - Multi-line >>>`,
+        `    - Card Item 1`,
+        `    - Card Item 2`,
+        `  - List-answer >>1.`,
+        `    - First list item`,
+        `    - Second list item`,
+        `  - Multiple-choice >>A)`,
+        `    - Correct option`,
+        `    - Wrong option`
+      ].join('\n');
+      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalledWith(expectedContent, rootRem!._id);
+    });
+
+    it('should add tags to all created rems in a tree', async () => {
+      // Pre-add tag so we can check for its ID
+      const tagRem = plugin.addTestRem('tag_id_1', 'tree-tag', 'tree-tag');
+
+      const result = await adapter.createNoteMd({
+        title: 'Tagged Root',
+        content: '- Child 1\n- Child 2',
+        tags: ['tree-tag']
+      });
+
+      expect(result.remIds.length).toBeGreaterThan(1);
+      for (const id of result.remIds) {
+        const rem = await plugin.rem.findOne(id);
+        expect(rem!.getTags()).toContain(tagRem._id);
+      }
     });
   });
 

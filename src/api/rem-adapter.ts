@@ -988,7 +988,7 @@ export class RemAdapter {
     let finalParentId = params.parentId || this.settings.defaultParentId;
     let rootRemId: string | undefined;
 
-    // If title is provided, create a parent Rem first and use it as the insertion point
+    // If title is provided, create a Rem first and use it as the insertion point
     if (params.title) {
       const rootRem = await this.plugin.rem.createRem();
       if (rootRem) {
@@ -998,15 +998,7 @@ export class RemAdapter {
           if (parentRem) await rootRem.setParent(parentRem);
         }
 
-        // Apply tags to root
-        const allTags = [...(params.tags || [])];
-        if (this.settings.autoTagEnabled && this.settings.autoTag) {
-          if (!allTags.includes(this.settings.autoTag)) allTags.push(this.settings.autoTag);
-        }
-        for (const tagName of allTags) {
-          await this.addTagToRem(rootRem, tagName);
-        }
-
+        // Set the title Rem as the parent for the markdown tree
         finalParentId = rootRem._id;
         rootRemId = rootRem._id;
       }
@@ -1022,6 +1014,24 @@ export class RemAdapter {
     const remIds = createdRems?.map((r) => r._id) || [];
     if (rootRemId) {
       remIds.unshift(rootRemId);
+    }
+
+    // Collect all tags to add
+    const allTags = [...(params.tags || [])];
+
+    // Add auto-tag if enabled
+    if (this.settings.autoTagEnabled && this.settings.autoTag) {
+      if (!allTags.includes(this.settings.autoTag)) allTags.push(this.settings.autoTag);
+    }
+
+    // Add all tags to created Rems
+    for (const remId of remIds) {
+      const rem = await this.plugin.rem.findOne(remId);
+      if (rem) {
+        for (const tagName of allTags) {
+          await this.addTagToRem(rem, tagName);
+        }
+      }
     }
 
     return { remIds, title: params.title };
