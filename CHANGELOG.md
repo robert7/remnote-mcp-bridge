@@ -9,11 +9,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Enhanced `create_note` bridge action to support flashcard creation.
-  - If `backText` is provided, the Rem automatically becomes a Concept card (default).
-  - Supports `isConcept` and `isDescriptor` flags for explicit type control.
-- Added `create_note_md` action using RemNote's native `createTreeWithMarkdown` for hierarchical creation.
-- Added Card statistics and history tracking to the bridge widget (triggered when `create_note` creates a card).
+- Unified simple note and markdown tree creation into a single `create_note` action.
+  - Supports simple note creation (`title` only), hierarchical markdown import under a parent (`title` + `content`), and direct markdown import (`content` only).
+  - Flashcards could be created using RemNote markdown syntax (e.g., `::`, `;;`, `>>`) within the `content` or `title`.
+  - Refined tag application rules: tags are only applied to the created root or top-level Rems, not to all nested descendants.
 
 ## [0.8.0] - 2026-03-04
 
