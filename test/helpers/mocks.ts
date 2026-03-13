@@ -242,14 +242,51 @@ export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
     }),
 
     createTreeWithMarkdown: vi.fn(async (markdown: string, parentId?: string): Promise<MockRem[]> => {
-      const id = `rem_md_${this.nextId++}`;
-      const rem = new MockRem(id, 'Mock markdown node');
-      this.rems.set(id, rem);
-      if (parentId) {
-        const parent = this.rems.get(parentId);
-        if (parent) await rem.setParent(parent as never);
+      const allCreated: MockRem[] = [];
+
+      // Parse each non-empty line into (indentLevel, text)
+      const lines = markdown
+        .split('\n')
+        .map((line) => {
+          const stripped = line.replace(/^(\s*)[-*]?\s*/, '');
+          const indent = line.match(/^(\s*)/)?.[1].length ?? 0;
+          return { indent, text: stripped.trim() };
+        })
+        .filter((l) => l.text.length > 0);
+
+      if (lines.length === 0) return [];
+
+      // Normalize indents to levels (0, 1, 2, ...)
+      const indentValues = [...new Set(lines.map((l) => l.indent))].sort((a, b) => a - b);
+      const levelOf = (indent: number) => indentValues.indexOf(indent);
+
+      // Stack tracks [rem, level] from root to current path
+      const parentRem = parentId ? this.rems.get(parentId) ?? null : null;
+      const stack: Array<{ rem: MockRem; level: number }> = [];
+
+      for (const line of lines) {
+        const level = levelOf(line.indent);
+        const id = `rem_md_${this.nextId++}`;
+        const rem = new MockRem(id, line.text);
+        this.rems.set(id, rem);
+        allCreated.push(rem);
+
+        // Pop stack until we find the parent level
+        while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+          stack.pop();
+        }
+
+        if (stack.length === 0) {
+          // Top-level: attach to supplied parentRem
+          if (parentRem) await rem.setParent(parentRem as never);
+        } else {
+          await rem.setParent(stack[stack.length - 1].rem as never);
+        }
+
+        stack.push({ rem, level });
       }
-      return [rem];
+
+      return allCreated;
     }),
   };
 

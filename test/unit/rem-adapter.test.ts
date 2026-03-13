@@ -53,29 +53,33 @@ describe('RemAdapter', () => {
       ).rejects.toThrow('Write operations are disabled in Automation Bridge settings');
     });
 
+    it('should reject if no title and no content provided', async () => {
+      await expect(adapter.createNote({})).rejects.toThrow('create_note requires either title or content');
+    });
+
     it('should create a basic note', async () => {
       const result = await adapter.createNote({
         title: 'Test Note',
       });
 
-      expect(result.remId).toBeDefined();
-      expect(result.title).toBe('Test Note');
+      expect(result.remIds[0]).toBeDefined();
+      expect(result.titles[0]).toBe('Test Note');
       expect(plugin.rem.createRem).toHaveBeenCalled();
     });
 
-    it('should create a note with content', async () => {
+    it('should create a note with title and markdown content', async () => {
       const result = await adapter.createNote({
         title: 'Test Note',
         content: 'Line 1\nLine 2\nLine 3',
       });
 
-      expect(result.remId).toBeDefined();
-
-      const rem = await plugin.rem.findOne(result.remId);
+      expect(result.remIds[0]).toBeDefined();
+      const rem = await plugin.rem.findOne(result.remIds[0]);
       expect(rem).toBeDefined();
 
       const children = await rem!.getChildrenRem();
       expect(children).toHaveLength(3);
+      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalled();
     });
 
     it('should create a note with parent', async () => {
@@ -86,7 +90,7 @@ describe('RemAdapter', () => {
         parentId: 'parent_1',
       });
 
-      const childRem = await plugin.rem.findOne(result.remId);
+      const childRem = await plugin.rem.findOne(result.remIds[0]);
       expect(childRem).toBeDefined();
     });
 
@@ -96,7 +100,7 @@ describe('RemAdapter', () => {
         tags: ['tag1', 'tag2'],
       });
 
-      const rem = await plugin.rem.findOne(result.remId);
+      const rem = await plugin.rem.findOne(result.remIds[0]);
       expect(rem).toBeDefined();
       // Tags should have been added (auto-tag + custom tags)
       expect(rem!.getTags().length).toBeGreaterThan(0);
@@ -109,7 +113,7 @@ describe('RemAdapter', () => {
         title: 'Auto Tagged Note',
       });
 
-      const rem = await plugin.rem.findOne(result.remId);
+      const rem = await plugin.rem.findOne(result.remIds[0]);
       expect(rem).toBeDefined();
       expect(rem!.getTags().length).toBeGreaterThan(0);
     });
@@ -122,7 +126,7 @@ describe('RemAdapter', () => {
         tags: [],
       });
 
-      const rem = await plugin.rem.findOne(result.remId);
+      const rem = await plugin.rem.findOne(result.remIds[0]);
       expect(rem).toBeDefined();
       expect(rem!.getTags()).toHaveLength(0);
     });
@@ -135,7 +139,37 @@ describe('RemAdapter', () => {
         title: 'Note with default parent',
       });
 
-      expect(result.remId).toBeDefined();
+      expect(result.remIds[0]).toBeDefined();
+      const rem = await plugin.rem.findOne(result.remIds[0]);
+      expect(rem).toBeDefined();
+      const parentRem = await rem!.getParentRem();
+      expect(parentRem).toBeDefined();
+      expect(parentRem!._id).toBe('default_parent');
+    });
+
+
+    it('should create a note with only plain text content with default parent from settings', async () => {
+      plugin.addTestRem('default_parent', 'Default Parent');
+      adapter.updateSettings({ defaultParentId: 'default_parent' });
+      const result = await adapter.createNote({
+        content: 'Just some plain text',
+      });
+
+      expect(result.remIds[0]).toBeDefined();
+      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalled();
+    });
+
+
+    it('should create a note with only markdown content with default parent from settings', async () => {
+      plugin.addTestRem('default_parent', 'Default Parent');
+      adapter.updateSettings({ defaultParentId: 'default_parent' });
+      const result = await adapter.createNote({
+        content: 'Line 1\nLine 2\nLine 3',
+      });
+
+      expect(result.remIds).toBeDefined();
+      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalled();
+      expect(result.remIds).toHaveLength(3);
     });
 
     it('should skip empty content lines', async () => {
@@ -144,60 +178,18 @@ describe('RemAdapter', () => {
         content: 'Line 1\n\n\nLine 2\n  \n',
       });
 
-      const rem = await plugin.rem.findOne(result.remId);
-      const children = await rem!.getChildrenRem();
-      expect(children).toHaveLength(2);
-    });
-
-    it('should create a concept flashcard note with backText', async () => {
-      const result = await adapter.createNote({
-        title: 'Flashcard Front',
-        backText: 'Flashcard Back'
-      });
-      const rem = await plugin.rem.findOne(result.remId);
-      expect(rem).toBeDefined();
-      expect(rem!.backText).toEqual(['Flashcard Back']);
-      expect(rem!.type).toBe(RemType.CONCEPT);
-    });
-
-    it('should create a descriptor flashcard note with backText', async () => {
-      const result = await adapter.createNote({
-        title: 'Flashcard Front',
-        backText: 'Flashcard Back',
-        isDescriptor: true
-      });
-      const rem = await plugin.rem.findOne(result.remId);
-      expect(rem).toBeDefined();
-      expect(rem!.backText).toEqual(['Flashcard Back']);
-      expect(rem!.type).toBe(RemType.DESCRIPTOR);
-    });
-  });
-
-  describe('createNoteMd', () => {
-    it('should reject createNoteMd when write operations are disabled', async () => {
-      adapter.updateSettings({ acceptWriteOperations: false });
-
-      await expect(
-        adapter.createNoteMd({
-          content: '- Blocked note'
-        })
-      ).rejects.toThrow('Write operations are disabled in Automation Bridge settings');
-    });
-
-    it('should create a basic md note tree', async () => {
-      const result = await adapter.createNoteMd({
-        content: '- bullet 1\n  - bullet 2'
-      });
-
-      expect(result.remIds).toHaveLength(1);
-      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalledWith('- bullet 1\n  - bullet 2', '');
+      expect(result.remIds).toBeDefined();
+      expect(result.remIds).toHaveLength(3);
+      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalledWith(
+        'Line 1\nLine 2',
+        result.remIds[0]
+      );
     });
 
     it('should create md tree attached to a new title rem', async () => {
-      const result = await adapter.createNoteMd({
-        title: 'Root Node',
+      const result = await adapter.createNote({
+        title: 'Flashcard Tree',
         content: [
-          `- Flashcard Tree`,
           `  - Basic Forward >> Answer`,
           `  - Basic Backward << Answer`,
           `  - Two-way :: Answer`,
@@ -217,15 +209,14 @@ describe('RemAdapter', () => {
           `    - Correct option`,
           `    - Wrong option`
         ].join('\n')
-
       });
 
-      expect(result.remIds).toHaveLength(2);
-      expect(result.title).toBe('Root Node');
+      expect(result.remIds[0]).toBeDefined();
+      expect(result.remIds).toHaveLength(19);
+      expect(result.titles[0]).toBe('Flashcard Tree');
       const rootRem = await plugin.rem.findOne(result.remIds[0]);
-      expect(rootRem!.text).toEqual(['Root Node']);
+      expect(rootRem!.text).toEqual(['Flashcard Tree']);
       const expectedContent = [
-        `- Flashcard Tree`,
         `  - Basic Forward >> Answer`,
         `  - Basic Backward << Answer`,
         `  - Two-way :: Answer`,
@@ -248,21 +239,46 @@ describe('RemAdapter', () => {
       expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalledWith(expectedContent, rootRem!._id);
     });
 
-    it('should add tags to all created rems in a tree', async () => {
-      // Pre-add tag so we can check for its ID
+    it('should apply tags only to root when title exists', async () => {
       const tagRem = plugin.addTestRem('tag_id_1', 'tree-tag', 'tree-tag');
 
-      const result = await adapter.createNoteMd({
+      const result = await adapter.createNote({
         title: 'Tagged Root',
         content: '- Child 1\n- Child 2',
         tags: ['tree-tag']
       });
 
-      expect(result.remIds.length).toBeGreaterThan(1);
-      for (const id of result.remIds) {
+      const rootRemId = result.remIds[0];
+      const rootRem = await plugin.rem.findOne(rootRemId);
+      expect(rootRem!.getTags()).toContain(tagRem._id);
+
+      // Children should NOT have tags
+      const childIds = result.remIds!.filter(id => id !== rootRemId);
+      for (const id of childIds) {
         const rem = await plugin.rem.findOne(id);
-        expect(rem!.getTags()).toContain(tagRem._id);
+        expect(rem!.getTags()).not.toContain(tagRem._id);
       }
+    });
+
+    it('should apply tags only to top-level rems when title is missing', async () => {
+      const tagRem = plugin.addTestRem('tag_id_2', 'top-tag', 'top-tag');
+
+      // Setup mock: top-level rems have parentId = '' (root)
+      const top1 = plugin.addTestRem('top1', 'Top 1');
+      const top2 = plugin.addTestRem('top2', 'Top 2');
+      const nested = plugin.addTestRem('nested', 'Nested');
+      await nested.setParent(top1);
+
+      plugin.rem.createTreeWithMarkdown.mockResolvedValueOnce([top1, top2, nested]);
+
+      const result = await adapter.createNote({
+        content: '- Top 1\n  - Nested\n- Top 2',
+        tags: ['top-tag']
+      });
+
+      expect(top1.getTags()).toContain(tagRem._id);
+      expect(top2.getTags()).toContain(tagRem._id);
+      expect(nested.getTags()).not.toContain(tagRem._id);
     });
   });
 
