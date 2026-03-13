@@ -26,18 +26,8 @@ export type IncludeContentMode = 'none' | 'markdown' | 'structured';
 export type SearchIncludeContentMode = IncludeContentMode;
 
 export interface CreateNoteParams {
-  title: string;
+  title?: string;
   content?: string;
-  parentId?: string;
-  tags?: string[];
-  backText?: string;
-  isConcept?: boolean;
-  isDescriptor?: boolean;
-}
-
-export interface CreateNoteMdParams {
-  content: string;
-  title?: string; // Optional: if provided, creates a parent Rem first
   parentId?: string;
   tags?: string[];
 }
@@ -903,60 +893,20 @@ export class RemAdapter {
 
   /**
    * Create a new note (Rem) in RemNote.
-   * If backText is provided, it automatically becomes a card (defaulting to Concept type).
+   * Supports both simple note creation and hierarchical markdown import
+   * Supports flashcards create through RemNote markdown syntax.
    */
   async createNote(
     params: CreateNoteParams
-  ): Promise<{ remId: string; title: string; backText?: string }> {
+  ): Promise<{ remIds: string[]; titles: string[] }> {
     if (!this.settings.acceptWriteOperations) {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
 
-    const rem = await this.plugin.rem.createRem();
-    if (!rem) {
-      throw new Error('Failed to create Rem');
-    }
-
-    // Set the title (front text)
-    await rem.setText(this.textToRichText(params.title));
-
-    // Handle back text and card type
-    if (params.backText !== undefined) {
-      await rem.setBackText(this.textToRichText(params.backText));
-
-      // Default to Concept type if backText is present, unless Descriptor is explicitly requested.
-      if (params.isDescriptor) {
-        await rem.setType(SetRemType.DESCRIPTOR);
-      } else {
-        // defaults to concept card as requested by user
-        await rem.setType(SetRemType.CONCEPT);
-      }
-    } else {
-      // If no backText but types are explicitly requested
-      if (params.isConcept) {
-        await rem.setType(SetRemType.CONCEPT);
-      } else if (params.isDescriptor) {
-        await rem.setType(SetRemType.DESCRIPTOR);
-      }
-    }
-
-    // Add content as child if provided
-    if (params.content) {
-      await this.appendChildLines(rem, params.content);
-    }
-
-    // Set parent: use provided parentId, or default parent from settings, or root
     const parentId = params.parentId || this.settings.defaultParentId;
-    if (parentId) {
-      const parentRem = await this.plugin.rem.findOne(parentId);
-      if (parentRem) {
-        await rem.setParent(parentRem);
-      }
-    }
 
     // Collect all tags to add
     const allTags = [...(params.tags || [])];
-
     // Add auto-tag if enabled
     if (this.settings.autoTagEnabled && this.settings.autoTag) {
       if (!allTags.includes(this.settings.autoTag)) {
@@ -964,78 +914,77 @@ export class RemAdapter {
       }
     }
 
-    // Add all tags
-    for (const tagName of allTags) {
-      await this.addTagToRem(rem, tagName);
-    }
-
-    return {
-      remId: rem._id,
-      title: params.title,
-      ...(params.backText ? { backText: params.backText } : {}),
-    };
-  }
-
-  /**
-   * Create a hierarchical note from markdown using RemNote's native createTreeWithMarkdown.
-   * accept markdown with flashcard syntax
-   */
-  async createNoteMd(params: CreateNoteMdParams): Promise<{ remIds: string[]; title?: string }> {
-    if (!this.settings.acceptWriteOperations) {
-      throw new Error('Write operations are disabled in Automation Bridge settings');
-    }
-
-    let finalParentId = params.parentId || this.settings.defaultParentId;
-    let rootRemId: string | undefined;
-
-    // If title is provided, create a Rem first and use it as the insertion point
     if (params.title) {
-      const rootRem = await this.plugin.rem.createRem();
-      if (rootRem) {
-        await rootRem.setText(this.textToRichText(params.title));
-        if (finalParentId) {
-          const parentRem = await this.plugin.rem.findOne(finalParentId);
-          if (parentRem) await rootRem.setParent(parentRem);
-        }
+      const titleRem = await this.plugin.rem.createRem();
+      if (!titleRem) throw new Error('Failed to create Rem');
 
-        // Set the title Rem as the parent for the markdown tree
-        finalParentId = rootRem._id;
-        rootRemId = rootRem._id;
+      await titleRem.setText(this.textToRichText(params.title));
+
+      if (parentId) {
+        const parentRem = await this.plugin.rem.findOne(parentId);
+        if (parentRem) await titleRem.setParent(parentRem);
       }
-    }
 
-    // Use native SDK method to create the tree
-    const createdRems = await this.plugin.rem.createTreeWithMarkdown(
-      params.content,
-      finalParentId
-    );
+      // Apply tags only to the title Rem
+      for (const tagName of allTags) {
+        await this.addTagToRem(titleRem, tagName);
+      }
 
-    // Return the IDs of the created Rems line by line, with the ID of the title Rem listed first
-    const remIds = createdRems?.map((r) => r._id) || [];
-    if (rootRemId) {
-      remIds.unshift(rootRemId);
-    }
+      let remIds: string[] | undefined;
+      let titles: string[] | undefined;
+      if (params.content) {
+        // Import content as markdown tree under the title Rem
+        // Use native SDK method to create the tree
+        const createdRems = await this.plugin.rem.createTreeWithMarkdown(params.content, titleRem._id);
+        const childRemIds = createdRems?.map((r) => r._id) || [];
+        remIds = [titleRem._id, ...childRemIds];
 
-    // Collect all tags to add
-    const allTags = [...(params.tags || [])];
+        // Extract titles for all created Rems
+        const childTitles = await Promise.all(
+          (createdRems || []).map((r) => this.extractText(r.text))
+        );
+        titles = [params.title, ...childTitles];
+      }
 
-    // Add auto-tag if enabled
-    if (this.settings.autoTagEnabled && this.settings.autoTag) {
-      if (!allTags.includes(this.settings.autoTag)) allTags.push(this.settings.autoTag);
-    }
+      return { remIds, titles };
 
-    // Add all tags to created Rems
-    for (const remId of remIds) {
-      const rem = await this.plugin.rem.findOne(remId);
-      if (rem) {
-        for (const tagName of allTags) {
-          await this.addTagToRem(rem, tagName);
+    } else if (params.content) {
+      // Scenario 2: content only
+      // Use native SDK method to create the tree
+      const createdRems = await this.plugin.rem.createTreeWithMarkdown(params.content, parentId);
+      const remIds = createdRems?.map((r) => r._id) || [];
+
+      if (remIds.length === 0) {
+        throw new Error('No Rems created from markdown content');
+      }
+
+      // Apply tags only to direct children of parent rem
+      // RemNote SDK returns all created rems. Select any whose parent is parent rem.
+      for (const rem of createdRems || []) {
+        const parentOfRem = await this.getParentRem(rem);
+        if (
+          (!parentId && !parentOfRem) ||
+          (parentOfRem && parentOfRem._id === parentId) ||
+          (!parentOfRem && parentId === '')
+        ) {
+          for (const tagName of allTags) {
+            await this.addTagToRem(rem, tagName);
+          }
         }
       }
-    }
 
-    return { remIds, title: params.title };
+      // Extract titles for all created Rems
+      const titles = await Promise.all(
+        (createdRems || []).map((r) => this.extractText(r.text))
+      );
+
+      return { remIds, titles };
+
+    } else {
+      throw new Error('create_note requires either title or content');
+    }
   }
+
 
   /**
    * Append content to today's journal/daily document
