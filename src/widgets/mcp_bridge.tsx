@@ -183,7 +183,7 @@ function AutomationBridgeWidget() {
             timestamp: payload.timestamp as boolean | undefined,
           });
           setStats((prev) => ({ ...prev, journal: prev.journal + 1 }));
-          addHistoryEntry('journal', 'Journal entry', result.remId);
+          addHistoryEntry('journal', 'Journal entry', result.remIds);
           return result;
         }
 
@@ -249,7 +249,7 @@ function AutomationBridgeWidget() {
             removeTags: payload.removeTags as string[] | undefined,
           });
           setStats((prev) => ({ ...prev, updated: prev.updated + 1 }));
-          addHistoryEntry('update', (payload.title as string) || 'Note updated', result.remId);
+          addHistoryEntry('update', (payload.title as string) || 'Note updated', result.remIds);
           return result;
         }
 
