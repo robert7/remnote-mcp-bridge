@@ -878,6 +878,54 @@ export class RemAdapter {
   }
 
   /**
+   * Helper to create Rems from markdown with proper single-line handling.
+   * Dummy Root Strategy:
+   * Prepend a dummy root and indent all user content.
+   * This ensures that the SDK correctly parses structural markdown (esp. headers in first line)
+   * even on what was originally the first line.
+   */
+  private async createRemsFromMarkdown(markdown: string, parentId: string): Promise<PluginRem[]> {
+    if (!markdown.trim()) {
+      return [];
+    }
+
+    //
+    const indentedMarkdown = markdown
+      .split('\n')
+      .map((line) => '  ' + line)
+      .join('\n');
+    const dummyMarkdown = `dummy\n${indentedMarkdown}`;
+
+    // Create the tree with the dummy root.
+    // Use the same parentId so the dummy root is created where the content should eventually be.
+    const tree = (await this.plugin.rem.createTreeWithMarkdown(dummyMarkdown, parentId)) || [];
+
+    if (tree.length === 0) {
+      return [];
+    }
+
+    // The first element is our dummy root.
+    const dummyRoot = tree[0];
+    const directChildren = await dummyRoot.getChildrenRem();
+
+    // Move all direct children to the same parent as the dummy root.
+    // If parentId is null/undefined, they move to the top level (no parent).
+    const targetParent = await this.plugin.rem.findOne(parentId);
+
+    for (const child of directChildren) {
+      if (targetParent) {
+        await child.setParent(targetParent);
+      }
+    }
+
+    // Important: remove the dummy root.
+    await dummyRoot.remove();
+
+    // Return all created Rems (all descendants in the tree except the dummy root).
+    return tree.slice(1);
+  }
+
+  /**
    * Remove all direct child Rems under a parent Rem.
    */
   private async clearDirectChildren(rem: PluginRem): Promise<void> {
@@ -925,15 +973,8 @@ export class RemAdapter {
 
     // Scenario 1: title provided
     if (params.title) {
-      const titleRem = await this.plugin.rem.createRem();
+      const titleRem = await this.plugin.rem.createSingleRemWithMarkdown(params.title, parentId);
       if (!titleRem) throw new Error('Failed to create Rem');
-
-      await titleRem.setText(this.textToRichText(params.title!));
-
-      if (parentId) {
-        const parentRem = await this.plugin.rem.findOne(parentId);
-        if (parentRem) await titleRem.setParent(parentRem);
-      }
 
       // Apply tags only to the title Rem
       for (const tagName of allTags) {
@@ -947,12 +988,8 @@ export class RemAdapter {
         // Normalize content to collapse consecutive blank lines
         const normalizedContent = this.normalizeContent(params.content!);
         if (normalizedContent) {
-          // Use native SDK method to create the tree
-          const createdRems = await this.plugin.rem.createTreeWithMarkdown(
-            normalizedContent,
-            titleRem._id
-          );
-          if (createdRems) {
+          const createdRems = await this.createRemsFromMarkdown(normalizedContent, titleRem._id);
+          if (createdRems.length > 0) {
             const results = await this.extractRemResults(createdRems);
             remIds.push(...results.remIds);
             titles.push(...results.titles);
@@ -965,13 +1002,11 @@ export class RemAdapter {
       // Scenario 2: content only
       // Normalize content to collapse consecutive blank lines
       const normalizedContent = this.normalizeContent(params.content!);
-      console.log('Normalized content:', normalizedContent);
       if (!normalizedContent) {
         throw new Error('Content is empty');
       }
 
-      // Use native SDK method to create the tree
-      const createdRems = await this.plugin.rem.createTreeWithMarkdown(normalizedContent, parentId);
+      const createdRems = await this.createRemsFromMarkdown(normalizedContent, parentId);
 
       if (!createdRems || createdRems.length === 0) {
         throw new Error('No Rems created from markdown content');
@@ -1058,10 +1093,7 @@ export class RemAdapter {
     }
 
     // Create the tree under daily document or the prefix Rem
-    const createdRems = await this.plugin.rem.createTreeWithMarkdown(
-      normalizedContent,
-      parentRemId
-    );
+    const createdRems = await this.createRemsFromMarkdown(normalizedContent, parentRemId);
     const results = await this.extractRemResults(createdRems);
     remIds.push(...results.remIds);
     titles.push(...results.titles);
@@ -1273,7 +1305,8 @@ export class RemAdapter {
 
     // Update title if provided
     if (params.title !== undefined && params.title !== null) {
-      await rem.setText(this.textToRichText(params.title));
+      const richText = await this.plugin.richText.parseFromMarkdown(params.title);
+      await rem.setText(richText);
       titles.push(params.title);
       remIds.push(params.remId);
     }
@@ -1283,13 +1316,13 @@ export class RemAdapter {
       await this.clearDirectChildren(rem);
       const normalizedContent = this.normalizeContent(params.replaceContent);
       if (normalizedContent) {
-        const createdRems = await this.plugin.rem.createTreeWithMarkdown(
-          normalizedContent,
-          rem._id
-        );
-        const results = await this.extractRemResults(createdRems);
-        remIds.push(...results.remIds);
-        titles.push(...results.titles);
+        const createdRems = await this.createRemsFromMarkdown(normalizedContent, rem._id);
+
+        if (createdRems.length > 0) {
+          const results = await this.extractRemResults(createdRems);
+          remIds.push(...results.remIds);
+          titles.push(...results.titles);
+        }
       }
     }
 
@@ -1297,13 +1330,13 @@ export class RemAdapter {
     if (params.appendContent !== undefined) {
       const normalizedContent = this.normalizeContent(params.appendContent);
       if (normalizedContent) {
-        const createdRems = await this.plugin.rem.createTreeWithMarkdown(
-          normalizedContent,
-          rem._id
-        );
-        const results = await this.extractRemResults(createdRems);
-        remIds.push(...results.remIds);
-        titles.push(...results.titles);
+        const createdRems = await this.createRemsFromMarkdown(normalizedContent, rem._id);
+
+        if (createdRems.length > 0) {
+          const results = await this.extractRemResults(createdRems);
+          remIds.push(...results.remIds);
+          titles.push(...results.titles);
+        }
       }
     }
 
