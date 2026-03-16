@@ -183,7 +183,7 @@ function AutomationBridgeWidget() {
             timestamp: payload.timestamp as boolean | undefined,
           });
           setStats((prev) => ({ ...prev, journal: prev.journal + 1 }));
-          addHistoryEntry('journal', ['Journal entry'], result.remIds);
+          addHistoryEntry('journal', result.titles, result.remIds);
           return result;
         }
 

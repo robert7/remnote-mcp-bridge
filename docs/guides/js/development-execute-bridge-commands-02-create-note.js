@@ -6,4 +6,4 @@ const created = await runAndLog('create_note', {
 });
 
 // Save for follow-up commands
-const testRemId = created.remId;
+const testRemId = created.remIds[0];
