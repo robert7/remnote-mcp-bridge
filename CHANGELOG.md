@@ -20,6 +20,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Refined tag application rules with hierarchical markdown: tags are only applied to the created root or top-level Rems, not to all nested descendants.
 - Aligned bridge docs/tests with the unified `create_note` contract and added top-level content-only create coverage.
 
+### Documentation
+
+- Clarified the required startup order in `README.md` and setup guides, including that the right-sidebar Automation
+  Bridge panel must be opened to mount the bridge runtime and start connection attempts.
+- Documented the manual `Reconnect` fallback after automatic retry exhaustion.
+
 ## [0.8.0] - 2026-03-04
 
 ### Added

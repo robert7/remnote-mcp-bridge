@@ -53,6 +53,8 @@ Use the right sidebar in RemNote:
 1. Open the right sidebar if it is collapsed
 2. Click the **Automation Bridge** icon/button
 
+Opening this panel mounts the bridge runtime and starts its connection attempts.
+
 ![Open right sidebar and Automation Bridge panel](./images/install-plugin-marketplace-04-open-right-sidebar-and-mcp-panel.jpg)
 
 ## 5. Install and run the required companion component
@@ -70,7 +72,11 @@ Choose one path:
   - Install guide: [RemNote CLI Installation](https://github.com/robert7/remnote-cli/blob/main/docs/guides/installation.md)
   - Demo: [RemNote CLI Demo](https://github.com/robert7/remnote-cli/blob/main/docs/demo.md)
 
-Once your companion app is running, return to the plugin panel and confirm the status shows **Connected**.
+Best order: start the companion app first, then open or return to the plugin panel and confirm the status shows
+**Connected**.
+
+If you opened the plugin panel before the companion app was ready and the plugin stays disconnected, click
+**Reconnect** in the panel after the companion app is listening.
 
 ![Run companion component and confirm Connected status](./images/install-plugin-marketplace-05-run-companion-and-confirm-connected.jpg)
 

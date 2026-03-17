@@ -89,6 +89,9 @@ After plugin installation (either path), open the control panel in RemNote:
 - Look for the **Automation Bridge** icon in RemNote's right sidebar toolbar
 - Click the icon to open the Automation Bridge panel
 
+On current builds, opening this sidebar panel is not just UI. It mounts the bridge runtime and starts the WebSocket
+connection attempts. If the panel was never opened, the plugin will not connect to the MCP server or CLI daemon.
+
 Related setup/testing guide:
 
 - [Execute Bridge Commands from RemNote Developer Console (Screenshot Walkthrough)](docs/guides/development-execute-bridge-commands-screenshots.md)
@@ -112,6 +115,18 @@ repository](https://github.com/robert7/remnote-mcp-server)**.
 Alternative companion path (instead of MCP server): use **[RemNote CLI](https://github.com/robert7/remnote-cli)** for
 OpenClaw and other agentic workflows. Installation and demo links are included in both plugin install guides above.
 For version matching across bridge/server/CLI releases, use the [Bridge / Consumer Version Compatibility Guide](docs/guides/bridge-consumer-version-compatibility.md).
+
+### Recommended Startup Order
+
+1. Start the companion process first:
+   - `remnote-mcp-server` for the MCP path
+   - `remnote-cli daemon start` for the CLI path
+2. Open RemNote and open the Automation Bridge panel in the right sidebar.
+3. Confirm the panel shows **Connected** to `ws://127.0.0.1:3002` (or your custom port).
+4. Only then start using your MCP client or `remnote-cli` commands.
+
+If RemNote or the bridge panel was opened before the companion process was listening, the plugin will retry for a
+while and then stop. In that case, click **Reconnect** in the bridge panel after the companion process is ready.
 
 ## Important Limitations
 
@@ -162,13 +177,14 @@ The bridge control panel is accessible via the right sidebar:
 
 1. Locate the **Automation Bridge icon** in RemNote's right sidebar toolbar
 2. Click the icon to open the control panel in the sidebar
-3. The panel displays:
+3. Opening the panel mounts the bridge runtime and starts the WebSocket connection attempts
+4. The panel displays:
    - **Connection Status** - Current WebSocket connection state
    - **Session Statistics** - Counts of created notes, updates, journal entries, and searches
    - **Action History** - Last 10 bridge actions with timestamps
    - **Recent Logs** - Real-time activity log
-4. The panel remains visible while you navigate RemNote (non-blocking)
-5. Click the icon again to close the panel
+5. The panel remains visible while you navigate RemNote (non-blocking)
+6. Click the icon again to close the panel
 
 The sidebar panel provides persistent monitoring of bridge connection and activity while you work in RemNote.
 
