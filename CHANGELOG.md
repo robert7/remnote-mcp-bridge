@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic
 Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Added a plugin-level bridge runtime that starts on plugin activation, so the bridge can connect even when the
+  sidebar panel is never opened.
+- Added indefinite standby reconnect behavior after the initial retry burst, plus reconnect nudges on app focus,
+  tab visibility regain, and browser `online` events.
+
+### Changed
+
+- The sidebar panel is now a monitoring and manual-control UI over the background runtime rather than the owner of the
+  connection.
+
+### Documentation
+
+- Updated `README.md` and setup guides to reflect the new automatic background startup and standby reconnect behavior.
+- Documented that the sidebar panel is optional for connection setup and remains available for status and manual
+  `Reconnect`.
+
 ## [0.9.0] - 2026-03-17
 
 ### Added

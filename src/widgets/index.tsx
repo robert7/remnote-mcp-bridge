@@ -8,6 +8,7 @@
 import { declareIndexPlugin, type ReactRNPlugin, WidgetLocation } from '@remnote/plugin-sdk';
 import '../style.css';
 import { withLogPrefix } from '../logging';
+import { initializeBridgeRuntime, shutdownBridgeRuntime } from '../bridge/runtime';
 import {
   SETTING_ACCEPT_WRITE_OPERATIONS,
   SETTING_ACCEPT_REPLACE_OPERATION,
@@ -24,7 +25,7 @@ import {
   DEFAULT_WS_URL,
 } from '../settings';
 
-async function onActivate(plugin: ReactRNPlugin) {
+export async function activateAutomationBridge(plugin: ReactRNPlugin) {
   console.log(withLogPrefix('Plugin activating...'));
 
   // Register settings
@@ -86,6 +87,9 @@ async function onActivate(plugin: ReactRNPlugin) {
 
   console.log(withLogPrefix('Settings registered'));
 
+  await initializeBridgeRuntime(plugin);
+  console.log(withLogPrefix('Bridge runtime initialized'));
+
   // Register automation bridge widget in popup
   // NOT needed anymore, but kept here for reference, in case the sidebar implementation doesn't work
   // and we need to revert to the popup implementation
@@ -115,9 +119,10 @@ async function onActivate(plugin: ReactRNPlugin) {
   console.log(withLogPrefix('Widget registered in sidebar with icon'));
 }
 
-async function onDeactivate(plugin: ReactRNPlugin) {
+export async function deactivateAutomationBridge(plugin: ReactRNPlugin) {
   console.log(withLogPrefix('Plugin deactivating...'));
+  shutdownBridgeRuntime();
   await plugin.app.unregisterWidget('mcp_bridge', WidgetLocation.RightSidebar);
 }
 
-declareIndexPlugin(onActivate, onDeactivate);
+declareIndexPlugin(activateAutomationBridge, deactivateAutomationBridge);

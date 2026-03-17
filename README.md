@@ -84,13 +84,14 @@ Choose the install path that fits your use case:
 - **For developers / local plugin testing from source:**
   - [Run The Plugin Locally (Beginner Guide)](docs/guides/development-run-plugin-locally.md)
 
-After plugin installation (either path), open the control panel in RemNote:
+After plugin installation (either path), the bridge starts automatically when the plugin activates in RemNote. You can
+optionally open the control panel to inspect status and logs:
 
 - Look for the **Automation Bridge** icon in RemNote's right sidebar toolbar
 - Click the icon to open the Automation Bridge panel
 
-On current builds, opening this sidebar panel is not just UI. It mounts the bridge runtime and starts the WebSocket
-connection attempts. If the panel was never opened, the plugin will not connect to the MCP server or CLI daemon.
+The sidebar panel is no longer required to create the connection. It is a monitoring and manual-control surface for the
+background bridge runtime.
 
 Related setup/testing guide:
 
@@ -121,12 +122,13 @@ For version matching across bridge/server/CLI releases, use the [Bridge / Consum
 1. Start the companion process first:
    - `remnote-mcp-server` for the MCP path
    - `remnote-cli daemon start` for the CLI path
-2. Open RemNote and open the Automation Bridge panel in the right sidebar.
-3. Confirm the panel shows **Connected** to `ws://127.0.0.1:3002` (or your custom port).
+2. Open RemNote.
+3. Wait for the bridge to connect in the background, or open the Automation Bridge panel if you want to confirm status.
 4. Only then start using your MCP client or `remnote-cli` commands.
 
-If RemNote or the bridge panel was opened before the companion process was listening, the plugin will retry for a
-while and then stop. In that case, click **Reconnect** in the bridge panel after the companion process is ready.
+If RemNote was already open before the companion process started, the bridge will continue low-frequency background
+retries and should connect automatically once the companion process is listening. The **Reconnect** button in the
+sidebar panel remains available as a manual fast-path if you want an immediate retry.
 
 ## Important Limitations
 
@@ -177,14 +179,15 @@ The bridge control panel is accessible via the right sidebar:
 
 1. Locate the **Automation Bridge icon** in RemNote's right sidebar toolbar
 2. Click the icon to open the control panel in the sidebar
-3. Opening the panel mounts the bridge runtime and starts the WebSocket connection attempts
-4. The panel displays:
+3. The panel displays:
    - **Connection Status** - Current WebSocket connection state
    - **Session Statistics** - Counts of created notes, updates, journal entries, and searches
    - **Action History** - Last 10 bridge actions with timestamps
    - **Recent Logs** - Real-time activity log
-5. The panel remains visible while you navigate RemNote (non-blocking)
-6. Click the icon again to close the panel
+4. The panel remains visible while you navigate RemNote (non-blocking)
+5. Click the icon again to close the panel
+
+The connection logic runs in the background even when the panel is closed.
 
 The sidebar panel provides persistent monitoring of bridge connection and activity while you work in RemNote.
 

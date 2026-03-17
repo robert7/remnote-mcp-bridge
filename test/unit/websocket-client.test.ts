@@ -2,7 +2,7 @@
  * Tests for WebSocket Client
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { WebSocketClient, ConnectionStatus } from '../../src/bridge/websocket-client';
+import { WebSocketClient, ConnectionStatus, RetryPhase } from '../../src/bridge/websocket-client';
 import { MockWebSocket } from '../helpers/mocks';
 import { wait } from '../helpers/test-server';
 
@@ -12,11 +12,14 @@ global.WebSocket = MockWebSocket as unknown as typeof WebSocket;
 describe('WebSocketClient', () => {
   let client: WebSocketClient;
   let statusChanges: ConnectionStatus[] = [];
+  let retryPhases: RetryPhase[] = [];
   let logs: Array<{ message: string; level: string }> = [];
 
   beforeEach(() => {
     statusChanges = [];
+    retryPhases = [];
     logs = [];
+    MockWebSocket.reset();
 
     client = new WebSocketClient({
       url: 'ws://localhost:3002',
@@ -25,6 +28,7 @@ describe('WebSocketClient', () => {
       initialReconnectDelay: 100,
       maxReconnectDelay: 1000,
       onStatusChange: (status) => statusChanges.push(status),
+      onRetryPhaseChange: (phase) => retryPhases.push(phase),
       onLog: (message, level) => logs.push({ message, level }),
     });
   });
@@ -32,6 +36,8 @@ describe('WebSocketClient', () => {
   afterEach(() => {
     client.disconnect();
     vi.clearAllTimers();
+    vi.useRealTimers();
+    MockWebSocket.reset();
   });
 
   describe('Connection lifecycle', () => {
@@ -75,6 +81,13 @@ describe('WebSocketClient', () => {
       await wait(10);
 
       expect(client.getStatus()).toBe('connected');
+    });
+
+    it('should expose retry phase transitions', async () => {
+      client.connect();
+      await wait(10);
+
+      expect(client.getRetryPhase()).toBe('idle');
     });
   });
 
@@ -224,20 +237,27 @@ describe('WebSocketClient', () => {
       expect(reconnectLog).toBeDefined();
     });
 
-    it('should log max attempts when exceeded', () => {
-      // This tests the logic conceptually
-      const maxAttempts = 3;
-      let attempts = 0;
+    it('should enter standby reconnect mode after burst attempts are exhausted', async () => {
+      vi.useFakeTimers();
 
-      while (attempts < maxAttempts) {
-        attempts++;
+      client.connect();
+      await vi.runOnlyPendingTimersAsync();
+
+      MockWebSocket.mode = 'close';
+
+      const ws = (client as unknown as { ws: MockWebSocket }).ws;
+      ws.close(1006, 'Connection lost');
+
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await vi.runOnlyPendingTimersAsync();
       }
 
-      expect(attempts).toBe(maxAttempts);
-
-      // If we tried to reconnect again, we'd exceed max
-      const wouldExceed = attempts >= maxAttempts;
-      expect(wouldExceed).toBe(true);
+      expect(client.getRetryPhase()).toBe('standby');
+      expect(retryPhases).toContain('burst');
+      expect(retryPhases).toContain('standby');
+      expect(logs.some((log) => log.message.includes('Entering standby reconnect mode'))).toBe(
+        true
+      );
     });
 
     it('should not reconnect if shutdown is in progress', async () => {
@@ -263,6 +283,23 @@ describe('WebSocketClient', () => {
       expect(baseDelay).toBe(400);
       expect(delay).toBeGreaterThanOrEqual(400);
       expect(delay).toBeLessThanOrEqual(520); // 400 + (0.3 * 400)
+    });
+
+    it('should nudge reconnect immediately without resetting retry phase', async () => {
+      vi.useFakeTimers();
+
+      client.connect();
+      await vi.runOnlyPendingTimersAsync();
+
+      const firstSocket = (client as unknown as { ws: MockWebSocket }).ws;
+      firstSocket.close(1006, 'Connection lost');
+
+      MockWebSocket.mode = 'open';
+      client.nudgeReconnect('window focus');
+      await vi.runOnlyPendingTimersAsync();
+
+      expect(logs.some((log) => log.message.includes('Reconnect nudged: window focus'))).toBe(true);
+      expect(client.getStatus()).toBe('connected');
     });
   });
 

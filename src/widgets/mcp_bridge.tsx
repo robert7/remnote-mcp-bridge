@@ -1,18 +1,20 @@
 /**
  * Automation Bridge Widget
  *
- * Popup widget that displays connection status, stats, and logs.
- * Opens via command palette (Ctrl-K): "Open Automation Bridge Control Panel"
+ * Sidebar widget that displays connection status, stats, and logs.
  * Uses renderWidget() as required by RemNote plugin SDK.
  */
 
-declare const __PLUGIN_VERSION__: string;
-
-import { renderWidget, usePlugin, ReactRNPlugin } from '@remnote/plugin-sdk';
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { WebSocketClient, ConnectionStatus, BridgeRequest } from '../bridge/websocket-client';
-import { RemAdapter } from '../api/rem-adapter';
-import { registerDevToolsBridgeExecutor } from './devtools-bridge-executor';
+import { renderWidget, usePlugin } from '@remnote/plugin-sdk';
+import React, { useEffect, useState, useCallback } from 'react';
+import { ConnectionStatus, RetryPhase } from '../bridge/websocket-client';
+import {
+  getBridgeRuntime,
+  type BridgeRuntimeSnapshot,
+  type HistoryEntry,
+  type LogEntry,
+  type SessionStats,
+} from '../bridge/runtime';
 import { useCompatibleTracker as useTracker } from './tracker-compat';
 import {
   SETTING_ACCEPT_WRITE_OPERATIONS,
@@ -23,42 +25,27 @@ import {
   SETTING_JOURNAL_TIMESTAMP,
   SETTING_WS_URL,
   SETTING_DEFAULT_PARENT,
-  DEFAULT_ACCEPT_WRITE_OPERATIONS,
-  DEFAULT_ACCEPT_REPLACE_OPERATION,
-  DEFAULT_AUTO_TAG,
-  DEFAULT_JOURNAL_PREFIX,
   DEFAULT_WS_URL,
   AutomationBridgeSettings,
 } from '../settings';
 
-// Log entry type
-interface LogEntry {
-  timestamp: Date;
-  message: string;
-  level: 'info' | 'error' | 'warn' | 'success';
-}
-
-// Stats type
-interface SessionStats {
-  created: number;
-  updated: number;
-  journal: number;
-  searches: number;
-}
-
-// History entry type
-interface HistoryEntry {
-  timestamp: Date;
-  action: 'create' | 'update' | 'journal' | 'search' | 'read';
-  titles: string[];
-  remIds?: string[];
-}
-
 function AutomationBridgeWidget() {
-  // console.log(withLogPrefix('Widget rendering...'));
-
   const plugin = usePlugin();
+  const [snapshot, setSnapshot] = useState<BridgeRuntimeSnapshot>({
+    status: 'disconnected',
+    retryPhase: 'idle',
+    wsUrl: DEFAULT_WS_URL,
+    logs: [],
+    stats: {
+      created: 0,
+      updated: 0,
+      journal: 0,
+      searches: 0,
+    },
+    history: [],
+  });
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const [retryPhase, setRetryPhase] = useState<RetryPhase>('idle');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [stats, setStats] = useState<SessionStats>({
     created: 0,
@@ -67,8 +54,6 @@ function AutomationBridgeWidget() {
     searches: 0,
   });
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const wsClientRef = useRef<WebSocketClient | null>(null);
-  const remAdapterRef = useRef<RemAdapter | null>(null);
 
   // Read settings from RemNote
   const acceptWriteOperations = useTracker(
@@ -98,51 +83,59 @@ function AutomationBridgeWidget() {
     []
   );
 
-  // Add log helper
-  const addLog = useCallback((message: string, level: LogEntry['level'] = 'info') => {
-    setLogs((prev) => {
-      const newLogs = [...prev, { timestamp: new Date(), message, level }];
-      // Keep only last 50 logs
-      return newLogs.slice(-50);
+  useEffect(() => {
+    const runtime = getBridgeRuntime();
+    if (!runtime) {
+      return;
+    }
+
+    return runtime.subscribe((nextSnapshot) => {
+      setSnapshot(nextSnapshot);
+      setStatus(nextSnapshot.status);
+      setRetryPhase(nextSnapshot.retryPhase);
+      setLogs(nextSnapshot.logs);
+      setStats(nextSnapshot.stats);
+      setHistory(nextSnapshot.history);
     });
   }, []);
 
-  // Add history entry helper
-  const addHistoryEntry = useCallback(
-    (action: HistoryEntry['action'], titles: string[], remIds?: string[]) => {
-      setHistory((prev) => {
-        const newHistory = [{ timestamp: new Date(), action, titles, remIds }, ...prev];
-        // Keep only last 10 entries
-        return newHistory.slice(0, 10);
-      });
-    },
-    []
-  );
-
-  // Initialize RemAdapter with settings
   useEffect(() => {
-    if (plugin) {
-      const settings: AutomationBridgeSettings = {
-        acceptWriteOperations: acceptWriteOperations ?? DEFAULT_ACCEPT_WRITE_OPERATIONS,
-        acceptReplaceOperation: acceptReplaceOperation ?? DEFAULT_ACCEPT_REPLACE_OPERATION,
-        autoTagEnabled: autoTagEnabled ?? true,
-        autoTag: autoTag ?? DEFAULT_AUTO_TAG,
-        journalPrefix: journalPrefix ?? DEFAULT_JOURNAL_PREFIX,
-        journalTimestamp: journalTimestamp ?? true,
-        wsUrl: wsUrl ?? DEFAULT_WS_URL,
-        defaultParentId: defaultParentId ?? '',
-      };
+    const runtime = getBridgeRuntime();
+    if (!runtime) {
+      return;
+    }
 
-      if (remAdapterRef.current) {
-        remAdapterRef.current.updateSettings(settings);
-      } else {
-        remAdapterRef.current = new RemAdapter(plugin as ReactRNPlugin, settings);
-        addLog('RemAdapter initialized', 'success');
-      }
+    const settings: Partial<AutomationBridgeSettings> = {};
+
+    if (acceptWriteOperations !== undefined) {
+      settings.acceptWriteOperations = acceptWriteOperations;
+    }
+    if (acceptReplaceOperation !== undefined) {
+      settings.acceptReplaceOperation = acceptReplaceOperation;
+    }
+    if (autoTagEnabled !== undefined) {
+      settings.autoTagEnabled = autoTagEnabled;
+    }
+    if (autoTag !== undefined) {
+      settings.autoTag = autoTag;
+    }
+    if (journalPrefix !== undefined) {
+      settings.journalPrefix = journalPrefix;
+    }
+    if (journalTimestamp !== undefined) {
+      settings.journalTimestamp = journalTimestamp;
+    }
+    if (wsUrl !== undefined) {
+      settings.wsUrl = wsUrl;
+    }
+    if (defaultParentId !== undefined) {
+      settings.defaultParentId = defaultParentId;
+    }
+
+    if (Object.keys(settings).length > 0) {
+      runtime.updateSettings(settings);
     }
   }, [
-    plugin,
-    addLog,
     acceptWriteOperations,
     acceptReplaceOperation,
     autoTagEnabled,
@@ -153,179 +146,21 @@ function AutomationBridgeWidget() {
     defaultParentId,
   ]);
 
-  // Handle incoming requests from automation bridge consumers.
-  const handleRequest = useCallback(
-    async (request: BridgeRequest): Promise<unknown> => {
-      const adapter = remAdapterRef.current;
-      if (!adapter) {
-        throw new Error('RemAdapter not initialized');
-      }
-
-      const payload = request.payload;
-      addLog(`Received action: ${request.action}`, 'info');
-
-      switch (request.action) {
-        case 'create_note': {
-          const result = await adapter.createNote({
-            title: payload.title as string | undefined,
-            content: payload.content as string | undefined,
-            parentId: payload.parentId as string | undefined,
-            tags: payload.tags as string[] | undefined,
-          });
-          setStats((prev: SessionStats) => ({ ...prev, created: prev.created + 1 }));
-          addHistoryEntry('create', result.titles || 'Note', result.remIds);
-          return result;
-        }
-
-        case 'append_journal': {
-          const result = await adapter.appendJournal({
-            content: payload.content as string,
-            timestamp: payload.timestamp as boolean | undefined,
-          });
-          setStats((prev) => ({ ...prev, journal: prev.journal + 1 }));
-          addHistoryEntry('journal', result.titles, result.remIds);
-          return result;
-        }
-
-        case 'search': {
-          const result = await adapter.search({
-            query: payload.query as string,
-            limit: payload.limit as number | undefined,
-            includeContent: payload.includeContent as string | undefined as
-              | 'none'
-              | 'markdown'
-              | 'structured'
-              | undefined,
-            depth: payload.depth as number | undefined,
-            childLimit: payload.childLimit as number | undefined,
-            maxContentLength: payload.maxContentLength as number | undefined,
-          });
-          setStats((prev) => ({ ...prev, searches: prev.searches + 1 }));
-          addHistoryEntry('search', [`Search: "${payload.query}"`]);
-          return result;
-        }
-
-        case 'search_by_tag': {
-          const result = await adapter.searchByTag({
-            tag: payload.tag as string,
-            limit: payload.limit as number | undefined,
-            includeContent: payload.includeContent as string | undefined as
-              | 'none'
-              | 'markdown'
-              | 'structured'
-              | undefined,
-            depth: payload.depth as number | undefined,
-            childLimit: payload.childLimit as number | undefined,
-            maxContentLength: payload.maxContentLength as number | undefined,
-          });
-          setStats((prev) => ({ ...prev, searches: prev.searches + 1 }));
-          addHistoryEntry('search', [`Search by tag: "${payload.tag}"`]);
-          return result;
-        }
-
-        case 'read_note': {
-          const result = await adapter.readNote({
-            remId: payload.remId as string,
-            depth: payload.depth as number | undefined,
-            includeContent: payload.includeContent as string | undefined as
-              | 'none'
-              | 'markdown'
-              | 'structured'
-              | undefined,
-            childLimit: payload.childLimit as number | undefined,
-            maxContentLength: payload.maxContentLength as number | undefined,
-          });
-          addHistoryEntry('read', [result.title], [result.remId]);
-          return result;
-        }
-
-        case 'update_note': {
-          const result = await adapter.updateNote({
-            remId: payload.remId as string,
-            title: payload.title as string | undefined,
-            appendContent: payload.appendContent as string | undefined,
-            replaceContent: payload.replaceContent as string | undefined,
-            addTags: payload.addTags as string[] | undefined,
-            removeTags: payload.removeTags as string[] | undefined,
-          });
-          setStats((prev) => ({ ...prev, updated: prev.updated + 1 }));
-          addHistoryEntry('update', result.titles || 'Note updated', result.remIds);
-          return result;
-        }
-
-        case 'get_status':
-          return await adapter.getStatus();
-
-        default:
-          throw new Error(`Unknown action: ${request.action}`);
-      }
-    },
-    [addLog, addHistoryEntry]
-  );
-
-  // Initialize WebSocket connection with dynamic URL
-  const currentWsUrl = wsUrl ?? DEFAULT_WS_URL;
-
-  useEffect(() => {
-    // Disconnect existing client if URL changed
-    if (wsClientRef.current) {
-      wsClientRef.current.disconnect();
-    }
-
-    const client = new WebSocketClient({
-      url: currentWsUrl,
-      pluginVersion: __PLUGIN_VERSION__,
-      maxReconnectAttempts: 10,
-      initialReconnectDelay: 1000,
-      maxReconnectDelay: 30000,
-      onStatusChange: (newStatus) => {
-        setStatus(newStatus);
-      },
-      onLog: (message, level) => {
-        addLog(message, level);
-      },
-    });
-
-    client.setMessageHandler(handleRequest);
-    wsClientRef.current = client;
-
-    // Connect on mount
-    client.connect();
-    addLog(`Connecting to automation bridge server at ${currentWsUrl}...`, 'info');
-
-    // Cleanup on unmount
-    return () => {
-      client.disconnect();
-    };
-  }, [handleRequest, addLog, currentWsUrl]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const unregister = registerDevToolsBridgeExecutor({
-      target: window,
-      execute: handleRequest,
-      onLog: (message, level) => addLog(message, level ?? 'info'),
-    });
-
-    addLog('DevTools bridge executor ready (event-based)', 'info');
-
-    return unregister;
-  }, [handleRequest, addLog]);
-
   // Handle reconnect button
   const handleReconnect = useCallback(() => {
-    addLog('Manual reconnection requested', 'info');
-    wsClientRef.current?.reconnect();
-  }, [addLog]);
+    getBridgeRuntime()?.reconnect('sidebar button');
+  }, []);
 
   // Status colors and icons
   const statusConfig = {
     connected: { color: '#22c55e', bg: '#dcfce7', icon: '●', text: 'Connected' },
     connecting: { color: '#f59e0b', bg: '#fef3c7', icon: '◐', text: 'Connecting...' },
-    disconnected: { color: '#ef4444', bg: '#fee2e2', icon: '○', text: 'Disconnected' },
+    disconnected: {
+      color: retryPhase === 'standby' ? '#2563eb' : '#ef4444',
+      bg: retryPhase === 'standby' ? '#dbeafe' : '#fee2e2',
+      icon: retryPhase === 'standby' ? '◌' : '○',
+      text: retryPhase === 'standby' ? 'Waiting for server...' : 'Disconnected',
+    },
     error: { color: '#ef4444', bg: '#fee2e2', icon: '✕', text: 'Error' },
   };
 
@@ -403,6 +238,9 @@ function AutomationBridgeWidget() {
       >
         <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '8px', color: '#6b7280' }}>
           SESSION STATS
+        </div>
+        <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '8px' }}>
+          Server: {snapshot.wsUrl}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

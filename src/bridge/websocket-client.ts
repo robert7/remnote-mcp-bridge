@@ -4,6 +4,7 @@
  */
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
+export type RetryPhase = 'idle' | 'burst' | 'standby';
 
 export interface BridgeRequest {
   id: string;
@@ -28,7 +29,9 @@ export interface WebSocketClientConfig {
   maxReconnectAttempts?: number;
   initialReconnectDelay?: number;
   maxReconnectDelay?: number;
+  standbyReconnectDelay?: number;
   onStatusChange?: (status: ConnectionStatus) => void;
+  onRetryPhaseChange?: (phase: RetryPhase) => void;
   onLog?: (message: string, level: 'info' | 'warn' | 'error') => void;
 }
 
@@ -38,10 +41,14 @@ export class WebSocketClient {
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private messageHandler: ((request: BridgeRequest) => Promise<unknown>) | null = null;
   private status: ConnectionStatus = 'disconnected';
+  private retryPhase: RetryPhase = 'idle';
   private isShuttingDown = false;
 
-  private config: Required<Omit<WebSocketClientConfig, 'onStatusChange' | 'onLog'>> & {
+  private config: Required<
+    Omit<WebSocketClientConfig, 'onStatusChange' | 'onLog' | 'onRetryPhaseChange'>
+  > & {
     onStatusChange?: (status: ConnectionStatus) => void;
+    onRetryPhaseChange?: (phase: RetryPhase) => void;
     onLog?: (message: string, level: 'info' | 'warn' | 'error') => void;
   };
 
@@ -52,7 +59,9 @@ export class WebSocketClient {
       maxReconnectAttempts: config.maxReconnectAttempts ?? 10,
       initialReconnectDelay: config.initialReconnectDelay ?? 1000,
       maxReconnectDelay: config.maxReconnectDelay ?? 30000,
+      standbyReconnectDelay: config.standbyReconnectDelay ?? 10 * 60 * 1000,
       onStatusChange: config.onStatusChange,
+      onRetryPhaseChange: config.onRetryPhaseChange,
       onLog: config.onLog,
     };
   }
@@ -65,6 +74,13 @@ export class WebSocketClient {
     if (this.status !== status) {
       this.status = status;
       this.config.onStatusChange?.(status);
+    }
+  }
+
+  private setRetryPhase(phase: RetryPhase): void {
+    if (this.retryPhase !== phase) {
+      this.retryPhase = phase;
+      this.config.onRetryPhaseChange?.(phase);
     }
   }
 
@@ -96,6 +112,7 @@ export class WebSocketClient {
       this.ws.onopen = () => {
         this.log('Connected to automation bridge server');
         this.reconnectAttempts = 0;
+        this.setRetryPhase('idle');
         this.setStatus('connected');
         this.sendHello();
       };
@@ -166,25 +183,33 @@ export class WebSocketClient {
       return;
     }
 
-    if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-      this.log('Max reconnection attempts reached', 'error');
-      return;
+    let delay: number;
+
+    if (this.reconnectAttempts < this.config.maxReconnectAttempts) {
+      this.setRetryPhase('burst');
+      const baseDelay = Math.min(
+        this.config.initialReconnectDelay * Math.pow(2, this.reconnectAttempts),
+        this.config.maxReconnectDelay
+      );
+      const jitter = Math.random() * 0.3 * baseDelay;
+      delay = baseDelay + jitter;
+
+      this.reconnectAttempts++;
+      this.log(
+        `Reconnecting in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`
+      );
+    } else {
+      this.setRetryPhase('standby');
+      const jitter = Math.random() * 0.1 * this.config.standbyReconnectDelay;
+      delay = this.config.standbyReconnectDelay + jitter;
+      this.log(
+        `Entering standby reconnect mode; next retry in ${Math.round(delay / 1000)}s`,
+        'warn'
+      );
     }
 
-    // Exponential backoff with jitter
-    const baseDelay = Math.min(
-      this.config.initialReconnectDelay * Math.pow(2, this.reconnectAttempts),
-      this.config.maxReconnectDelay
-    );
-    const jitter = Math.random() * 0.3 * baseDelay;
-    const delay = baseDelay + jitter;
-
-    this.reconnectAttempts++;
-    this.log(
-      `Reconnecting in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`
-    );
-
     this.reconnectTimeout = setTimeout(() => {
+      this.reconnectTimeout = null;
       this.connect();
     }, delay);
   }
@@ -206,6 +231,7 @@ export class WebSocketClient {
       this.ws = null;
     }
 
+    this.setRetryPhase('idle');
     this.setStatus('disconnected');
   }
 
@@ -215,7 +241,25 @@ export class WebSocketClient {
     this.connect();
   }
 
+  nudgeReconnect(reason: string): void {
+    if (this.isShuttingDown || this.status === 'connected' || this.status === 'connecting') {
+      return;
+    }
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+
+    this.log(`Reconnect nudged: ${reason}`);
+    this.connect();
+  }
+
   getStatus(): ConnectionStatus {
     return this.status;
+  }
+
+  getRetryPhase(): RetryPhase {
+    return this.retryPhase;
   }
 }

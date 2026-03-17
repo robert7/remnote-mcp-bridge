@@ -14,6 +14,8 @@ export class MockWebSocket {
   static OPEN = 1;
   static CLOSING = 2;
   static CLOSED = 3;
+  static instances: MockWebSocket[] = [];
+  static mode: 'open' | 'close' | 'hang' = 'open';
 
   readyState = MockWebSocket.CONNECTING;
   url: string;
@@ -26,11 +28,22 @@ export class MockWebSocket {
 
   constructor(url: string) {
     this.url = url;
-    // Simulate async connection
-    setTimeout(() => {
-      this.readyState = MockWebSocket.OPEN;
-      this.onopen?.(new Event('open'));
-    }, 0);
+    MockWebSocket.instances.push(this);
+
+    if (MockWebSocket.mode === 'open') {
+      setTimeout(() => {
+        this.readyState = MockWebSocket.OPEN;
+        this.onopen?.(new Event('open'));
+      }, 0);
+      return;
+    }
+
+    if (MockWebSocket.mode === 'close') {
+      setTimeout(() => {
+        this.readyState = MockWebSocket.CLOSED;
+        this.onclose?.(new CloseEvent('close', { code: 1006, reason: 'Mock connection failure' }));
+      }, 0);
+    }
   }
 
   send(data: string): void {
@@ -57,6 +70,11 @@ export class MockWebSocket {
   simulateError(): void {
     const event = new Event('error');
     this.onerror?.(event);
+  }
+
+  static reset(): void {
+    MockWebSocket.instances = [];
+    MockWebSocket.mode = 'open';
   }
 }
 

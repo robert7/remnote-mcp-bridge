@@ -99,7 +99,8 @@ Use RemNote's right sidebar:
 - Keep the sidebar pinned/open while testing
 - Open **Automation Bridge (OpenClaw, CLI, MCP...)**
 
-Opening this panel mounts the bridge runtime and starts its connection attempts.
+This panel is optional for connection setup. The bridge runtime starts automatically when the plugin activates, and the
+panel is mainly for status, logs, and manual reconnect while testing.
 
 ![Open plugin sidebar panel](./images/run-plugin-locally-07-open-plugin-sidebar-panel.jpg)
 
@@ -118,10 +119,11 @@ Choose one path:
   - Install guide: [RemNote CLI Installation](https://github.com/robert7/remnote-cli/blob/main/docs/guides/installation.md)
   - Demo: [RemNote CLI Demo](https://github.com/robert7/remnote-cli/blob/main/docs/demo.md)
 
-Best order: start the companion component first, then open the bridge sidebar panel and verify it connects.
+Best order: start the companion component first, then open RemNote. The bridge should connect automatically in the
+background. Open the bridge sidebar panel if you want to verify status and inspect logs.
 
-If the panel was already open before the companion component was ready and the bridge remains disconnected, click
-**Reconnect** in the panel after the companion component is listening.
+If RemNote was already open before the companion component was ready, the bridge should still connect automatically once
+the companion component starts. Click **Reconnect** in the panel only if you want an immediate retry.
 
 ## Common troubleshooting
 

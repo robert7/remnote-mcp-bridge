@@ -17,7 +17,10 @@ import {
   DEFAULT_JOURNAL_PREFIX,
   DEFAULT_WS_URL,
   AutomationBridgeSettings,
+  getDefaultAutomationBridgeSettings,
+  readAutomationBridgeSettings,
 } from '../../src/settings';
+import { MockRemNotePlugin } from '../helpers/mocks';
 
 describe('Settings', () => {
   describe('Setting IDs', () => {
@@ -130,6 +133,46 @@ describe('Settings', () => {
       expect(settings.journalPrefix).toBe('[AI]');
       expect(settings.wsUrl).toBe('ws://custom.host:9999');
       expect(settings.defaultParentId).toBe('custom_parent_id');
+    });
+  });
+
+  describe('Settings helpers', () => {
+    it('should build the default settings object', () => {
+      expect(getDefaultAutomationBridgeSettings()).toEqual({
+        acceptWriteOperations: true,
+        acceptReplaceOperation: false,
+        autoTagEnabled: true,
+        autoTag: '',
+        journalPrefix: '',
+        journalTimestamp: true,
+        wsUrl: 'ws://127.0.0.1:3002',
+        defaultParentId: '',
+      });
+    });
+
+    it('should read persisted settings from the plugin', async () => {
+      const plugin = new MockRemNotePlugin();
+      plugin.setTestSetting(SETTING_ACCEPT_WRITE_OPERATIONS, false);
+      plugin.setTestSetting(SETTING_ACCEPT_REPLACE_OPERATION, true);
+      plugin.setTestSetting(SETTING_AUTO_TAG_ENABLED, false);
+      plugin.setTestSetting(SETTING_AUTO_TAG, 'Robot');
+      plugin.setTestSetting(SETTING_JOURNAL_PREFIX, '[AI]');
+      plugin.setTestSetting(SETTING_JOURNAL_TIMESTAMP, false);
+      plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:4555');
+      plugin.setTestSetting(SETTING_DEFAULT_PARENT, 'parent-123');
+
+      const settings = await readAutomationBridgeSettings(plugin as unknown as never);
+
+      expect(settings).toEqual({
+        acceptWriteOperations: false,
+        acceptReplaceOperation: true,
+        autoTagEnabled: false,
+        autoTag: 'Robot',
+        journalPrefix: '[AI]',
+        journalTimestamp: false,
+        wsUrl: 'ws://127.0.0.1:4555',
+        defaultParentId: 'parent-123',
+      });
     });
   });
 });
