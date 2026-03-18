@@ -69,6 +69,7 @@ connection point that both companion apps can target:
 ## Data Privacy
 
 The bridge itself only talks to a local WebSocket companion process (default: `ws://127.0.0.1:3002`).
+Connection direction is **Bridge Plugin -> Companion App**, not the other way around.
 
 Supported data flows:
 
@@ -81,6 +82,11 @@ What this means in practice:
 - Any external sharing happens in the chosen companion path, not in the bridge plugin itself
 - For the MCP path, your AI assistant only sees the data forwarded through your local MCP server setup
 - For the CLI path, data stays within your local CLI/daemon workflow unless your own scripts or agents forward it
+
+Why this works that way: RemNote plugins do not have a hosted backend API, so the bridge must connect outward from the
+RemNote frontend plugin to the local companion process. See the [Connection Lifecycle
+Guide](docs/guides/connection-lifecycle.md) and the official RemNote [Backend Plugins](https://plugins.remnote.com/advanced/backend_plugins)
+page.
 
 For MCP-path security details, see the [RemNote MCP Server Security
 Model](https://github.com/robert7/remnote-mcp-server/blob/main/docs/architecture.md#security-model) documentation.

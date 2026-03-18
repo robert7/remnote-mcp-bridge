@@ -16,6 +16,29 @@ status means.
 The right-sidebar Automation Bridge panel is optional. It is now a monitoring and manual-control surface, not the thing
 that creates the connection.
 
+## Why The Bridge Connects Outward
+
+The connection direction is:
+
+```text
+RemNote UI + Bridge Plugin -> WebSocket Companion App <- MCP clients / CLI commands
+```
+
+This can feel backwards at first because many people expect the companion app to connect into RemNote.
+
+The reason is a RemNote platform constraint: RemNote plugins do not have a hosted backend API. RemNote explicitly
+recommends frontend-plugin-based approaches instead of relying on a backend plugin API. See the official RemNote docs:
+[Backend Plugins](https://plugins.remnote.com/advanced/backend_plugins).
+
+So in this project:
+
+- the bridge plugin is the WebSocket client
+- the MCP server or CLI daemon is the WebSocket server
+- MCP clients and CLI commands talk to the companion app, not directly to RemNote
+
+That is why startup order matters: the bridge always tries to connect outward from RemNote to the configured companion
+process.
+
 ## Recommended Startup Order
 
 1. Start the companion process first.

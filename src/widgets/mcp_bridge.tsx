@@ -305,10 +305,20 @@ function AutomationBridgeWidget() {
           </div>
         )}
         <div style={{ display: 'grid', gap: '4px', fontSize: '11px', color: '#4b5563' }}>
-          <div>Server: {snapshot.wsUrl}</div>
+          <div>
+            {connectionUi.directionLabel}: {snapshot.wsUrl}
+          </div>
+          <div>
+            The bridge plugin initiates this connection outward from RemNote to the local companion
+            app.
+          </div>
           {connectionUi.nextRetryLabel && <div>{connectionUi.nextRetryLabel}</div>}
           {connectionUi.lastConnectedLabel && <div>{connectionUi.lastConnectedLabel}</div>}
           {connectionUi.lastDisconnectLabel && <div>{connectionUi.lastDisconnectLabel}</div>}
+          <div>
+            RemNote plugins do not have a hosted backend API, so the bridge connects outward
+            instead.
+          </div>
           {connectionUi.hint && <div>{connectionUi.hint}</div>}
         </div>
       </div>

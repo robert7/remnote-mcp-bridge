@@ -21,6 +21,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Added scoped runtime/widget console tracing for connection lifecycle and runtime-widget synchronization debugging.
 - Improved the sidebar connection UI to show retry phase, next scheduled retry, last disconnect context, and clearer
   reconnect guidance when the companion process is unavailable.
+- Clarified in the bridge UI that the WebSocket connection is initiated by the RemNote bridge plugin toward the local
+  companion app, not vice versa.
 
 ### Fixed
 
@@ -34,6 +36,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   `Reconnect`.
 - Added a focused connection lifecycle guide covering startup order, burst vs. standby retry behavior, and what can
   trigger faster reconnects.
+- Documented why the bridge connects outward from RemNote, including a link to RemNote's official backend-plugin
+  limitation docs.
 - Reframed `README.md` around two first-class companion paths, giving `remnote-mcp-server` and `remnote-cli` equal
   weight in the overview, privacy, installation, and architecture sections.
 

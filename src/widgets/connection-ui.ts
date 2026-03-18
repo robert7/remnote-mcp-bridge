@@ -8,6 +8,7 @@ export interface ConnectionUiState {
     text: string;
   };
   summary: string;
+  directionLabel: string;
   phaseLabel?: string;
   nextRetryLabel?: string;
   hint?: string;
@@ -63,6 +64,7 @@ export function buildConnectionUiState(
         text: 'Connected',
       },
       summary: 'Bridge is ready for MCP or CLI requests.',
+      directionLabel: 'Bridge -> Companion app',
       phaseLabel: 'Live connection',
       lastConnectedLabel,
     };
@@ -77,6 +79,7 @@ export function buildConnectionUiState(
         text: 'Connecting',
       },
       summary: 'Trying to reach the companion process now.',
+      directionLabel: 'Bridge -> Companion app',
       phaseLabel:
         snapshot.retryPhase === 'standby'
           ? 'Wake-up reconnect'
@@ -100,6 +103,7 @@ export function buildConnectionUiState(
         text: 'Retrying',
       },
       summary: 'Quick reconnect window is active.',
+      directionLabel: 'Bridge -> Companion app',
       phaseLabel: `Burst retry ${Math.min(snapshot.reconnectAttempts, snapshot.maxReconnectAttempts)}/${snapshot.maxReconnectAttempts}`,
       nextRetryLabel,
       hint: 'Reconnect Now skips the wait and tries immediately.',
@@ -116,6 +120,7 @@ export function buildConnectionUiState(
         text: 'Waiting for server',
       },
       summary: 'The companion process is not available right now.',
+      directionLabel: 'Bridge -> Companion app',
       phaseLabel: 'Standby reconnect',
       nextRetryLabel,
       hint: 'It will also retry sooner if RemNote regains focus, becomes visible, or comes back online.',
@@ -132,6 +137,7 @@ export function buildConnectionUiState(
       text: 'Disconnected',
     },
     summary: 'Bridge is not currently connected.',
+    directionLabel: 'Bridge -> Companion app',
     hint: 'Use Reconnect Now after confirming the companion process is already listening.',
     lastDisconnectLabel,
     lastConnectedLabel,
