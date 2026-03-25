@@ -319,13 +319,16 @@ documentation](https://github.com/robert7/remnote-mcp-server#troubleshooting)**.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome, but pull requests in this repo are expected to follow the shared bridge/server/CLI process.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Read the [Pull Request Guide](docs/guides/pull-request-guide.md) before opening or updating a PR.
+
+In particular:
+
+- update all relevant documentation
+- update tests and extend integration coverage when the external surface changes
+- keep `remnote-mcp-server` and `remnote-cli` in parity when protocol or shared functionality changes
+- merge the latest target `master` into your source branch before opening or updating the PR
 
 ## License
 
@@ -333,6 +336,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- [RemNote](https://remnote.com) for the amazing PKM tool
+- [RemNote](https://remnote.com) for the amazing Personal Knowledge Management tool
 - [Anthropic](https://anthropic.com) for Claude and the MCP protocol
 - The RemNote plugin community for inspiration

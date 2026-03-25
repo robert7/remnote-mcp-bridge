@@ -7,6 +7,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Documentation
+
+- Added a dedicated pull request guide covering required docs, tests, cross-repo parity, integration-test updates, and target-branch sync expectations.
+- Replaced the minimal GitHub pull request template with a checklist-driven template that points contributors to the canonical guide.
+- Updated `README.md` contributing guidance to reference the new pull request process.
+
 ## [0.10.2] - 2026-03-25
 
 ### Added
