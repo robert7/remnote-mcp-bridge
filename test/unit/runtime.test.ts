@@ -6,7 +6,7 @@ import {
   type BridgeRuntime,
   MAX_HISTORY,
 } from '../../src/bridge/runtime';
-import { MockRemNotePlugin, MockWebSocket } from '../helpers/mocks';
+import { MockRem, MockRemNotePlugin, MockWebSocket } from '../helpers/mocks';
 import {
   DEVTOOLS_EXECUTE_EVENT,
   DEVTOOLS_RESULT_EVENT,
@@ -106,6 +106,56 @@ describe('Bridge runtime', () => {
     expect(
       snapshot.logs.some((entry) => entry.message.includes('DevTools execute: create_note'))
     ).toBe(true);
+  });
+
+  it('handles read_table action via devtools request', async () => {
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+
+    // Set up a mock table with properties and tagged rems
+    const tableRem = plugin.addTestRem('table_1', 'TestTable', 'TestTable');
+    // Add property as a child of the table
+    const propertyRem = new MockRem('prop_1', 'Name');
+    propertyRem.setIsPropertyMock(true);
+    propertyRem.setPropertyTypeMock('text');
+    await propertyRem.setParent(tableRem as never);
+
+    // Set up tagged rows
+    const taggedRow = plugin.addTestRem('row_1', 'Row 1');
+    taggedRow.setTagPropertyValueMock('prop_1', ['Value 1']);
+    tableRem.setTaggedRemsMock([taggedRow]);
+
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await wait(10);
+
+    const resultPromise = new Promise<DevToolsResultDetail>((resolve) => {
+      window.addEventListener(
+        DEVTOOLS_RESULT_EVENT,
+        (event) => resolve((event as CustomEvent<DevToolsResultDetail>).detail),
+        { once: true }
+      );
+    });
+
+    window.dispatchEvent(
+      new CustomEvent(DEVTOOLS_EXECUTE_EVENT, {
+        detail: {
+          id: 'devtools-read-table',
+          action: 'read_table',
+          payload: {
+            tableTitle: 'TestTable',
+            limit: 10,
+            offset: 0,
+          },
+        },
+      })
+    );
+
+    const result = await resultPromise;
+    const snapshot = runtime.getSnapshot();
+
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe('read_table');
+    expect(snapshot.history[0]?.action).toBe('read');
+    expect(snapshot.history[0]?.titles).toContain('TestTable');
   });
 
   it('publishes runtime snapshots over the UI bridge while no widget is mounted', async () => {

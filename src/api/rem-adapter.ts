@@ -71,6 +71,35 @@ export interface UpdateNoteParams {
   removeTags?: string[];
 }
 
+export interface ReadTableParams {
+  tableRemId?: string;
+  tableTitle?: string;
+  limit?: number;
+  offset?: number;
+  propertyFilter?: string[];
+}
+
+export interface TableColumn {
+  propertyId: string;
+  name: string;
+  type: string;
+}
+
+export interface TableRow {
+  remId: string;
+  name: string;
+  values: Record<string, string>;
+}
+
+export interface ReadTableResult {
+  tableId: string;
+  tableName: string;
+  columns: TableColumn[];
+  rows: TableRow[];
+  totalRows: number;
+  rowsReturned: number;
+}
+
 export interface ContentProperties {
   childrenRendered: number;
   childrenTotal: number;
@@ -804,6 +833,106 @@ export class RemAdapter {
     return null;
   }
 
+  private normalizeLookupText(text: string): string {
+    return text.trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  private async getTablePropertyChildren(rem: PluginRem): Promise<PluginRem[]> {
+    const children = await rem.getChildrenRem();
+    const propertyChildren: PluginRem[] = [];
+
+    for (const child of children) {
+      if (await child.isProperty()) {
+        propertyChildren.push(child);
+      }
+    }
+
+    return propertyChildren;
+  }
+
+  private async collectExactTitleCandidates(
+    rem: PluginRem,
+    normalizedTitle: string,
+    seen: Set<string>
+  ): Promise<PluginRem[]> {
+    const collected: PluginRem[] = [];
+    const queue: PluginRem[] = [rem];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (seen.has(current._id)) {
+        continue;
+      }
+
+      const title = this.normalizeLookupText(await this.extractText(current.text));
+      if (title !== normalizedTitle) {
+        continue;
+      }
+
+      seen.add(current._id);
+      collected.push(current);
+
+      const children = await current.getChildrenRem();
+      queue.push(...children);
+    }
+
+    return collected;
+  }
+
+  private async resolveTableRem(params: ReadTableParams): Promise<PluginRem> {
+    const tableRemId = params.tableRemId?.trim();
+    const tableTitle = params.tableTitle?.trim();
+
+    if ((!tableRemId && !tableTitle) || (tableRemId && tableTitle)) {
+      throw new Error('Provide exactly one of tableRemId or tableTitle');
+    }
+
+    if (tableRemId) {
+      const remById = await this.plugin.rem.findOne(tableRemId);
+      if (remById) {
+        return remById;
+      }
+      throw new Error(`Table not found: '${tableRemId}'`);
+    }
+
+    const searchResults = await this.plugin.search.search(
+      this.textToRichText(tableTitle!),
+      undefined,
+      { numResults: this.getSearchSdkFetchLimit(DEFAULT_SEARCH_LIMIT) }
+    );
+
+    const normalizedIdentifier = this.normalizeLookupText(tableTitle!);
+    const exactMatches: PluginRem[] = [];
+    const seen = new Set<string>();
+
+    for (const rem of searchResults) {
+      const candidates = await this.collectExactTitleCandidates(rem, normalizedIdentifier, seen);
+      exactMatches.push(...candidates);
+    }
+
+    const tableMatches: PluginRem[] = [];
+    for (const rem of exactMatches) {
+      const propertyChildren = await this.getTablePropertyChildren(rem);
+      if (propertyChildren.length > 0) {
+        tableMatches.push(rem);
+      }
+    }
+
+    if (tableMatches.length === 1) {
+      return tableMatches[0];
+    }
+
+    if (tableMatches.length > 1) {
+      throw new Error(`Multiple tables found with exact title: '${tableTitle}'`);
+    }
+
+    if (exactMatches.length > 0) {
+      throw new Error(`Rem found for '${tableTitle}' is not a table`);
+    }
+
+    throw new Error(`Table not found: '${tableTitle}'`);
+  }
+
   private async renderContentStructured(
     rem: PluginRem,
     depth: number,
@@ -1359,6 +1488,98 @@ export class RemAdapter {
     }
 
     return { titles, remIds };
+  }
+
+  /**
+   * Read table data from a RemNote table (tagged rems with properties).
+   */
+  async readTable(params: ReadTableParams): Promise<ReadTableResult> {
+    const limit = params.limit ?? 50;
+    const offset = params.offset ?? 0;
+
+    // 1. Resolve table rem from one explicit identifier
+    const tableRem = await this.resolveTableRem(params);
+
+    // 2. Extract columns: get children, filter by isProperty()
+    const propertyChildren = await this.getTablePropertyChildren(tableRem);
+
+    // Check for no properties BEFORE applying filter
+    if (propertyChildren.length === 0) {
+      throw new Error(`Rem '${tableRem._id}' has no properties — not a table`);
+    }
+
+    // Get property names for filtering
+    const propertyNames = await Promise.all(
+      propertyChildren.map((prop) => this.extractText(prop.text))
+    );
+
+    // Apply propertyFilter if provided (matches by property NAME)
+    let columns: TableColumn[] = [];
+    if (params.propertyFilter && params.propertyFilter.length > 0) {
+      const filterSet = new Set(params.propertyFilter.map((f) => f.toLowerCase()));
+      columns = await Promise.all(
+        propertyChildren
+          .filter((prop, idx) => filterSet.has(propertyNames[idx].toLowerCase()))
+          .map(async (prop) => {
+            const propType = await prop.getPropertyType();
+            return {
+              propertyId: prop._id,
+              name: await this.extractText(prop.text),
+              type: propType ? String(propType) : 'unknown',
+            };
+          })
+      );
+    } else {
+      columns = await Promise.all(
+        propertyChildren.map(async (prop) => {
+          const propType = await prop.getPropertyType();
+          return {
+            propertyId: prop._id,
+            name: await this.extractText(prop.text),
+            type: propType ? String(propType) : 'unknown',
+          };
+        })
+      );
+    }
+
+    // 3. Extract rows: get tagged rems
+    // TODO: Replace this full fetch + slice with SDK-level pagination or chunked iteration once available.
+    // Large tables currently require loading every tagged row before applying limit/offset here.
+    const allTaggedRems =
+      'taggedRem' in tableRem && typeof tableRem.taggedRem === 'function'
+        ? await tableRem.taggedRem()
+        : [];
+
+    const totalRows = allTaggedRems.length;
+    const slicedRows = allTaggedRems.slice(offset, offset + limit);
+
+    // 4. Build row data
+    const rows: TableRow[] = await Promise.all(
+      slicedRows.map(async (row) => {
+        const name = await this.extractText(row.text);
+        const values: Record<string, string> = {};
+
+        for (const column of columns) {
+          const propValue = await row.getTagPropertyValue(column.propertyId);
+          values[column.propertyId] = await this.extractText(propValue);
+        }
+
+        return {
+          remId: row._id,
+          name,
+          values,
+        };
+      })
+    );
+
+    return {
+      tableId: tableRem._id,
+      tableName: await this.extractText(tableRem.text),
+      columns,
+      rows,
+      totalRows,
+      rowsReturned: rows.length,
+    };
   }
 
   /**

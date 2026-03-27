@@ -2,7 +2,7 @@
  * Tests for RemNote API Adapter
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RemType, BuiltInPowerupCodes } from '@remnote/plugin-sdk';
+import { RemType, BuiltInPowerupCodes, RichTextElementInterface } from '@remnote/plugin-sdk';
 import { RemAdapter } from '../../src/api/rem-adapter';
 import { MockRemNotePlugin, MockRem } from '../helpers/mocks';
 
@@ -1803,6 +1803,337 @@ describe('RemAdapter', () => {
       await testRem.addTag(tag._id);
 
       expect(testRem.getTags().filter((id) => id === tag._id)).toHaveLength(1);
+    });
+  });
+
+  describe('readTable', () => {
+    it('should lookup table by ID', async () => {
+      // Create a table rem with property children
+      const tableRem = plugin.addTestRem('table-1', 'Test Table');
+      const prop1 = new MockRem('prop-1', 'Status');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('text');
+      await prop1.setParent(tableRem);
+
+      // Set up tagged rems (rows)
+      const row1 = new MockRem('row-1', 'Task 1');
+      row1.setTagPropertyValueMock('prop-1', ['In Progress']);
+      const row2 = new MockRem('row-2', 'Task 2');
+      row2.setTagPropertyValueMock('prop-1', ['Done']);
+      tableRem.setTaggedRemsMock([row1, row2]);
+
+      const result = await adapter.readTable({ tableRemId: 'table-1' });
+
+      expect(result.tableId).toBe('table-1');
+      expect(result.tableName).toBe('Test Table');
+      expect(result.columns).toHaveLength(1);
+      expect(result.columns[0].propertyId).toBe('prop-1');
+      expect(result.columns[0].name).toBe('Status');
+      expect(result.columns[0].type).toBe('text');
+      expect(result.rows).toHaveLength(2);
+      expect(result.rows[0].remId).toBe('row-1');
+      expect(result.rows[0].name).toBe('Task 1');
+      expect(result.rows[0].values).toEqual({ 'prop-1': 'In Progress' });
+      expect(result.totalRows).toBe(2);
+      expect(result.rowsReturned).toBe(2);
+    });
+
+    it('should lookup table by name', async () => {
+      // Create a table rem discoverable via search/title matching
+      const tableRem = plugin.addTestRem('table-projects', 'Projects', 'Projects');
+      const prop1 = new MockRem('proj-prop-1', 'Status');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('select');
+      await prop1.setParent(tableRem);
+
+      const row1 = new MockRem('proj-row-1', 'Project Alpha');
+      row1.setTagPropertyValueMock('proj-prop-1', ['Active']);
+      tableRem.setTaggedRemsMock([row1]);
+
+      const result = await adapter.readTable({ tableTitle: 'Projects' });
+
+      expect(result.tableId).toBe('table-projects');
+      expect(result.tableName).toBe('Projects');
+      expect(result.columns).toHaveLength(1);
+      expect(result.rows).toHaveLength(1);
+    });
+
+    it('should prefer same-title child table over wrapper rem', async () => {
+      const wrapperRem = plugin.addTestRem('projects-wrapper', 'Projects');
+      wrapperRem.setIsTableMock(true);
+
+      const tableRem = plugin.addTestRem('projects-table', 'Projects');
+      await tableRem.setParent(wrapperRem);
+
+      const prop1 = new MockRem('projects-prop-1', 'Status');
+      prop1.setIsPropertyMock(true);
+      await prop1.setParent(tableRem);
+
+      const row1 = new MockRem('projects-row-1', 'Project Alpha');
+      row1.setTagPropertyValueMock('projects-prop-1', ['Active']);
+      tableRem.setTaggedRemsMock([row1]);
+
+      const result = await adapter.readTable({ tableTitle: 'Projects' });
+
+      expect(result.tableId).toBe('projects-table');
+      expect(result.tableName).toBe('Projects');
+      expect(result.columns).toHaveLength(1);
+      expect(result.rows).toHaveLength(1);
+    });
+
+    it('should throw error when multiple exact-title tables match', async () => {
+      const tableA = plugin.addTestRem('table-projects-a', 'Projects A');
+      await tableA.setText(['Projects']);
+      const propA = new MockRem('proj-prop-a', 'Status');
+      propA.setIsPropertyMock(true);
+      await propA.setParent(tableA);
+
+      const tableB = plugin.addTestRem('table-projects-b', 'Projects B');
+      await tableB.setText(['Projects']);
+      const propB = new MockRem('proj-prop-b', 'Status');
+      propB.setIsPropertyMock(true);
+      await propB.setParent(tableB);
+
+      await expect(adapter.readTable({ tableTitle: 'Projects' })).rejects.toThrow(
+        "Multiple tables found with exact title: 'Projects'"
+      );
+    });
+
+    it('should throw error when exact title match is not a table', async () => {
+      plugin.addTestRem('projects-note', 'Projects', 'Projects');
+
+      await expect(adapter.readTable({ tableTitle: 'Projects' })).rejects.toThrow(
+        "Rem found for 'Projects' is not a table"
+      );
+    });
+
+    it('should throw error when table not found', async () => {
+      await expect(adapter.readTable({ tableTitle: 'nonexistent' })).rejects.toThrow(
+        "Table not found: 'nonexistent'"
+      );
+    });
+
+    it('should require exactly one table identifier', async () => {
+      await expect(adapter.readTable({})).rejects.toThrow(
+        'Provide exactly one of tableRemId or tableTitle'
+      );
+      await expect(
+        adapter.readTable({ tableRemId: 'table-1', tableTitle: 'Projects' })
+      ).rejects.toThrow('Provide exactly one of tableRemId or tableTitle');
+    });
+
+    it('should throw error when rem has no properties', async () => {
+      // Create a rem that is not a table (no property children)
+      const _nonTableRem = plugin.addTestRem('not-a-table', 'Just a Note');
+      // No property children set
+
+      await expect(adapter.readTable({ tableRemId: 'not-a-table' })).rejects.toThrow(
+        "Rem 'not-a-table' has no properties — not a table"
+      );
+    });
+
+    it('should extract only property children as columns', async () => {
+      const tableRem = plugin.addTestRem('table-columns', 'Multi Column Table');
+
+      // Create 2 property children and 1 non-property child
+      const prop1 = new MockRem('mc-prop-1', 'Name');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('text');
+      await prop1.setParent(tableRem);
+
+      const prop2 = new MockRem('mc-prop-2', 'Priority');
+      prop2.setIsPropertyMock(true);
+      prop2.setPropertyTypeMock('select');
+      await prop2.setParent(tableRem);
+
+      const nonProp = new MockRem('mc-non-prop', 'Just a child');
+      await nonProp.setParent(tableRem);
+
+      tableRem.setTaggedRemsMock([]);
+
+      const result = await adapter.readTable({ tableRemId: 'table-columns' });
+
+      expect(result.columns).toHaveLength(2);
+      expect(result.columns.map((c) => c.propertyId)).toContain('mc-prop-1');
+      expect(result.columns.map((c) => c.propertyId)).toContain('mc-prop-2');
+      expect(result.columns.map((c) => c.propertyId)).not.toContain('mc-non-prop');
+    });
+
+    it('should extract rows from tagged rems', async () => {
+      const tableRem = plugin.addTestRem('table-rows', 'Row Test Table');
+      const prop1 = new MockRem('row-prop-1', 'Task');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('text');
+      await prop1.setParent(tableRem);
+
+      const row1 = new MockRem('test-row-1', 'First Task');
+      row1.setTagPropertyValueMock('row-prop-1', ['First Task Value']);
+      const row2 = new MockRem('test-row-2', 'Second Task');
+      row2.setTagPropertyValueMock('row-prop-1', ['Second Task Value']);
+      tableRem.setTaggedRemsMock([row1, row2]);
+
+      const result = await adapter.readTable({ tableRemId: 'table-rows' });
+
+      expect(result.rows).toHaveLength(2);
+      expect(result.rows[0].remId).toBe('test-row-1');
+      expect(result.rows[0].name).toBe('First Task');
+      expect(result.rows[0].values['row-prop-1']).toBe('First Task Value');
+      expect(result.rows[1].remId).toBe('test-row-2');
+      expect(result.rows[1].name).toBe('Second Task');
+      expect(result.rows[1].values['row-prop-1']).toBe('Second Task Value');
+    });
+
+    it('should render rich text property values', async () => {
+      const tableRem = plugin.addTestRem('table-rich', 'Rich Text Table');
+      const prop1 = new MockRem('rich-prop-1', 'Description');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('text');
+      await prop1.setParent(tableRem);
+
+      const row1 = new MockRem('rich-row-1', 'Item');
+      // Rich text with bold formatting: ["Hello ", {i: "m", text: "World", b: true}]
+      row1.setTagPropertyValueMock('rich-prop-1', [
+        'Hello ',
+        { i: 'm', text: 'World', b: true } as RichTextElementInterface,
+      ]);
+      tableRem.setTaggedRemsMock([row1]);
+
+      const result = await adapter.readTable({ tableRemId: 'table-rich' });
+
+      // The value should contain the rendered text
+      expect(result.rows[0].values['rich-prop-1']).toContain('Hello');
+      expect(result.rows[0].values['rich-prop-1']).toContain('World');
+    });
+
+    it('should handle empty cell values', async () => {
+      const tableRem = plugin.addTestRem('table-empty', 'Empty Cell Table');
+      const prop1 = new MockRem('empty-prop-1', 'Status');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('text');
+      await prop1.setParent(tableRem);
+
+      // Row with no value for the property
+      const row1 = new MockRem('empty-row-1', 'Task with no value');
+      // Don't set any property value - should return empty string
+      tableRem.setTaggedRemsMock([row1]);
+
+      const result = await adapter.readTable({ tableRemId: 'table-empty' });
+
+      expect(result.rows[0].values['empty-prop-1']).toBe('');
+    });
+
+    it('should respect limit and offset parameters', async () => {
+      const tableRem = plugin.addTestRem('table-pagination', 'Pagination Table');
+      const prop1 = new MockRem('page-prop-1', 'Item');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('text');
+      await prop1.setParent(tableRem);
+
+      // Create 10 tagged rems
+      const rows: MockRem[] = [];
+      for (let i = 0; i < 10; i++) {
+        const row = new MockRem(`page-row-${i}`, `Item ${i}`);
+        row.setTagPropertyValueMock('page-prop-1', [`Value ${i}`]);
+        rows.push(row);
+      }
+      tableRem.setTaggedRemsMock(rows);
+
+      const result = await adapter.readTable({
+        tableRemId: 'table-pagination',
+        limit: 3,
+        offset: 2,
+      });
+
+      // Should return rows at indices 2, 3, 4
+      expect(result.rows).toHaveLength(3);
+      expect(result.rows[0].name).toBe('Item 2');
+      expect(result.rows[1].name).toBe('Item 3');
+      expect(result.rows[2].name).toBe('Item 4');
+      expect(result.totalRows).toBe(10);
+      expect(result.rowsReturned).toBe(3);
+    });
+
+    it('should return empty rows when offset exceeds total', async () => {
+      const tableRem = plugin.addTestRem('table-offset', 'Offset Table');
+      const prop1 = new MockRem('offset-prop-1', 'Item');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('text');
+      await prop1.setParent(tableRem);
+
+      const rows: MockRem[] = [];
+      for (let i = 0; i < 10; i++) {
+        const row = new MockRem(`offset-row-${i}`, `Item ${i}`);
+        row.setTagPropertyValueMock('offset-prop-1', [`Value ${i}`]);
+        rows.push(row);
+      }
+      tableRem.setTaggedRemsMock(rows);
+
+      const result = await adapter.readTable({
+        tableRemId: 'table-offset',
+        limit: 5,
+        offset: 15,
+      });
+
+      expect(result.rows).toHaveLength(0);
+      expect(result.totalRows).toBe(10);
+      expect(result.rowsReturned).toBe(0);
+    });
+
+    it('should filter columns and values by propertyFilter', async () => {
+      const tableRem = plugin.addTestRem('table-filter', 'Filter Table');
+
+      const propStatus = new MockRem('filter-prop-status', 'Status');
+      propStatus.setIsPropertyMock(true);
+      propStatus.setPropertyTypeMock('select');
+      await propStatus.setParent(tableRem);
+
+      const propDate = new MockRem('filter-prop-date', 'Date');
+      propDate.setIsPropertyMock(true);
+      propDate.setPropertyTypeMock('date');
+      await propDate.setParent(tableRem);
+
+      const propPriority = new MockRem('filter-prop-priority', 'Priority');
+      propPriority.setIsPropertyMock(true);
+      propPriority.setPropertyTypeMock('select');
+      await propPriority.setParent(tableRem);
+
+      const row1 = new MockRem('filter-row-1', 'Task 1');
+      row1.setTagPropertyValueMock('filter-prop-status', ['Active']);
+      row1.setTagPropertyValueMock('filter-prop-date', ['2024-01-15']);
+      row1.setTagPropertyValueMock('filter-prop-priority', ['High']);
+      tableRem.setTaggedRemsMock([row1]);
+
+      const result = await adapter.readTable({
+        tableRemId: 'table-filter',
+        propertyFilter: ['Status'],
+      });
+
+      // Only Status column should be present
+      expect(result.columns).toHaveLength(1);
+      expect(result.columns[0].name).toBe('Status');
+      expect(result.rows[0].values).toEqual({ 'filter-prop-status': 'Active' });
+    });
+
+    it('should handle unknown property in filter gracefully', async () => {
+      const tableRem = plugin.addTestRem('table-unknown-filter', 'Unknown Filter Table');
+
+      const prop1 = new MockRem('unk-prop-1', 'Status');
+      prop1.setIsPropertyMock(true);
+      prop1.setPropertyTypeMock('text');
+      await prop1.setParent(tableRem);
+
+      const row1 = new MockRem('unk-row-1', 'Task');
+      row1.setTagPropertyValueMock('unk-prop-1', ['Active']);
+      tableRem.setTaggedRemsMock([row1]);
+
+      const result = await adapter.readTable({
+        tableRemId: 'table-unknown-filter',
+        propertyFilter: ['Nonexistent'],
+      });
+
+      // Should return empty columns and empty values
+      expect(result.columns).toHaveLength(0);
+      expect(result.rows[0].values).toEqual({});
     });
   });
 });

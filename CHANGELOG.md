@@ -7,26 +7,45 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Changed
+### Added
+- Added bridge support for `read_table`, including Advanced Table lookup by Rem ID or exact title, pagination, and
+  column filtering.
 
-- Refactored `HistoryActionRow` into a declarative, decoupled React component, replacing imperative `e.currentTarget.style` DOM mutations to ensure hover states persist correctly across re-renders.
+### Changed
+- Refactored `HistoryActionRow` into a declarative, decoupled React component, replacing imperative
+  `e.currentTarget.style` DOM mutations to ensure hover states persist correctly across re-renders.
 - Inlined the "Copy Reference" SVG icon directly into a local reusable component (`src/widgets/icons.tsx`).
+- Updated `read_table` bridge payloads to require exactly one explicit identifier: `tableRemId` or `tableTitle`.
 
 ### Fixed
-
-- Fixed a bug where history row expansion state misaligned when new entries were added by replacing index-based React keys with a stable `rowKey` derived from the entry's timestamp, action, and `remId`.
+- Fixed a bug where history row expansion state misaligned when new entries were added by replacing index-based React
+  keys with a stable `rowKey` derived from the entry's timestamp, action, and `remId`.
+- Improved `read_table` title lookup for Advanced Tables nested under wrapper/container rems.
 
 ### Documentation
-
-- Added a dedicated pull request guide covering required docs, tests, cross-repo parity, integration-test updates, and target-branch sync expectations.
-- Replaced the minimal GitHub pull request template with a checklist-driven template that points contributors to the canonical guide.
+- Added a dedicated pull request guide covering required docs, tests, cross-repo parity, integration-test updates,
+  and target-branch sync expectations.
+- Replaced the minimal GitHub pull request template with a checklist-driven template that points contributors to the
+  canonical guide.
 - Updated `README.md` contributing guidance to reference the new pull request process.
-- Linked the bridge README and PR guide to the canonical MCP server integration-testing workflow for shared live-test updates.
+- Linked the bridge README and PR guide to the canonical MCP server integration-testing workflow for shared live-test
+  updates.
+- Updated the README bridge action surface to include `read_table` and align action names with the actual bridge
+  payload contract.
+- Clarified agent instructions for cross-repo live integration runs: ask the human collaborator to start the bridge
+  first, and ask for a bridge restart after bridge-code changes before reruns.
+- Clarified that switching between CLI and MCP server live integration tests requires stopping the other companion
+  process first because both compete for the same WebSocket port.
+
+### Attribution
+
+- Most of the cross-repo `read-table` work in this release was implemented by @timbeckss.
 
 ## [0.10.2] - 2026-03-25
 
 ### Added
-- Added interactive history entries: expandable child items view, hover actions panel with copy-reference button, and click-to-open behavior on titles (thanks to @Twb06).
+- Added interactive history entries: expandable child items view, hover actions panel with copy-reference button, and
+  click-to-open behavior on titles (thanks to @Twb06).
 
 ### Changed
 - Raised the local tooling baseline to Node 20.19.0 for consistent package metadata and developer environment checks.

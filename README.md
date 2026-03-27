@@ -201,13 +201,14 @@ the CLI maps them to commands:
 
 | Action | Description |
 |------|-------------|
-| `remnote_create_note` | Create notes, markdown trees, or flashcards with title, content, parent, and tags |
-| `remnote_search` | Search the knowledge base with query and filters |
-| `remnote_search_by_tag` | Search by tag with ancestor context and content controls |
-| `remnote_read_note` | Read a note's content in markdown or structured form by ID |
-| `remnote_update_note` | Update title, append or replace content, add/remove tags |
-| `remnote_append_journal` | Add hierarchical markdown content to today's daily document |
-| `remnote_status` | Check connection status |
+| `create_note` | Create notes, markdown trees, or flashcards with title, content, parent, and tags |
+| `search` | Search the knowledge base with query and filters |
+| `search_by_tag` | Search by tag with ancestor context and content controls |
+| `read_note` | Read a note's content in markdown or structured form by ID |
+| `update_note` | Update title, append or replace content, add/remove tags |
+| `append_journal` | Add hierarchical markdown content to today's daily document |
+| `read_table` | Read Advanced Table columns, rows, and typed property metadata |
+| `get_status` | Check connection status |
 
 ## Usage
 

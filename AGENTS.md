@@ -80,6 +80,12 @@ Use `./run-prod-build.sh` for production-style local verification (no hot reload
 
 - This repo does not ship a dedicated `npm run test:integration` flow.
 - When live RemNote verification is required, ask the human collaborator to run/confirm it in a real RemNote session.
+- If agent-assisted live integration runs are being triggered from `remnote-mcp-server` or `remnote-cli`, the agent
+  must first ask the human collaborator to start the bridge in RemNote.
+- If bridge code changed after the currently running RemNote bridge session started, the agent must ask the human
+  collaborator to restart the bridge before rerunning live integration tests.
+- When switching between CLI and MCP server live integration tests, the agent must ensure the other companion process
+  is stopped before starting the next one because both need the same WebSocket port.
 - Use local unit/static/build checks for agent-side verification.
 
 ## Documentation and Changelog Rules

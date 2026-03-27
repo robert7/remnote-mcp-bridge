@@ -104,6 +104,10 @@ export class MockRem implements Partial<PluginRem> {
   private _isPowerupPropertyListItem = false;
   private _isPowerupSlot = false;
   private _isPowerupEnum = false;
+  private _isProperty = false;
+  private _propertyType: string | undefined;
+  private _tagPropertyValues = new Map<string, RichTextInterface>();
+  private _isTable = false;
 
   constructor(id: string, text: string) {
     this._id = id;
@@ -188,6 +192,42 @@ export class MockRem implements Partial<PluginRem> {
 
   async isPowerupEnum(): Promise<boolean> {
     return this._isPowerupEnum;
+  }
+
+  /** Configure mock to behave as a property */
+  setIsPropertyMock(val: boolean): void {
+    this._isProperty = val;
+  }
+
+  async isProperty(): Promise<boolean> {
+    return this._isProperty;
+  }
+
+  /** Set the mock property type */
+  setPropertyTypeMock(type: string): void {
+    this._propertyType = type;
+  }
+
+  async getPropertyType(): Promise<string | undefined> {
+    return this._propertyType;
+  }
+
+  /** Set a property value for a specific property on this tagged rem */
+  setTagPropertyValueMock(propertyId: string, value: RichTextInterface): void {
+    this._tagPropertyValues.set(propertyId, value);
+  }
+
+  async getTagPropertyValue(propertyId: string): Promise<RichTextInterface> {
+    return this._tagPropertyValues.get(propertyId) ?? [];
+  }
+
+  /** Configure mock to behave as a table */
+  setIsTableMock(val: boolean): void {
+    this._isTable = val;
+  }
+
+  async isTable(): Promise<boolean> {
+    return this._isTable;
   }
 
   async setText(text: RichTextInterface): Promise<void> {
