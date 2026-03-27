@@ -7,12 +7,13 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-03-27
+
 ### Added
 - Added bridge support for `read_table`, including Advanced Table lookup by Rem ID or exact title, pagination, and
   column filtering.
 
 ### Changed
-- Improved the Recent Actions panel in the sidebar, including a more reliable copy-reference action. Thanks @Twb06.
 - Updated `read_table` bridge payloads to require exactly one explicit identifier: `tableRemId` or `tableTitle`.
 - Tightened the sidebar connection card to show bridge version, optional `dev` install marker, and connected
   companion identity/version with less explanatory text while keeping a brief connection-direction hint when
@@ -21,25 +22,6 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 - Fixed Recent Actions expansion so expanded rows stay attached to the correct history entry as new actions arrive.
 - Improved `read_table` title lookup for Advanced Tables nested under wrapper/container rems.
-
-### Documentation
-- Added a dedicated pull request guide covering required docs, tests, cross-repo parity, integration-test updates,
-  and target-branch sync expectations.
-- Replaced the minimal GitHub pull request template with a checklist-driven template that points contributors to the
-  canonical guide.
-- Updated `README.md` contributing guidance to reference the new pull request process.
-- Linked the bridge README and PR guide to the canonical MCP server integration-testing workflow for shared live-test
-  updates.
-- Updated the README bridge action surface to include `read_table` and align action names with the actual bridge
-  payload contract.
-- Clarified agent instructions for cross-repo live integration runs: ask the human collaborator to start the bridge
-  first, and ask for a bridge restart after bridge-code changes before reruns.
-- Clarified that switching between CLI and MCP server live integration tests requires stopping the other companion
-  process first because both compete for the same WebSocket port.
-
-### Attribution
-
-- Most of the cross-repo `read-table` work in this release was implemented by @timbeckss.
 
 ## [0.10.2] - 2026-03-25
 
