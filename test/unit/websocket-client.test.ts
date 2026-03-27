@@ -2,7 +2,12 @@
  * Tests for WebSocket Client
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { WebSocketClient, ConnectionStatus, RetryPhase } from '../../src/bridge/websocket-client';
+import {
+  WebSocketClient,
+  ConnectionStatus,
+  RetryPhase,
+  type CompanionInfo,
+} from '../../src/bridge/websocket-client';
 import { MockWebSocket } from '../helpers/mocks';
 import { wait } from '../helpers/test-server';
 
@@ -13,11 +18,13 @@ describe('WebSocketClient', () => {
   let client: WebSocketClient;
   let statusChanges: ConnectionStatus[] = [];
   let retryPhases: RetryPhase[] = [];
+  let companionInfoChanges: Array<CompanionInfo | undefined> = [];
   let logs: Array<{ message: string; level: string }> = [];
 
   beforeEach(() => {
     statusChanges = [];
     retryPhases = [];
+    companionInfoChanges = [];
     logs = [];
     MockWebSocket.reset();
 
@@ -29,6 +36,7 @@ describe('WebSocketClient', () => {
       maxReconnectDelay: 1000,
       onStatusChange: (status) => statusChanges.push(status),
       onRetryPhaseChange: (phase) => retryPhases.push(phase),
+      onCompanionInfoChange: (info) => companionInfoChanges.push(info),
       onLog: (message, level) => logs.push({ message, level }),
     });
   });
@@ -146,6 +154,23 @@ describe('WebSocketClient', () => {
       expect(pongMessage).toBeDefined();
     });
 
+    it('should store companion identity messages', async () => {
+      client.connect();
+      await wait(10);
+
+      const ws = (client as unknown as { ws: MockWebSocket }).ws;
+      ws.simulateMessage({ type: 'companion_info', kind: 'cli', version: '0.11.0' });
+      await wait(10);
+
+      expect(companionInfoChanges.at(-1)).toEqual({
+        kind: 'cli',
+        version: '0.11.0',
+      });
+      expect(logs.some((log) => log.message.includes('Companion identified: cli v0.11.0'))).toBe(
+        true
+      );
+    });
+
     it('should handle request messages with success', async () => {
       const handler = vi.fn(async (request) => {
         return { success: true, data: request.payload };
@@ -238,6 +263,7 @@ describe('WebSocketClient', () => {
       expect(client.getReconnectMetadata().reconnectAttempts).toBe(1);
       expect(client.getReconnectMetadata().nextRetryAt).toBeDefined();
       expect(client.getReconnectMetadata().lastDisconnectReason).toBe('1006 Connection lost');
+      expect(companionInfoChanges.at(-1)).toBeUndefined();
     });
 
     it('should enter standby reconnect mode after burst attempts are exhausted', async () => {

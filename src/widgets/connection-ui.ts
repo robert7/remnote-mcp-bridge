@@ -8,7 +8,6 @@ export interface ConnectionUiState {
     text: string;
   };
   summary: string;
-  directionLabel: string;
   phaseLabel?: string;
   nextRetryLabel?: string;
   hint?: string;
@@ -42,17 +41,15 @@ export function buildConnectionUiState(
 ): ConnectionUiState {
   const nextRetryLabel =
     snapshot.nextRetryAt && snapshot.nextRetryAt > now
-      ? `${
-          snapshot.retryPhase === 'standby' ? 'Next background retry' : 'Next retry'
-        } in ${formatRelativeDuration(snapshot.nextRetryAt - now)}`
+      ? `${snapshot.retryPhase === 'standby' ? 'Retry' : 'Next retry'} in ${formatRelativeDuration(snapshot.nextRetryAt - now)}`
       : undefined;
 
   const lastConnectedLabel = snapshot.lastConnectedAt
-    ? `Last connected ${formatRelativeDuration(now - snapshot.lastConnectedAt)} ago`
+    ? `Last seen ${formatRelativeDuration(now - snapshot.lastConnectedAt)} ago`
     : undefined;
 
   const lastDisconnectLabel = snapshot.lastDisconnectReason
-    ? `Last disconnect: ${snapshot.lastDisconnectReason}`
+    ? `Disconnect ${snapshot.lastDisconnectReason}`
     : undefined;
 
   if (snapshot.status === 'connected') {
@@ -63,10 +60,7 @@ export function buildConnectionUiState(
         icon: '●',
         text: 'Connected',
       },
-      summary: 'Bridge is ready for MCP or CLI requests.',
-      directionLabel: 'Bridge -> Companion app',
-      phaseLabel: 'Live connection',
-      lastConnectedLabel,
+      summary: 'Ready',
     };
   }
 
@@ -78,8 +72,7 @@ export function buildConnectionUiState(
         icon: '◐',
         text: 'Connecting',
       },
-      summary: 'Trying to reach the companion process now.',
-      directionLabel: 'Bridge -> Companion app',
+      summary: 'Connecting to companion',
       phaseLabel:
         snapshot.retryPhase === 'standby'
           ? 'Wake-up reconnect'
@@ -102,8 +95,7 @@ export function buildConnectionUiState(
         icon: '◌',
         text: 'Retrying',
       },
-      summary: 'Quick reconnect window is active.',
-      directionLabel: 'Bridge -> Companion app',
+      summary: 'Retrying connection',
       phaseLabel: `Burst retry ${Math.min(snapshot.reconnectAttempts, snapshot.maxReconnectAttempts)}/${snapshot.maxReconnectAttempts}`,
       nextRetryLabel,
       hint: 'Reconnect Now skips the wait and tries immediately.',
@@ -119,8 +111,7 @@ export function buildConnectionUiState(
         icon: '◌',
         text: 'Waiting for server',
       },
-      summary: 'The companion process is not available right now.',
-      directionLabel: 'Bridge -> Companion app',
+      summary: 'Companion unavailable',
       phaseLabel: 'Standby reconnect',
       nextRetryLabel,
       hint: 'Opening this panel or moving focus inside RemNote restarts faster retries. Browser visibility and online events can also wake it sooner.',
@@ -136,8 +127,7 @@ export function buildConnectionUiState(
       icon: '○',
       text: 'Disconnected',
     },
-    summary: 'Bridge is not currently connected.',
-    directionLabel: 'Bridge -> Companion app',
+    summary: 'Companion disconnected',
     hint: 'Use Reconnect Now after confirming the companion process is already listening.',
     lastDisconnectLabel,
     lastConnectedLabel,

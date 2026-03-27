@@ -5,6 +5,7 @@
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 export type RetryPhase = 'idle' | 'burst' | 'standby';
+export type CompanionKind = 'cli' | 'mcp-server';
 
 export interface ReconnectMetadata {
   reconnectAttempts: number;
@@ -31,6 +32,17 @@ export interface HelloMessage {
   version: string;
 }
 
+export interface CompanionInfo {
+  kind: CompanionKind;
+  version: string;
+}
+
+export interface CompanionInfoMessage {
+  type: 'companion_info';
+  kind: CompanionKind;
+  version: string;
+}
+
 export interface WebSocketClientConfig {
   url: string;
   pluginVersion: string;
@@ -40,6 +52,7 @@ export interface WebSocketClientConfig {
   standbyReconnectDelay?: number;
   onStatusChange?: (status: ConnectionStatus) => void;
   onRetryPhaseChange?: (phase: RetryPhase) => void;
+  onCompanionInfoChange?: (info: CompanionInfo | undefined) => void;
   onLog?: (message: string, level: 'info' | 'warn' | 'error') => void;
 }
 
@@ -54,12 +67,17 @@ export class WebSocketClient {
   private nextRetryAt?: number;
   private lastRetryDelayMs?: number;
   private lastDisconnectReason?: string;
+  private companionInfo?: CompanionInfo;
 
   private config: Required<
-    Omit<WebSocketClientConfig, 'onStatusChange' | 'onLog' | 'onRetryPhaseChange'>
+    Omit<
+      WebSocketClientConfig,
+      'onStatusChange' | 'onLog' | 'onRetryPhaseChange' | 'onCompanionInfoChange'
+    >
   > & {
     onStatusChange?: (status: ConnectionStatus) => void;
     onRetryPhaseChange?: (phase: RetryPhase) => void;
+    onCompanionInfoChange?: (info: CompanionInfo | undefined) => void;
     onLog?: (message: string, level: 'info' | 'warn' | 'error') => void;
   };
 
@@ -73,6 +91,7 @@ export class WebSocketClient {
       standbyReconnectDelay: config.standbyReconnectDelay ?? 10 * 60 * 1000,
       onStatusChange: config.onStatusChange,
       onRetryPhaseChange: config.onRetryPhaseChange,
+      onCompanionInfoChange: config.onCompanionInfoChange,
       onLog: config.onLog,
     };
   }
@@ -93,6 +112,15 @@ export class WebSocketClient {
       this.retryPhase = phase;
       this.config.onRetryPhaseChange?.(phase);
     }
+  }
+
+  private setCompanionInfo(info: CompanionInfo | undefined): void {
+    if (this.companionInfo?.kind === info?.kind && this.companionInfo?.version === info?.version) {
+      return;
+    }
+
+    this.companionInfo = info;
+    this.config.onCompanionInfoChange?.(info);
   }
 
   private sendHello(): void {
@@ -127,6 +155,7 @@ export class WebSocketClient {
         this.reconnectAttempts = 0;
         this.nextRetryAt = undefined;
         this.lastRetryDelayMs = undefined;
+        this.setCompanionInfo(undefined);
         this.setRetryPhase('idle');
         this.setStatus('connected');
         this.sendHello();
@@ -141,6 +170,7 @@ export class WebSocketClient {
           ? `${event.code} ${event.reason}`
           : `${event.code}`;
         this.log(`Disconnected: ${this.lastDisconnectReason}`, 'warn');
+        this.setCompanionInfo(undefined);
         this.setStatus('disconnected');
 
         if (!this.isShuttingDown) {
@@ -165,6 +195,16 @@ export class WebSocketClient {
       // Handle ping/pong heartbeat
       if (message.type === 'ping') {
         this.ws?.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
+
+      if (message.type === 'companion_info') {
+        const companion = message as CompanionInfoMessage;
+        this.setCompanionInfo({
+          kind: companion.kind,
+          version: companion.version,
+        });
+        this.log(`Companion identified: ${companion.kind} v${companion.version}`);
         return;
       }
 
@@ -255,6 +295,7 @@ export class WebSocketClient {
 
     this.nextRetryAt = undefined;
     this.lastRetryDelayMs = undefined;
+    this.setCompanionInfo(undefined);
     this.setRetryPhase('idle');
     this.setStatus('disconnected');
   }

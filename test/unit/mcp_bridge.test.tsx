@@ -40,6 +40,12 @@ function createSnapshot(history: HistoryEntry[]): BridgeRuntimeSnapshot {
   return {
     status: 'connected',
     retryPhase: 'idle',
+    bridgeVersion: '0.11.0',
+    installMode: 'development',
+    companion: {
+      kind: 'cli',
+      version: '0.11.0',
+    },
     wsUrl: 'ws://127.0.0.1:3002',
     logs: [],
     stats: {
@@ -51,6 +57,18 @@ function createSnapshot(history: HistoryEntry[]): BridgeRuntimeSnapshot {
     history,
     reconnectAttempts: 0,
     maxReconnectAttempts: 10,
+  };
+}
+
+function createDisconnectedSnapshot(): BridgeRuntimeSnapshot {
+  return {
+    ...createSnapshot([]),
+    status: 'disconnected',
+    retryPhase: 'standby',
+    companion: undefined,
+    lastConnectedAt: Date.now() - 46 * 60 * 1000,
+    nextRetryAt: Date.now() + 5_000,
+    lastDisconnectReason: '1006',
   };
 }
 
@@ -139,5 +157,40 @@ describe('AutomationBridgeWidget', () => {
     );
 
     expect(reconciled).toEqual({ current: true });
+  });
+
+  it('renders concise bridge and companion metadata in the top card', async () => {
+    await plugin.storage.setSession(
+      BRIDGE_UI_SNAPSHOT_STORAGE_KEY,
+      serializeBridgeRuntimeSnapshot(createSnapshot([]))
+    );
+
+    await act(async () => {
+      ReactDOM.render(<AutomationBridgeWidget />, container);
+    });
+    await flushWidgetEffects();
+
+    expect(container.textContent).toContain('Automation Bridge');
+    expect(container.textContent).toContain('Ready');
+    expect(container.textContent).toContain('Bridge v0.11.0 dev · CLI v0.11.0');
+    expect(container.textContent).toContain('ws://127.0.0.1:3002');
+  });
+
+  it('keeps a brief connection-direction hint while disconnected', async () => {
+    await plugin.storage.setSession(
+      BRIDGE_UI_SNAPSHOT_STORAGE_KEY,
+      serializeBridgeRuntimeSnapshot(createDisconnectedSnapshot())
+    );
+
+    await act(async () => {
+      ReactDOM.render(<AutomationBridgeWidget />, container);
+    });
+    await flushWidgetEffects();
+
+    expect(container.textContent).toContain('Companion unavailable');
+    expect(container.textContent).toContain(
+      'RemNote opens this connection to the local companion app.'
+    );
+    expect(container.textContent).not.toContain('hosted backend API');
   });
 });

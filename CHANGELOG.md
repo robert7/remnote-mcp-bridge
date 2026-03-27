@@ -14,6 +14,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - Improved the Recent Actions panel in the sidebar, including a more reliable copy-reference action. Thanks @Twb06.
 - Updated `read_table` bridge payloads to require exactly one explicit identifier: `tableRemId` or `tableTitle`.
+- Tightened the sidebar connection card to show bridge version, optional `dev` install marker, and connected
+  companion identity/version with less explanatory text while keeping a brief connection-direction hint when
+  disconnected.
 
 ### Fixed
 - Fixed Recent Actions expansion so expanded rows stay attached to the correct history entry as new actions arrive.

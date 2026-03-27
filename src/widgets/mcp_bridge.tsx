@@ -33,6 +33,15 @@ import { buildConnectionUiState } from './connection-ui';
 import { withScopedLogPrefix } from '../logging';
 import { CopyIcon } from './icons';
 
+function formatCompanionLabel(companion: BridgeRuntimeSnapshot['companion']): string {
+  if (!companion) {
+    return 'Companion unknown';
+  }
+
+  const companionName = companion.kind === 'cli' ? 'CLI' : 'MCP server';
+  return `${companionName} v${companion.version}`;
+}
+
 function createBridgeUiCommand(
   kind: BridgeUiCommand['kind'],
   extra: Omit<BridgeUiCommand, 'source' | 'id' | 'timestamp' | 'kind'>
@@ -202,6 +211,8 @@ export function AutomationBridgeWidget() {
   const [snapshot, setSnapshot] = useState<BridgeRuntimeSnapshot>({
     status: 'disconnected',
     retryPhase: 'idle',
+    bridgeVersion: '',
+    installMode: 'marketplace',
     wsUrl: DEFAULT_WS_URL,
     logs: [],
     stats: {
@@ -387,6 +398,21 @@ export function AutomationBridgeWidget() {
   const stats = snapshot.stats;
   const history = snapshot.history;
   const connectionUi = buildConnectionUiState(snapshot, now);
+  const bridgeLabel = snapshot.bridgeVersion
+    ? `Bridge v${snapshot.bridgeVersion}${snapshot.installMode === 'development' ? ' dev' : ''}`
+    : undefined;
+  const companionLabel =
+    snapshot.companion || status === 'connected'
+      ? formatCompanionLabel(snapshot.companion)
+      : undefined;
+  const metadataLabel = [bridgeLabel, companionLabel].filter(Boolean).join(' · ');
+  const timingLabel = [connectionUi.nextRetryLabel, connectionUi.lastConnectedLabel]
+    .filter(Boolean)
+    .join(' · ');
+  const directionHint =
+    status !== 'connected'
+      ? 'RemNote opens this connection to the local companion app.'
+      : undefined;
 
   useEffect(() => {
     setExpandedRows((prev) => reconcileExpandedRows(prev, history));
@@ -433,9 +459,7 @@ export function AutomationBridgeWidget() {
           marginBottom: '12px',
         }}
       >
-        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
-          Automation Bridge (OpenClaw, CLI, MCP...)
-        </h3>
+        <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>Automation Bridge</h3>
         <div
           style={{
             display: 'flex',
@@ -485,20 +509,11 @@ export function AutomationBridgeWidget() {
           </div>
         )}
         <div style={{ display: 'grid', gap: '4px', fontSize: '11px', color: '#4b5563' }}>
-          <div>
-            {connectionUi.directionLabel}: {snapshot.wsUrl}
-          </div>
-          <div>
-            The bridge plugin initiates this connection outward from RemNote to the local companion
-            app.
-          </div>
-          {connectionUi.nextRetryLabel && <div>{connectionUi.nextRetryLabel}</div>}
-          {connectionUi.lastConnectedLabel && <div>{connectionUi.lastConnectedLabel}</div>}
+          {metadataLabel && <div>{metadataLabel}</div>}
+          <div>{snapshot.wsUrl}</div>
+          {directionHint && <div>{directionHint}</div>}
+          {timingLabel && <div>{timingLabel}</div>}
           {connectionUi.lastDisconnectLabel && <div>{connectionUi.lastDisconnectLabel}</div>}
-          <div>
-            RemNote plugins do not have a hosted backend API, so the bridge connects outward
-            instead.
-          </div>
           {connectionUi.hint && <div>{connectionUi.hint}</div>}
         </div>
       </div>

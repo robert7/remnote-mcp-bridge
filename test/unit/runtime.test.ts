@@ -5,6 +5,7 @@ import {
   shutdownBridgeRuntime,
   type BridgeRuntime,
   MAX_HISTORY,
+  getBridgeInstallMode,
 } from '../../src/bridge/runtime';
 import { MockRem, MockRemNotePlugin, MockWebSocket } from '../helpers/mocks';
 import {
@@ -55,6 +56,7 @@ describe('Bridge runtime', () => {
 
   it('starts the bridge runtime with settings-loaded WebSocket connection on initialization', async () => {
     plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:4555');
+    plugin.rootURL = 'http://localhost:8080/';
 
     runtime = await initializeBridgeRuntime(plugin as unknown as never);
     await wait(10);
@@ -62,12 +64,19 @@ describe('Bridge runtime', () => {
     const snapshot = runtime.getSnapshot();
     expect(snapshot.wsUrl).toBe('ws://127.0.0.1:4555');
     expect(snapshot.status).toBe('connected');
+    expect(snapshot.bridgeVersion).toBe(__PLUGIN_VERSION__);
+    expect(snapshot.installMode).toBe('development');
     expect(snapshot.reconnectAttempts).toBe(0);
     expect(snapshot.maxReconnectAttempts).toBe(10);
     expect(MockWebSocket.instances.at(-1)?.url).toBe('ws://127.0.0.1:4555');
     expect(snapshot.logs.some((entry) => entry.message.includes('RemAdapter initialized'))).toBe(
       true
     );
+  });
+
+  it('maps localhost build URLs to development install mode', () => {
+    expect(getBridgeInstallMode('http://localhost:8080/')).toBe('development');
+    expect(getBridgeInstallMode('https://example.test/plugin/')).toBe('marketplace');
   });
 
   it('handles devtools requests while no widget is mounted', async () => {
@@ -174,9 +183,32 @@ describe('Bridge runtime', () => {
     const latestSnapshot = await plugin.storage.getSession(BRIDGE_UI_SNAPSHOT_STORAGE_KEY);
     expect(isSerializedBridgeRuntimeSnapshot(latestSnapshot)).toBe(true);
     expect(latestSnapshot?.status).toBe('connected');
+    expect(latestSnapshot?.installMode).toBe('marketplace');
     expect(
       latestSnapshot?.logs.some((entry) => entry.message.includes('RemAdapter initialized')) ??
         false
+    ).toBe(true);
+  });
+
+  it('stores companion identity from companion_info messages', async () => {
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await wait(10);
+
+    MockWebSocket.instances.at(-1)?.simulateMessage({
+      type: 'companion_info',
+      kind: 'mcp-server',
+      version: '0.11.0',
+    });
+    await wait(10);
+
+    const snapshot = runtime.getSnapshot();
+    expect(snapshot.companion).toEqual({
+      kind: 'mcp-server',
+      version: '0.11.0',
+    });
+    expect(
+      snapshot.logs.some((entry) => entry.message.includes('Companion ready: MCP server v0.11.0'))
     ).toBe(true);
   });
 

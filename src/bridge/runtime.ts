@@ -4,6 +4,7 @@ import { FocusEvents, SidebarEvents, type ReactRNPlugin, WindowEvents } from '@r
 import { RemAdapter } from '../api/rem-adapter';
 import {
   type BridgeRequest,
+  type CompanionInfo,
   type ConnectionStatus,
   type ReconnectMetadata,
   type RetryPhase,
@@ -38,9 +39,14 @@ export interface HistoryEntry {
   remIds?: string[];
 }
 
+export type BridgeInstallMode = 'development' | 'marketplace';
+
 export interface BridgeRuntimeSnapshot {
   status: ConnectionStatus;
   retryPhase: RetryPhase;
+  bridgeVersion: string;
+  installMode: BridgeInstallMode;
+  companion?: CompanionInfo;
   wsUrl: string;
   logs: LogEntry[];
   stats: SessionStats;
@@ -66,6 +72,14 @@ export const MAX_LOGS = 50;
 export const MAX_HISTORY = 10;
 export const AUTO_NUDGE_COOLDOWN_MS = 15_000;
 
+export function getBridgeInstallMode(rootUrl: string | undefined): BridgeInstallMode {
+  return rootUrl?.startsWith('http://localhost:8080/') ? 'development' : 'marketplace';
+}
+
+function formatCompanionKind(kind: CompanionInfo['kind']): string {
+  return kind === 'cli' ? 'CLI' : 'MCP server';
+}
+
 class BridgeRuntimeController implements BridgeRuntime {
   private readonly adapter: RemAdapter;
   private readonly listeners = new Set<(snapshot: BridgeRuntimeSnapshot) => void>();
@@ -88,12 +102,16 @@ class BridgeRuntimeController implements BridgeRuntime {
   private lastConnectedAt?: number;
   private lastAutoNudgeAt?: number;
   private lastSuppressedAutoNudgeAt?: number;
+  private readonly bridgeVersion = __PLUGIN_VERSION__;
+  private readonly installMode: BridgeInstallMode;
+  private companionInfo?: CompanionInfo;
 
   constructor(
     private readonly plugin: ReactRNPlugin,
     settings: AutomationBridgeSettings
   ) {
     this.settings = settings;
+    this.installMode = getBridgeInstallMode(plugin.rootURL);
     this.adapter = new RemAdapter(plugin, settings);
     this.wsClient = this.createWebSocketClient(settings.wsUrl);
     this.wsClient.setMessageHandler(this.handleRequest);
@@ -116,6 +134,9 @@ class BridgeRuntimeController implements BridgeRuntime {
     return {
       status: this.status,
       retryPhase: this.retryPhase,
+      bridgeVersion: this.bridgeVersion,
+      installMode: this.installMode,
+      companion: this.companionInfo,
       wsUrl: this.settings.wsUrl,
       logs: [...this.logs],
       stats: { ...this.stats },
@@ -235,6 +256,17 @@ class BridgeRuntimeController implements BridgeRuntime {
       onRetryPhaseChange: (phase) => {
         console.log(withScopedLogPrefix('runtime', `Retry phase -> ${phase}`));
         this.retryPhase = phase;
+        this.emit();
+      },
+      onCompanionInfoChange: (info) => {
+        this.companionInfo = info;
+        if (info) {
+          this.addLog(
+            `Companion ready: ${formatCompanionKind(info.kind)} v${info.version}`,
+            'success'
+          );
+          return;
+        }
         this.emit();
       },
       onLog: (message, level) => {

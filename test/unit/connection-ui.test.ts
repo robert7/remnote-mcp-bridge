@@ -6,6 +6,8 @@ function createSnapshot(overrides: Partial<BridgeRuntimeSnapshot> = {}): BridgeR
   return {
     status: 'disconnected',
     retryPhase: 'idle',
+    bridgeVersion: '0.11.0',
+    installMode: 'marketplace',
     wsUrl: 'ws://127.0.0.1:3002',
     logs: [],
     stats: { created: 0, updated: 0, journal: 0, searches: 0 },
@@ -37,8 +39,9 @@ describe('connection-ui', () => {
 
     expect(ui.badge.text).toBe('Retrying');
     expect(ui.phaseLabel).toBe('Burst retry 3/10');
+    expect(ui.summary).toBe('Retrying connection');
     expect(ui.nextRetryLabel).toBe('Next retry in 9s');
-    expect(ui.lastDisconnectLabel).toBe('Last disconnect: 1006 Connection lost');
+    expect(ui.lastDisconnectLabel).toBe('Disconnect 1006 Connection lost');
   });
 
   it('describes standby state with background retry hint', () => {
@@ -55,8 +58,9 @@ describe('connection-ui', () => {
 
     expect(ui.badge.text).toBe('Waiting for server');
     expect(ui.phaseLabel).toBe('Standby reconnect');
-    expect(ui.nextRetryLabel).toBe('Next background retry in 10m 10s');
-    expect(ui.lastConnectedLabel).toBe('Last connected 42s ago');
+    expect(ui.summary).toBe('Companion unavailable');
+    expect(ui.nextRetryLabel).toBe('Retry in 10m 10s');
+    expect(ui.lastConnectedLabel).toBe('Last seen 42s ago');
     expect(ui.hint).toContain('Opening this panel');
     expect(ui.hint).toContain('moving focus inside RemNote');
   });
@@ -73,8 +77,8 @@ describe('connection-ui', () => {
     );
 
     expect(ui.badge.text).toBe('Connected');
-    expect(ui.summary).toContain('ready');
-    expect(ui.phaseLabel).toBe('Live connection');
-    expect(ui.lastConnectedLabel).toBe('Last connected 3s ago');
+    expect(ui.summary).toBe('Ready');
+    expect(ui.phaseLabel).toBeUndefined();
+    expect(ui.lastConnectedLabel).toBeUndefined();
   });
 });

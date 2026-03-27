@@ -284,6 +284,7 @@ export class MockRem implements Partial<PluginRem> {
  * Mock RemNote Plugin SDK
  */
 export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
+  rootURL = 'https://example.test/plugin/';
   private rems = new Map<string, MockRem>();
   private remsByName = new Map<string, MockRem>();
   private nextId = 1;
