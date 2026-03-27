@@ -25,6 +25,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   updates.
 - Updated the README bridge action surface to include `read_table` and align action names with the actual bridge
   payload contract.
+- Clarified agent instructions for cross-repo live integration runs: ask the human collaborator to start the bridge
+  first, and ask for a bridge restart after bridge-code changes before reruns.
 
 ### Fixed
 - Fixed `read_table` name lookup to resolve Advanced Tables by exact title search instead of tag-style name matching.
