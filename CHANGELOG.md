@@ -20,6 +20,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 - Fixed a bug where history row expansion state misaligned when new entries were added by replacing index-based React
   keys with a stable `rowKey` derived from the entry's timestamp, action, and `remId`.
+- Fixed recent-actions expansion state so open rows stay attached to their history entries as new actions arrive, and
+  stale expansion state is pruned as older entries roll off.
 - Improved `read_table` title lookup for Advanced Tables nested under wrapper/container rems.
 
 ### Documentation

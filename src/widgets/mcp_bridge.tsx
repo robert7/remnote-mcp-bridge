@@ -54,6 +54,30 @@ const ACTION_ICONS: Record<HistoryEntry['action'], string> = {
   read: '>',
 };
 
+export function reconcileExpandedRows(
+  expandedRows: Record<string, boolean>,
+  history: Pick<HistoryEntry, 'id'>[]
+): Record<string, boolean> {
+  const validHistoryIds = new Set(history.map((entry) => entry.id));
+  let changed = false;
+  const nextExpandedRows: Record<string, boolean> = {};
+
+  for (const [rowKey, isExpanded] of Object.entries(expandedRows)) {
+    if (!isExpanded || !validHistoryIds.has(rowKey)) {
+      changed = true;
+      continue;
+    }
+
+    nextExpandedRows[rowKey] = true;
+  }
+
+  if (!changed && Object.keys(nextExpandedRows).length === Object.keys(expandedRows).length) {
+    return expandedRows;
+  }
+
+  return nextExpandedRows;
+}
+
 function HistoryActionRow({
   isChild,
   title,
@@ -81,6 +105,7 @@ function HistoryActionRow({
 
   return (
     <div
+      data-history-row={isChild ? 'child' : 'parent'}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClickRow}
@@ -168,7 +193,7 @@ function HistoryActionRow({
   );
 }
 
-function AutomationBridgeWidget() {
+export function AutomationBridgeWidget() {
   const plugin = usePlugin();
   const lastSnapshotSignatureRef = useRef<string | null>(null);
   const lastSettingsSignatureRef = useRef<string | null>(null);
@@ -362,6 +387,11 @@ function AutomationBridgeWidget() {
   const stats = snapshot.stats;
   const history = snapshot.history;
   const connectionUi = buildConnectionUiState(snapshot, now);
+
+  useEffect(() => {
+    setExpandedRows((prev) => reconcileExpandedRows(prev, history));
+  }, [history]);
+
   const handleOpenRem = useCallback(
     async (e: React.MouseEvent, remId: string) => {
       e.stopPropagation();
@@ -570,15 +600,14 @@ function AutomationBridgeWidget() {
               const toggleExpand = () => {
                 if (showExpand) {
                   setExpandedRows((prev) => {
-                    const validKeys = new Set(history.map((h) => h.id));
-                    const next: typeof prev = {};
-                    for (const key of Object.keys(prev)) {
-                      if (validKeys.has(key)) {
-                        next[key] = prev[key];
-                      }
+                    const nextExpandedRows = reconcileExpandedRows(prev, history);
+
+                    if (nextExpandedRows[rowKey]) {
+                      const { [rowKey]: _collapsedRow, ...collapsedRows } = nextExpandedRows;
+                      return collapsedRows;
                     }
-                    next[rowKey] = !prev[rowKey];
-                    return next;
+
+                    return { ...nextExpandedRows, [rowKey]: true };
                   });
                 }
               };
@@ -586,6 +615,8 @@ function AutomationBridgeWidget() {
               return (
                 <div
                   key={rowKey}
+                  data-history-entry-id={rowKey}
+                  data-history-expanded={isExpanded ? 'true' : 'false'}
                   style={{
                     borderBottom: index < history.length - 1 ? 'none' : '1px solid #e5e7eb',
                     display: 'flex',
