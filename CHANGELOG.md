@@ -12,16 +12,11 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   column filtering.
 
 ### Changed
-- Refactored `HistoryActionRow` into a declarative, decoupled React component, replacing imperative
-  `e.currentTarget.style` DOM mutations to ensure hover states persist correctly across re-renders.
-- Inlined the "Copy Reference" SVG icon directly into a local reusable component (`src/widgets/icons.tsx`).
+- Improved the Recent Actions panel in the sidebar, including a more reliable copy-reference action. Thanks @Twb06.
 - Updated `read_table` bridge payloads to require exactly one explicit identifier: `tableRemId` or `tableTitle`.
 
 ### Fixed
-- Fixed a bug where history row expansion state misaligned when new entries were added by replacing index-based React
-  keys with a stable `rowKey` derived from the entry's timestamp, action, and `remId`.
-- Fixed recent-actions expansion state so open rows stay attached to their history entries as new actions arrive, and
-  stale expansion state is pruned as older entries roll off.
+- Fixed Recent Actions expansion so expanded rows stay attached to the correct history entry as new actions arrive.
 - Improved `read_table` title lookup for Advanced Tables nested under wrapper/container rems.
 
 ### Documentation
