@@ -18,6 +18,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Kept `react` and `react-dom` on 17.x because `@remnote/plugin-sdk@0.0.46` still declares React 17 peer
   compatibility.
 
+### Documentation
+- Removed the README's "still experimental" wording and kept the issue-reporting link.
+
 ## [0.11.0] - 2026-03-27
 
 ### Added

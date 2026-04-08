@@ -10,7 +10,7 @@ bridge. It is the shared RemNote endpoint for two first-class companion paths:
 ![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
 [![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
 
-> This is a working solution, but still experimental. If you run into any issues, please [report them here](https://github.com/robert7/remnote-mcp-bridge/issues).
+> If you run into any issues, please [report them here](https://github.com/robert7/remnote-mcp-bridge/issues).
 > Further it is an improved and renamed fork of the original plugin
 > [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
 
