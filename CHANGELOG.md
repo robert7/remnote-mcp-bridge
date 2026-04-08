@@ -7,6 +7,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Added weekly Dependabot updates for npm dependencies and GitHub Actions workflow references.
+
 ## [0.11.0] - 2026-03-27
 
 ### Added
