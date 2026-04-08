@@ -42,7 +42,7 @@
     "copy-webpack-plugin": "^11.0.0",
     "cross-env": "^7.0.3",
     "css-loader": "^6.7.1",
-    "esbuild-loader": "^2.19.0",
+    "esbuild-loader": "^4.4.3",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "happy-dom": "^12.10.3",
