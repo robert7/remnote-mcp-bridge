@@ -17,6 +17,7 @@ import {
   DEFAULT_AUTO_TAG,
   DEFAULT_JOURNAL_PREFIX,
 } from '../settings';
+import { withScopedLogPrefix } from '../logging';
 
 // Build-time constant injected by webpack DefinePlugin
 declare const __PLUGIN_VERSION__: string;
@@ -203,6 +204,25 @@ interface SearchContentOptions {
 
 type TagNameCache = Map<string, string | null>;
 
+type TagReferenceLike =
+  | string
+  | {
+      _id?: string;
+      text?: RichTextInterface;
+    };
+
+interface TagMetadataChildSnapshot {
+  remId: string;
+  title: string;
+  flags: {
+    isProperty: boolean;
+    isPowerupProperty: boolean;
+    isPowerupPropertyListItem: boolean;
+    isPowerupSlot: boolean;
+    isPowerupEnum: boolean;
+  };
+}
+
 const SEARCH_INCLUDE_CONTENT_MODES: readonly SearchIncludeContentMode[] = [
   'none',
   'markdown',
@@ -216,6 +236,7 @@ const READ_INCLUDE_CONTENT_MODES: readonly IncludeContentMode[] = [
 
 export class RemAdapter {
   private settings: AutomationBridgeSettings;
+  private readonly emittedTagDebugKeys = new Set<string>();
 
   constructor(
     private plugin: ReactRNPlugin,
@@ -474,44 +495,258 @@ export class RemAdapter {
   /**
    * Resolve human-readable tag names for a Rem.
    *
-   * The SDK typing in this repo does not clearly expose a tag-read method, so this helper
-   * uses feature detection and falls back to no tags when unavailable.
+   * The SDK typing in this repo does not clearly expose a stable tag-read method shape, so this
+   * helper uses feature detection and accepts either tag IDs or tag Rem-like objects.
    */
   private async getTagNames(rem: PluginRem, tagNameCache: TagNameCache): Promise<string[]> {
-    const getTags = (rem as unknown as { getTags?: () => string[] | Promise<string[]> }).getTags;
-    if (typeof getTags !== 'function') return [];
-
-    let tagIds: string[];
-    try {
-      const resolved = await Promise.resolve(getTags.call(rem));
-      tagIds = Array.isArray(resolved)
-        ? resolved.filter((id): id is string => typeof id === 'string')
-        : [];
-    } catch {
+    const getTags = (
+      rem as unknown as { getTags?: () => TagReferenceLike[] | Promise<TagReferenceLike[]> }
+    ).getTags;
+    if (typeof getTags !== 'function') {
+      const metadataSnapshot = await this.collectTagMetadataSnapshot(rem);
+      this.logTagDebugOnce(
+        `missing-getTags:${rem._id}`,
+        `Tag read unavailable for rem ${rem._id}: getTags() is missing`,
+        metadataSnapshot
+      );
       return [];
     }
 
-    if (tagIds.length === 0) return [];
+    let tagRefs: TagReferenceLike[];
+    try {
+      const resolved = await Promise.resolve(getTags.call(rem));
+      tagRefs = Array.isArray(resolved) ? resolved : [];
+      if (!Array.isArray(resolved)) {
+        this.logTagDebugOnce(
+          `non-array-getTags:${rem._id}`,
+          `Tag read returned a non-array result for rem ${rem._id}`,
+          {
+            resolvedType: typeof resolved,
+            resolved,
+          }
+        );
+      }
+    } catch (error) {
+      this.logTagDebugOnce(
+        `throwing-getTags:${rem._id}`,
+        `Tag read failed for rem ${rem._id}`,
+        error
+      );
+      return [];
+    }
 
     const results: string[] = [];
     const seen = new Set<string>();
 
-    for (const tagId of tagIds) {
-      if (!tagId) continue;
-
-      let tagName = tagNameCache.get(tagId);
-      if (tagName === undefined) {
-        const tagRem = await this.plugin.rem.findOne(tagId);
-        tagName = tagRem ? (await this.extractText(tagRem.text)) || null : null;
-        tagNameCache.set(tagId, tagName);
-      }
+    for (const tagRef of tagRefs) {
+      const resolvedTag = await this.resolveTagReference(tagRef, tagNameCache);
+      const { tagId, tagName } = resolvedTag;
 
       if (!tagName || seen.has(tagName)) continue;
       seen.add(tagName);
       results.push(tagName);
+
+      if (tagId && tagNameCache.get(tagId) === undefined) {
+        tagNameCache.set(tagId, tagName);
+      }
+    }
+
+    if (tagRefs.length > 0 && results.length === 0) {
+      this.logTagDebugOnce(
+        `unresolved-getTags:${rem._id}`,
+        `Tag read returned values for rem ${rem._id}, but none could be resolved`,
+        {
+          references: tagRefs.map((tagRef) => this.describeTagReference(tagRef)),
+          availableTagMethods: this.getAvailableTagMethods(rem),
+        }
+      );
     }
 
     return results;
+  }
+
+  private async resolveTagReference(
+    tagRef: TagReferenceLike,
+    tagNameCache: TagNameCache
+  ): Promise<{ tagId?: string; tagName: string | null }> {
+    if (typeof tagRef === 'string') {
+      return this.resolveTagId(tagRef, tagNameCache);
+    }
+
+    if (!tagRef || typeof tagRef !== 'object') {
+      return { tagName: null };
+    }
+
+    const tagId = typeof tagRef._id === 'string' && tagRef._id ? tagRef._id : undefined;
+    if (tagId) {
+      const cachedTagName = tagNameCache.get(tagId);
+      if (cachedTagName !== undefined) {
+        return { tagId, tagName: cachedTagName };
+      }
+    }
+
+    const inlineTagName =
+      Array.isArray(tagRef.text) && tagRef.text.length > 0
+        ? (await this.extractText(tagRef.text)) || null
+        : null;
+    if (tagId) {
+      tagNameCache.set(tagId, inlineTagName);
+    }
+
+    if (inlineTagName || !tagId) {
+      return { tagId, tagName: inlineTagName };
+    }
+
+    const resolvedById = await this.resolveTagId(tagId, tagNameCache);
+    return resolvedById;
+  }
+
+  private async resolveTagId(
+    tagId: string,
+    tagNameCache: TagNameCache
+  ): Promise<{ tagId: string; tagName: string | null }> {
+    const cachedTagName = tagNameCache.get(tagId);
+    if (cachedTagName !== undefined) {
+      return { tagId, tagName: cachedTagName };
+    }
+
+    const tagRem = await this.plugin.rem.findOne(tagId);
+    const tagName = tagRem ? (await this.extractText(tagRem.text)) || null : null;
+    tagNameCache.set(tagId, tagName);
+    return { tagId, tagName };
+  }
+
+  private describeTagReference(tagRef: TagReferenceLike): Record<string, unknown> {
+    if (typeof tagRef === 'string') {
+      return { kind: 'string', value: tagRef };
+    }
+
+    if (!tagRef || typeof tagRef !== 'object') {
+      return { kind: typeof tagRef, value: tagRef };
+    }
+
+    return {
+      kind: 'object',
+      id: typeof tagRef._id === 'string' ? tagRef._id : undefined,
+      hasText: Array.isArray(tagRef.text),
+    };
+  }
+
+  private getAvailableTagMethods(rem: PluginRem): string[] {
+    const prototype = Object.getPrototypeOf(rem) as object | null;
+    if (!prototype) return [];
+
+    return Object.getOwnPropertyNames(prototype)
+      .filter((name) => name.toLowerCase().includes('tag'))
+      .sort();
+  }
+
+  private getAvailableMetadataMethods(rem: PluginRem): string[] {
+    const prototype = Object.getPrototypeOf(rem) as object | null;
+    if (!prototype) return [];
+
+    return Object.getOwnPropertyNames(prototype)
+      .filter((name) => /(tag|powerup|property|slot)/i.test(name))
+      .sort();
+  }
+
+  private async collectTagMetadataSnapshot(rem: PluginRem): Promise<{
+    availableTagMethods: string[];
+    availableMetadataMethods: string[];
+    pluginRemNamespaceMethods: string[];
+    pluginRemCapabilities: {
+      hasGetAll: boolean;
+      hasFindOne: boolean;
+      hasFindByName: boolean;
+    };
+    childMetadata: TagMetadataChildSnapshot[];
+  }> {
+    const children = await rem.getChildrenRem().catch(() => [] as PluginRem[]);
+    const childMetadata = await Promise.all(
+      children.map(async (child) => ({
+        remId: child._id,
+        title: await this.safeExtractText(child.text),
+        flags: {
+          isProperty: await this.safeMetadataFlag(child, 'isProperty'),
+          isPowerupProperty: await this.safeMetadataFlag(child, 'isPowerupProperty'),
+          isPowerupPropertyListItem: await this.safeMetadataFlag(
+            child,
+            'isPowerupPropertyListItem'
+          ),
+          isPowerupSlot: await this.safeMetadataFlag(child, 'isPowerupSlot'),
+          isPowerupEnum: await this.safeMetadataFlag(child, 'isPowerupEnum'),
+        },
+      }))
+    );
+
+    return {
+      availableTagMethods: this.getAvailableTagMethods(rem),
+      availableMetadataMethods: this.getAvailableMetadataMethods(rem),
+      pluginRemNamespaceMethods: this.getPluginRemNamespaceMethods(),
+      pluginRemCapabilities: this.getPluginRemCapabilities(),
+      childMetadata,
+    };
+  }
+
+  private getPluginRemNamespaceMethods(): string[] {
+    const remNamespace = this.plugin.rem as unknown as Record<string, unknown> | undefined;
+    if (!remNamespace || typeof remNamespace !== 'object') return [];
+
+    return Object.keys(remNamespace).sort();
+  }
+
+  private getPluginRemCapabilities(): {
+    hasGetAll: boolean;
+    hasFindOne: boolean;
+    hasFindByName: boolean;
+  } {
+    const remNamespace = this.plugin.rem as unknown as Record<string, unknown> | undefined;
+    return {
+      hasGetAll: typeof remNamespace?.getAll === 'function',
+      hasFindOne: typeof remNamespace?.findOne === 'function',
+      hasFindByName: typeof remNamespace?.findByName === 'function',
+    };
+  }
+
+  private async safeExtractText(text: RichTextInterface | undefined): Promise<string> {
+    if (!text || !Array.isArray(text) || text.length === 0) return '';
+
+    try {
+      return await this.extractText(text);
+    } catch {
+      return '';
+    }
+  }
+
+  private async safeMetadataFlag(
+    rem: PluginRem,
+    methodName:
+      | 'isProperty'
+      | 'isPowerupProperty'
+      | 'isPowerupPropertyListItem'
+      | 'isPowerupSlot'
+      | 'isPowerupEnum'
+  ): Promise<boolean> {
+    const method = (rem as unknown as Record<string, unknown>)[methodName];
+    if (typeof method !== 'function') return false;
+
+    try {
+      return await (method as (this: PluginRem) => Promise<boolean>).call(rem);
+    } catch {
+      return false;
+    }
+  }
+
+  private logTagDebugOnce(debugKey: string, message: string, details?: unknown): void {
+    if (this.emittedTagDebugKeys.has(debugKey)) return;
+    this.emittedTagDebugKeys.add(debugKey);
+
+    if (details === undefined) {
+      console.warn(withScopedLogPrefix('adapter', message));
+      return;
+    }
+
+    console.warn(withScopedLogPrefix('adapter', message), details);
   }
 
   /**

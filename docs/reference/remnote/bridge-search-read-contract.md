@@ -55,6 +55,8 @@ contract keeps iterations safe and predictable.
 - Present in both search and read outputs.
 - In `search_by_tag`, `tags` belongs to the resolved target Rem that is returned, not necessarily the originally
   tagged descendant that caused the match.
+- Live RemNote runtime currently does not expose reliable reverse note -> tags lookup for `read_note` and plain
+  `search`; see [`../../tag-readback-limitations.md`](../../tag-readback-limitations.md).
 
 ### `remType`
 
