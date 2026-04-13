@@ -8,6 +8,6 @@ on:
 
 jobs:
   quality:
-    uses: robert7/workflows/.github/workflows/node-ci.yml@v0.2.0
+    uses: robert7/workflows/.github/workflows/node-ci.yml@v0.3.0
     secrets:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
