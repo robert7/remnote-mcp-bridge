@@ -10,10 +10,9 @@ This guide shows how to run `remnote-mcp-bridge` from source code and load it in
 - Node.js 20.19.0+ + npm for local source development and code-quality commands
 - RemNote desktop app or RemNote web app opened in browser
 - Terminal access
-- A plan to run a required companion component after plugin install:
-  - [RemNote MCP Server](https://github.com/robert7/remnote-mcp-server) or
-  - [RemNote CLI](https://github.com/robert7/remnote-cli)
-- Version match your companion app to your bridge plugin (`0.x` semver can break on minor bumps); see [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md)
+- A plan to run the required companion package after plugin install:
+  - [RemNote MCP Server](https://github.com/robert7/remnote-mcp-server), which also provides `remnote-cli`
+- Version match your companion package to your bridge plugin (`0.x` semver can break on minor bumps); see [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md)
 
 If your shell cannot find a new enough Node.js in this repo environment, run:
 
@@ -105,26 +104,22 @@ panel is mainly for status, logs, and manual reconnect while testing.
 
 ![Open plugin sidebar panel](./images/run-plugin-locally-07-open-plugin-sidebar-panel.jpg)
 
-## 8. Install and run the required companion component
+## 8. Install and run the required server package
 
 This step is **required**. Running the plugin locally is not enough by itself.
 
-Choose one path:
+Install the server package:
 
-- First check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) to pick a compatible server/CLI version for your installed bridge plugin version.
+- First check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) to pick a compatible `remnote-mcp-server` version for your installed bridge plugin version.
+- Install guide: [RemNote MCP Server Installation](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/installation.md)
+- Demo: [RemNote MCP Server Demo](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)
+- Bundled CLI demo: [remnote-cli Demo](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md#remnote-cli)
 
-- **MCP Server path (for AI assistants via MCP):**
-  - Install guide: [RemNote MCP Server Installation](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/installation.md)
-  - Demo: [RemNote MCP Server Demo](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)
-- **CLI path (for OpenClaw / automation workflows):**
-  - Install guide: [RemNote CLI Installation](https://github.com/robert7/remnote-cli/blob/main/docs/guides/installation.md)
-  - Demo: [RemNote CLI Demo](https://github.com/robert7/remnote-cli/blob/main/docs/demo.md)
-
-Best order: start the companion component first, then open RemNote. The bridge should connect automatically in the
+Best order: start `remnote-mcp-server` first, then open RemNote. The bridge should connect automatically in the
 background. Open the bridge sidebar panel if you want to verify status and inspect logs.
 
-If RemNote was already open before the companion component was ready, the bridge should still connect automatically once
-the companion component starts. Click **Reconnect** in the panel only if you want an immediate retry.
+If RemNote was already open before the server was ready, the bridge should still connect automatically once
+`remnote-mcp-server` starts. Click **Reconnect** in the panel only if you want an immediate retry.
 
 ## Common troubleshooting
 
@@ -137,7 +132,7 @@ the companion component starts. Click **Reconnect** in the panel only if you wan
 - Need to test console helpers from docs:
   - Use plugin iframe context in DevTools, and keep the bridge sidebar widget open so listeners are registered.
 - Plugin panel shows disconnected:
-  - The plugin is installed, but a companion component is not running yet. Start the MCP server or RemNote CLI.
+  - The plugin is installed, but the companion package is not running yet. Start `remnote-mcp-server`.
 
 ## Related guides
 

@@ -7,19 +7,19 @@ RemNote plugin marketplace.
 
 Installing the plugin is only **one part** of the setup.
 
-For the full solution to work, you also **must** install and run one companion component:
+For the full solution to work, you also **must** install and run the companion server package:
 
 - **MCP path:** [RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)
-- **CLI path (OpenClaw and other agentic workflows):** [RemNote CLI](https://github.com/robert7/remnote-cli)
+- **CLI path (OpenClaw and other agentic workflows):** `remnote-cli`, bundled in `remnote-mcp-server`
 
-Without one of these companion apps, the plugin can install successfully but it will not connect and cannot do useful
+Without this companion package, the plugin can install successfully but it will not connect and cannot do useful
 work.
 
-**Before installing or upgrading the companion app:** check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) so your server/CLI version matches your installed bridge plugin version.
+**Before installing or upgrading the companion package:** check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) so your server package version matches your installed bridge plugin version.
 
 > **Chrome/Arc browser-only warning:** Chrome/Chromium 147+ can block the bridge WebSocket when RemNote is opened in a
 > Chromium-based browser and the marketplace plugin tries to connect to `ws://127.0.0.1:3002`. This is not currently
-> known to affect the RemNote desktop app. If the bridge stays **Retrying** while the companion app is running, see
+> known to affect the RemNote desktop app. If the bridge stays **Retrying** while `remnote-mcp-server` is running, see
 > [Chrome Local Network Access troubleshooting](./connection-lifecycle.md#chrome-local-network-access-can-block-browser-websockets).
 > For development/testing, loading the plugin from localhost is also available through
 > [Run The Plugin Locally](./development-run-plugin-locally.md).
@@ -65,28 +65,24 @@ panel is mainly for status, logs, and the manual **Reconnect** button.
 
 ![Open right sidebar and Automation Bridge panel](./images/install-plugin-marketplace-04-open-right-sidebar-and-mcp-panel.jpg)
 
-## 5. Install and run the required companion component
+## 5. Install and run the required server package
 
 This step is **required**. The plugin alone is not enough.
 
-Choose one path:
+Install the server package:
 
-- First check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) to pick a compatible server/CLI version for your installed bridge plugin version.
+- First check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) to pick a compatible `remnote-mcp-server` version for your installed bridge plugin version.
+- Install guide: [RemNote MCP Server Installation](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/installation.md)
+- Demo: [RemNote MCP Server Demo](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)
+- Bundled CLI demo: [remnote-cli Demo](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md#remnote-cli)
 
-- **MCP Server path (for AI assistants via MCP):**
-  - Install guide: [RemNote MCP Server Installation](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/installation.md)
-  - Demo: [RemNote MCP Server Demo](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)
-- **CLI path (for OpenClaw / automation workflows):**
-  - Install guide: [RemNote CLI Installation](https://github.com/robert7/remnote-cli/blob/main/docs/guides/installation.md)
-  - Demo: [RemNote CLI Demo](https://github.com/robert7/remnote-cli/blob/main/docs/demo.md)
-
-Best order: start the companion app first, then open RemNote. The bridge should connect automatically in the
+Best order: start `remnote-mcp-server` first, then open RemNote. The bridge should connect automatically in the
 background. You can open or return to the plugin panel to confirm the status shows **Connected**.
 
-If RemNote was already open before the companion app was ready, the bridge should still connect automatically after the
-companion app starts. Click **Reconnect** in the panel only if you want an immediate retry.
+If RemNote was already open before the server was ready, the bridge should still connect automatically after
+`remnote-mcp-server` starts. Click **Reconnect** in the panel only if you want an immediate retry.
 
-![Run companion component and confirm Connected status](./images/install-plugin-marketplace-05-run-companion-and-confirm-connected.jpg)
+![Run server package and confirm Connected status](./images/install-plugin-marketplace-05-run-companion-and-confirm-connected.jpg)
 
 ## Which guide should you use?
 

@@ -14,6 +14,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   RemNote users, with thanks to @awreccan for reporting and helping analyze the issue.
 - Updated architecture and connection docs for the unified server path where `remnote-cli` connects through
   `remnote-mcp-server` instead of a separate CLI daemon.
+- Updated bridge documentation for the package consolidation where `remnote-mcp-server` now provides both the server
+  executable and the bundled `remnote-cli` command.
 
 ## [0.13.0] - 2026-04-24
 

@@ -10,13 +10,13 @@
 ### Usage & Connection
 
 - [Connection Lifecycle](guides/connection-lifecycle.md) — How the bridge connects after RemNote starts, what reconnect/backoff behavior looks like, and what each sidebar status means.
-- [Bridge / Consumer Version Compatibility](guides/bridge-consumer-version-compatibility.md) — How to match bridge plugin versions with companion app versions (`remnote-mcp-server` / `remnote-cli`) during the `0.x` pre-stable period.
+- [Bridge / Consumer Version Compatibility](guides/bridge-consumer-version-compatibility.md) — How to match bridge plugin versions with the `remnote-mcp-server` package during the `0.x` pre-stable period.
 
 ### Development
 
 - [Execute Bridge Commands from RemNote Developer Console](guides/development-execute-bridge-commands.md) — Run bridge actions directly inside the RemNote plugin console to inspect raw results without the MCP server or CLI in the middle.
 - [Execute Bridge Commands — Screenshot Walkthrough](guides/development-execute-bridge-commands-screenshots.md) — Visual step-by-step companion to the console guide above, with annotated screenshots.
-- [Pull Request Guide](guides/pull-request-guide.md) — Cross-repo PR policy and submission checklist for contributing to `remnote-mcp-bridge` and its companion repos.
+- [Pull Request Guide](guides/pull-request-guide.md) — Cross-repo PR policy and submission checklist for contributing to `remnote-mcp-bridge` and `remnote-mcp-server`.
 
 ---
 

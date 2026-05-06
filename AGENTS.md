@@ -17,10 +17,10 @@ The plugin is a WebSocket client (default server URL: `ws://127.0.0.1:3002`).
 
 Resolve from this repo root (`$(pwd)`):
 
-- `$(pwd)/../remnote-mcp-server` - MCP transport/tool surface
-- `$(pwd)/../remnote-cli` - command mapping and MCP-server client
+- `$(pwd)/../remnote-mcp-server` - MCP transport/tool surface and bundled `remnote-cli`
+- `$(pwd)/../remnote-cli` - legacy migration/redirect repository only
 
-When changing contracts, check all three repos.
+When changing contracts, check this repo and `remnote-mcp-server`. Touch `remnote-cli` only for legacy notices.
 
 ## Contract Map (Current)
 
@@ -37,7 +37,7 @@ When changing contracts, check all three repos.
 ### Compatibility and Version Signaling
 
 - On connect, plugin sends WebSocket `hello` with plugin version.
-- Projects are in `0.x`; prefer matching minor lines across bridge/server/CLI.
+- Projects are in `0.x`; prefer matching minor lines across bridge and the server package.
 - Compatibility guide: `docs/guides/bridge-consumer-version-compatibility.md`.
 
 Before changing `search`/`read` output semantics, read:
@@ -80,7 +80,7 @@ Use `./run-prod-build.sh` for production-style local verification (no hot reload
 
 - This repo does not ship a dedicated `npm run test:integration` flow.
 - When live RemNote verification is required, ask the human collaborator to run/confirm it in a real RemNote session.
-- If agent-assisted live integration runs are being triggered from `remnote-mcp-server` or `remnote-cli`, the agent
+- If agent-assisted live integration runs are being triggered from `remnote-mcp-server`, the agent
   must first ask the human collaborator to start the bridge in RemNote.
 - If bridge code changed after the currently running RemNote bridge session started, the agent must ask the human
   collaborator to restart the bridge before rerunning live integration tests.
@@ -96,7 +96,7 @@ Use `./run-prod-build.sh` for production-style local verification (no hot reload
 
 ## Release and Publishing Map
 
-For releases, update all three:
+For bridge releases, update:
 
 1. `package.json` version
 2. `public/manifest.json` version object
