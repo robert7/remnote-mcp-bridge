@@ -312,8 +312,8 @@ npm run build
 
 3. **Restart RemNote** after changing settings
 
-4. **If using RemNote in Chrome/Arc/Chromium:** Chrome 147+ can block the marketplace plugin iframe from connecting to
-   `ws://127.0.0.1:3002`; see
+4. **If using RemNote in a Chromium-based browser, not the desktop app:** Chrome 147+ can block the marketplace plugin
+   iframe from connecting to `ws://127.0.0.1:3002`; see
    [Chrome Local Network Access troubleshooting](docs/guides/connection-lifecycle.md#chrome-local-network-access-can-block-browser-websockets).
 
 **"Invalid event setCustomCSS" errors:**

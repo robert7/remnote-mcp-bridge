@@ -194,6 +194,9 @@ sidebar state and logs before restarting anything.
 
 ### Chrome Local Network Access Can Block Browser WebSockets
 
+This issue is only relevant when RemNote is running in a Chromium-based browser such as Chrome, Arc, Brave, or Edge.
+The RemNote desktop app currently works normally with the local bridge WebSocket.
+
 Chrome/Chromium 147+ can block the bridge WebSocket when RemNote is running in the browser and the marketplace plugin
 iframe is loaded from `https://www.remnoteplugins.com`. The bridge connects from that public HTTPS origin to the local
 companion WebSocket at `ws://127.0.0.1:3002`, which can trigger Chrome's Local Network Access checks for WebSockets.
