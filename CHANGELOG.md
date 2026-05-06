@@ -12,6 +12,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Reduced Dependabot version-update checks to monthly runs on the 15th.
 - Documented Chrome/Chromium Local Network Access WebSocket blocking symptoms and workarounds for browser-based
   RemNote users, with thanks to @awreccan for reporting and helping analyze the issue.
+- Updated architecture and connection docs for the unified server path where `remnote-cli` connects through
+  `remnote-mcp-server` instead of a separate CLI daemon.
 
 ## [0.13.0] - 2026-04-24
 

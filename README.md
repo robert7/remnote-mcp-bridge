@@ -25,11 +25,14 @@ This project is a bridge layer with two consumer paths:
    - Demo: **[View MCP Server Demo →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
 2. **CLI app path (e.g. for OpenClaw):**
    - This bridge plugin remains the RemNote endpoint
-   - **[RemNote CLI](https://github.com/robert7/remnote-cli)**: companion app for integrating RemNote with OpenClaw and
-     other agentic workflows via the same WebSocket bridge
+   - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: the single local server connected to the
+     bridge
+   - **[RemNote CLI](https://github.com/robert7/remnote-cli)**: command-line MCP client for OpenClaw and other
+     agentic workflows
    - Demo: **[View RemNote CLI Demo →](https://github.com/robert7/remnote-cli/blob/main/docs/demo.md)**
 
-**For both paths always 2 components are required - the bridge and either the MCP server or the CLI app.**
+**For both paths the required server component is `remnote-mcp-server`; `remnote-cli` is an optional command-line
+client for that server.**
 
 | Companion            | Best fit                                      | Typical client                                              |
 | -------------------- | --------------------------------------------- | ----------------------------------------------------------- |
@@ -74,14 +77,14 @@ Connection direction is **Bridge Plugin -> Companion App**, not the other way ar
 Supported data flows:
 
 - **MCP path:** `RemNote ↔ Bridge Plugin ↔ Local MCP Server ↔ AI Assistant`
-- **CLI path:** `RemNote ↔ Bridge Plugin ↔ Local CLI Daemon ↔ CLI / Local Agents`
+- **CLI path:** `RemNote ↔ Bridge Plugin ↔ Local MCP Server ↔ RemNote CLI ↔ Local Agents`
 
 What this means in practice:
 
 - **The plugin itself does NOT send data to external servers**
 - Any external sharing happens in the chosen companion path, not in the bridge plugin itself
 - For the MCP path, your AI assistant only sees the data forwarded through your local MCP server setup
-- For the CLI path, data stays within your local CLI/daemon workflow unless your own scripts or agents forward it
+- For the CLI path, data stays within your local MCP-server/CLI workflow unless your own scripts or agents forward it
 
 Why this works that way: RemNote plugins do not have a hosted backend API, so the bridge must connect outward from the
 RemNote frontend plugin to the local companion process. See the [Connection Lifecycle
@@ -120,7 +123,8 @@ Related setup/testing guides:
 
 ### 2. Choose Your Companion Path
 
-**Important:** the plugin alone is not sufficient. You also need one companion app:
+**Important:** the plugin alone is not sufficient. You need the MCP server. The CLI is an additional client for local
+automation workflows.
 
 #### MCP server path
 
@@ -136,8 +140,8 @@ configuration, and troubleshooting.
 
 #### CLI path
 
-Use **[RemNote CLI](https://github.com/robert7/remnote-cli)** when you want shell commands, OpenClaw, or other local
-agent workflows to access the same bridge.
+Use **[RemNote CLI](https://github.com/robert7/remnote-cli)** with the MCP server when you want shell commands,
+OpenClaw, or other local agent workflows to access the same bridge.
 
 ```bash
 npm install -g remnote-cli
@@ -152,8 +156,7 @@ workflow examples.
 ### Recommended Startup Order
 
 1. Start the companion process first:
-   - `remnote-mcp-server` for the MCP path
-   - `remnote-cli daemon start` for the CLI path
+   - `remnote-mcp-server`
 2. Open RemNote.
 3. Wait for the bridge to connect in the background, or open the Automation Bridge panel if you want to confirm
    status.
@@ -174,8 +177,8 @@ Guide](docs/guides/connection-lifecycle.md).
 The system enforces a **single RemNote plugin connection** to one companion process at a time. This means:
 
 - The bridge plugin connects to one local WebSocket endpoint
-- You should run either the MCP server path or the CLI daemon path against a given RemNote app instance
-- On the MCP path, multiple AI assistants can still share that one bridge connection through the MCP server's own
+- `remnote-mcp-server` is the supported local WebSocket companion for both MCP clients and `remnote-cli`
+- Multiple AI assistants and CLI commands can share that one bridge connection through the MCP server's own
   multi-client transport
 - This is a RemNote plugin limitation, not a limitation specific to the MCP server or CLI
 
@@ -245,18 +248,17 @@ Once everything is connected, you can use either companion path:
 ## Architecture
 
 ```text
-MCP clients / AI assistants ↔ MCP Server (HTTP) ┐
-                                                ├─ WebSocket :3002 ↔ RemNote Plugin (this repo) ↔ RemNote SDK
-CLI commands / local agents ↔ CLI Daemon (HTTP) ┘
+MCP clients / AI assistants -> MCP Server (HTTP) -> WebSocket :3002 -> RemNote Plugin (this repo) -> RemNote SDK
+CLI commands / local agents -> RemNote CLI -> MCP Server (HTTP) -> WebSocket :3002 -> RemNote Plugin -> RemNote SDK
 ```
 
 **Component roles:**
 
 - **RemNote Automation Bridge** (this repository) - RemNote plugin that executes bridge actions via the RemNote SDK
 - **RemNote MCP Server** ([separate repository](https://github.com/robert7/remnote-mcp-server)) - Exposes bridge
-  actions to MCP-compatible AI assistants
+  actions to MCP-compatible AI assistants and CLI clients
 - **RemNote CLI** ([separate repository](https://github.com/robert7/remnote-cli)) - Exposes the same bridge actions as
-  local commands and daemon-backed automation
+  local commands by calling the MCP server
 
 ## RemNote Concept Reference (for Contributors and Agents)
 

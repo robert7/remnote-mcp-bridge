@@ -8,7 +8,7 @@ This repo is the bridge plugin between RemNote SDK and two external consumer pat
 
 ```text
 MCP path: AI assistant <-> remnote-mcp-server <-> this plugin <-> RemNote SDK
-CLI path: automation/agents <-> remnote-cli <-> this plugin <-> RemNote SDK
+CLI path: automation/agents <-> remnote-cli <-> remnote-mcp-server <-> this plugin <-> RemNote SDK
 ```
 
 The plugin is a WebSocket client (default server URL: `ws://127.0.0.1:3002`).
@@ -18,7 +18,7 @@ The plugin is a WebSocket client (default server URL: `ws://127.0.0.1:3002`).
 Resolve from this repo root (`$(pwd)`):
 
 - `$(pwd)/../remnote-mcp-server` - MCP transport/tool surface
-- `$(pwd)/../remnote-cli` - daemon/control API + CLI command mapping
+- `$(pwd)/../remnote-cli` - command mapping and MCP-server client
 
 When changing contracts, check all three repos.
 
@@ -84,8 +84,7 @@ Use `./run-prod-build.sh` for production-style local verification (no hot reload
   must first ask the human collaborator to start the bridge in RemNote.
 - If bridge code changed after the currently running RemNote bridge session started, the agent must ask the human
   collaborator to restart the bridge before rerunning live integration tests.
-- When switching between CLI and MCP server live integration tests, the agent must ensure the other companion process
-  is stopped before starting the next one because both need the same WebSocket port.
+- CLI and MCP server live integration tests use the same `remnote-mcp-server` bridge connection.
 - Use local unit/static/build checks for agent-side verification.
 
 ## Documentation and Changelog Rules

@@ -10,8 +10,8 @@ status means.
 3. The bridge tries to connect to the configured WebSocket companion URL.
    - Default: `ws://127.0.0.1:3002`
 4. Once connected, the bridge is ready for either:
-   - `remnote-mcp-server`
-   - `remnote-cli daemon`
+   - MCP clients connected to `remnote-mcp-server`
+   - `remnote-cli` commands connected to `remnote-mcp-server`
 
 The right-sidebar Automation Bridge panel is optional. It is now a monitoring and manual-control surface, not the thing
 that creates the connection.
@@ -21,7 +21,7 @@ that creates the connection.
 The connection direction is:
 
 ```text
-RemNote UI + Bridge Plugin -> WebSocket Companion App <- MCP clients / CLI commands
+RemNote UI + Bridge Plugin -> remnote-mcp-server <- MCP clients / remnote-cli commands
 ```
 
 This can feel backwards at first because many people expect the companion app to connect into RemNote.
@@ -33,7 +33,7 @@ recommends frontend-plugin-based approaches instead of relying on a backend plug
 So in this project:
 
 - the bridge plugin is the WebSocket client
-- the MCP server or CLI daemon is the WebSocket server
+- `remnote-mcp-server` is the WebSocket server
 - MCP clients and CLI commands talk to the companion app, not directly to RemNote
 
 That is why startup order matters: the bridge always tries to connect outward from RemNote to the configured companion
@@ -42,8 +42,7 @@ process.
 ## Recommended Startup Order
 
 1. Start the companion process first.
-   - MCP path: `remnote-mcp-server`
-   - CLI path: `remnote-cli daemon start`
+   - `remnote-mcp-server`
 2. Open RemNote.
 3. Wait for the bridge to connect in the background.
 4. Open the sidebar panel only if you want to inspect status, logs, or click **Reconnect Now**.
@@ -109,7 +108,7 @@ Immediate reconnect can be triggered by:
 This means a common workflow works well:
 
 1. Leave RemNote open.
-2. Start the CLI daemon or MCP server later.
+2. Start `remnote-mcp-server` later.
 3. Open the Automation Bridge panel or move focus to another note/pane in RemNote.
 4. The bridge should immediately restart the faster retry window instead of waiting for the full standby timer.
 

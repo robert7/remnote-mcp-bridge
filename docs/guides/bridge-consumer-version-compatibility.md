@@ -1,9 +1,9 @@
 # Bridge / Consumer Version Compatibility (0.x)
 
-The Automation Bridge plugin (`remnote-mcp-bridge`) is the shared protocol layer used by both companion apps:
+The Automation Bridge plugin (`remnote-mcp-bridge`) is the shared protocol layer used by the MCP server and CLI:
 
 - `remnote-mcp-server` (MCP path)
-- `remnote-cli` (CLI / OpenClaw / automation path)
+- `remnote-cli` (CLI / OpenClaw / automation path, through `remnote-mcp-server`)
 
 Because these projects are currently in `0.x` versions, **minor version changes may include breaking changes**.
 
@@ -18,8 +18,8 @@ They may work in some cases, but they may also fail due to action-name, payload,
 
 ## Recommended install rule
 
-When installing a companion app for a given bridge plugin version, prefer the **same minor version line** unless the
-release notes explicitly say another combination is supported.
+When installing the MCP server and CLI for a given bridge plugin version, prefer the **same minor version line** unless
+the release notes explicitly say another combination is supported.
 
 Examples:
 
@@ -42,7 +42,7 @@ npm install -g remnote-cli@0.5.0
 
 ## Upgrade guidance
 
-- Upgrade the bridge plugin and companion app together when possible.
+- Upgrade the bridge plugin, MCP server, and CLI together when possible.
 - After any upgrade, verify connection and run a simple test (`status`, then a small `search` or `create`).
 - If behavior changes after an upgrade, check for a version mismatch before deeper debugging.
 - If you checkout the `master` branch in any repo, read `CHANGELOG.md` first: the `Unreleased`
