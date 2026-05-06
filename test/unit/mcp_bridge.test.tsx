@@ -40,11 +40,11 @@ function createSnapshot(history: HistoryEntry[]): BridgeRuntimeSnapshot {
   return {
     status: 'connected',
     retryPhase: 'idle',
-    bridgeVersion: '0.13.0',
+    bridgeVersion: '0.14.0',
     installMode: 'development',
     companion: {
       kind: 'cli',
-      version: '0.13.0',
+      version: '0.14.0',
     },
     wsUrl: 'ws://127.0.0.1:3002',
     logs: [],
@@ -172,7 +172,7 @@ describe('AutomationBridgeWidget', () => {
 
     expect(container.textContent).toContain('Automation Bridge');
     expect(container.textContent).toContain('Ready');
-    expect(container.textContent).toContain('Bridge v0.13.0 dev · CLI v0.13.0');
+    expect(container.textContent).toContain('Bridge v0.14.0 dev · CLI v0.14.0');
     expect(container.textContent).toContain('ws://127.0.0.1:3002');
   });
 

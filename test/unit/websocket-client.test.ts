@@ -159,14 +159,14 @@ describe('WebSocketClient', () => {
       await wait(10);
 
       const ws = (client as unknown as { ws: MockWebSocket }).ws;
-      ws.simulateMessage({ type: 'companion_info', kind: 'cli', version: '0.13.0' });
+      ws.simulateMessage({ type: 'companion_info', kind: 'cli', version: '0.14.0' });
       await wait(10);
 
       expect(companionInfoChanges.at(-1)).toEqual({
         kind: 'cli',
-        version: '0.13.0',
+        version: '0.14.0',
       });
-      expect(logs.some((log) => log.message.includes('Companion identified: cli v0.13.0'))).toBe(
+      expect(logs.some((log) => log.message.includes('Companion identified: cli v0.14.0'))).toBe(
         true
       );
     });

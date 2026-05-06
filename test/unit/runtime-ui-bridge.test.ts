@@ -19,11 +19,11 @@ describe('registerBridgeRuntimeUiBridge', () => {
     const snapshot: BridgeRuntimeSnapshot = {
       status: 'connected',
       retryPhase: 'idle',
-      bridgeVersion: '0.13.0',
+      bridgeVersion: '0.14.0',
       installMode: 'development',
       companion: {
         kind: 'cli',
-        version: '0.13.0',
+        version: '0.14.0',
       },
       wsUrl: 'ws://127.0.0.1:3002',
       logs: [{ timestamp: logTimestamp, message: 'Connected', level: 'success' }],
@@ -88,7 +88,7 @@ describe('registerBridgeRuntimeUiBridge', () => {
         getSnapshot: () => ({
           status: 'disconnected',
           retryPhase: 'idle',
-          bridgeVersion: '0.13.0',
+          bridgeVersion: '0.14.0',
           installMode: 'marketplace',
           wsUrl: 'ws://127.0.0.1:3002',
           logs: [],

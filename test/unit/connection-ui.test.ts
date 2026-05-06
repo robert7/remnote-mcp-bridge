@@ -6,7 +6,7 @@ function createSnapshot(overrides: Partial<BridgeRuntimeSnapshot> = {}): BridgeR
   return {
     status: 'disconnected',
     retryPhase: 'idle',
-    bridgeVersion: '0.13.0',
+    bridgeVersion: '0.14.0',
     installMode: 'marketplace',
     wsUrl: 'ws://127.0.0.1:3002',
     logs: [],
