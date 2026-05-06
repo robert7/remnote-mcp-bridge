@@ -17,6 +17,13 @@ work.
 
 **Before installing or upgrading the companion app:** check the [Bridge / Consumer Version Compatibility Guide](./bridge-consumer-version-compatibility.md) so your server/CLI version matches your installed bridge plugin version.
 
+> **Chrome/Arc browser warning:** Chrome/Chromium 147+ can block the bridge WebSocket when RemNote is opened in the
+> browser and the marketplace plugin tries to connect to `ws://127.0.0.1:3002`. If the bridge stays **Retrying** while
+> the companion app is running, see
+> [Chrome Local Network Access troubleshooting](./connection-lifecycle.md#chrome-local-network-access-can-block-browser-websockets).
+> For development/testing, loading the plugin from localhost is also available through
+> [Run The Plugin Locally](./development-run-plugin-locally.md).
+
 ## 1. Open RemNote Plugins and search the marketplace
 
 In RemNote:

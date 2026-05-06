@@ -191,3 +191,37 @@ Check:
 
 Then use **Reconnect Now** once after confirming the companion process is listening. If that still fails, capture the
 sidebar state and logs before restarting anything.
+
+### Chrome Local Network Access Can Block Browser WebSockets
+
+Chrome/Chromium 147+ can block the bridge WebSocket when RemNote is running in the browser and the marketplace plugin
+iframe is loaded from `https://www.remnoteplugins.com`. The bridge connects from that public HTTPS origin to the local
+companion WebSocket at `ws://127.0.0.1:3002`, which can trigger Chrome's Local Network Access checks for WebSockets.
+
+Typical symptoms:
+
+- The Automation Bridge sidebar stays **Retrying** or **Waiting for server**.
+- DevTools shows `WebSocket connection to 'ws://127.0.0.1:3002/' failed:`.
+- The companion app is listening, but its logs show no incoming WebSocket connection attempt.
+- Opening `http://127.0.0.1:3002` or `ws://127.0.0.1:3002` from another browser context may still prove the port is
+  reachable, because the failing connection is the plugin iframe connection.
+
+![Chrome blocking the local bridge WebSocket](./images/chrome-local-network-access-websocket-blocked.jpg)
+
+One workaround is to disable Chrome's experimental WebSocket Local Network Access flag:
+
+1. Open `chrome://flags/#local-network-access-check-websockets`.
+2. Set **Local Network Access Checks for WebSockets** to **Disabled**.
+3. Restart Chrome.
+4. Reopen RemNote and use **Reconnect Now** if needed.
+
+![Chrome Local Network Access WebSocket flag disabled and bridge connected](./images/chrome-local-network-access-websocket-disabled-connected.jpg)
+
+This flag is browser-wide and experimental. Chrome warns that changing experimental flags can affect browser security,
+privacy, or stored data, so only use this workaround if you understand the tradeoff. See the
+[ChromeStatus entry](https://chromestatus.com/feature/5197681148428288) and Chromium's
+[Local Network Access checks for WebSockets discussion](https://groups.google.com/a/chromium.org/g/blink-dev/c/4gx2y5jPGbU)
+for browser-side details.
+
+For development or source-level testing, you can avoid the marketplace plugin origin by loading the plugin from
+`http://localhost:8080/`; see [Run The Plugin Locally](./development-run-plugin-locally.md).
