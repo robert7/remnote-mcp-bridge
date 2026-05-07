@@ -3,6 +3,9 @@
   "name": "remnote-mcp-bridge",
   "version": "0.14.0",
   "license": "MIT",
+  "bin": {
+    "remnote-mcp-bridge": "./bin/remnote-mcp-bridge.js"
+  },
   "engines": {
     "node": ">=20.19.0"
   },

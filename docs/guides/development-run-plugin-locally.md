@@ -61,6 +61,19 @@ Keep this terminal running while developing.
 
 ![Run dev server](./images/run-plugin-locally-03-run-dev-server.jpg)
 
+### Optional: production-style linked command
+
+For a production-style local run without webpack dev server or hot reload:
+
+```bash
+./link-cli.sh
+remnote-mcp-bridge
+```
+
+`./link-cli.sh` installs dependencies, runs tests, builds `dist/`, and links the local executable. After that,
+`remnote-mcp-bridge` serves the built `dist/` bundle at `http://127.0.0.1:8080`, matching `./run-prod-build.sh`
+server behavior. Re-run `./link-cli.sh` after source changes when you want a fresh production build.
+
 ## 4. Open RemNote plugin Build screen
 
 In RemNote:

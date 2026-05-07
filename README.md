@@ -290,6 +290,12 @@ npm run dev
 # Run production bundle locally (no zip, no hot reload)
 ./run-prod-build.sh
 
+# Link the production bundle server as remnote-mcp-bridge
+./link-cli.sh
+
+# Serve linked production dist/ at http://127.0.0.1:8080
+remnote-mcp-bridge
+
 # Build for production
 npm run build
 

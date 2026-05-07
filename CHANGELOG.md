@@ -9,6 +9,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Added and documented a local `remnote-mcp-bridge` executable link workflow for serving the production `dist/`
+  bundle.
 - Reduced Dependabot version-update checks to monthly runs on the 15th.
 - Documented Chrome/Chromium Local Network Access WebSocket blocking symptoms and workarounds for browser-based
   RemNote users, with thanks to @awreccan for reporting and helping analyze the issue.
