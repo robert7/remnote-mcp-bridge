@@ -7,17 +7,15 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-05-07
+
 ### Changed
 
-- Added and documented local `remnote-mcp-bridge` executable link/unlink workflows for serving the production `dist/`
-  bundle.
-- Reduced Dependabot version-update checks to monthly runs on the 15th.
+- Added local `remnote-mcp-bridge` executable link/unlink workflows for serving the production `dist/` bundle.
 - Documented Chrome/Chromium Local Network Access WebSocket blocking symptoms and workarounds for browser-based
   RemNote users, with thanks to @awreccan for reporting and helping analyze the issue.
-- Updated architecture and connection docs for the unified server path where `remnote-cli` connects through
-  `remnote-mcp-server` instead of a separate CLI daemon.
-- Updated bridge documentation for the package consolidation where `remnote-mcp-server` now provides both the server
-  executable and the bundled `remnote-cli` command.
+- Updated architecture and connection docs for the consolidated `remnote-mcp-server` package, including bundled
+  `remnote-cli` command guidance.
 
 ## [0.13.0] - 2026-04-24
 
