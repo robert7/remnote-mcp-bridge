@@ -296,6 +296,9 @@ npm run dev
 # Serve linked production dist/ at http://127.0.0.1:8080
 remnote-mcp-bridge
 
+# Remove the local remnote-mcp-bridge npm link
+./unlink-cli.sh
+
 # Build for production
 npm run build
 
