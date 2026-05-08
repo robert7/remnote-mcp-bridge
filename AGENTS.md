@@ -18,9 +18,9 @@ The plugin is a WebSocket client (default server URL: `ws://127.0.0.1:3002`).
 Resolve from this repo root (`$(pwd)`):
 
 - `$(pwd)/../remnote-mcp-server` - MCP transport/tool surface and bundled `remnote-cli`
-- `$(pwd)/../remnote-cli` - legacy migration/redirect repository only
 
-When changing contracts, check this repo and `remnote-mcp-server`. Touch `remnote-cli` only for legacy notices.
+When changing contracts, check this repo and `remnote-mcp-server`. The old standalone `remnote-cli` repo is
+discontinued; maintained CLI code lives in `remnote-mcp-server/src/remnote-cli/`.
 
 ## Contract Map (Current)
 

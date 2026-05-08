@@ -159,7 +159,7 @@ The panel shows:
 
 ## Practical Scenarios
 
-### RemNote Open First, Daemon Starts Later
+### RemNote Open First, Server Starts Later
 
 This is supported.
 
