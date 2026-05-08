@@ -46,7 +46,7 @@ optional proxy/client commands for that server.**
 | --------------------- | --------------------------------------------- | ----------------------------------------------------------- |
 | `remnote-mcp-server`  | Conversational AI tool use via MCP over HTTP  | Claude Code, ChatGPT Apps, Claude Cowork, other MCP clients |
 | `remnote-mcp-stdio`   | Stdio-only MCP clients needing a local proxy  | Codex stdio setups, MCP clients without HTTP transport      |
-| `remnote-cli`         | Local automation and command-driven workflows | OpenClaw, shell scripts, local agents                       |
+| `remnote-cli`         | Lightweight local automation and command-driven workflows | OpenClaw, coding harnesses, shell scripts, local agents     |
 
 **Version compatibility warning (`0.x` semver):** install a `remnote-mcp-server` version that matches your installed
 bridge plugin version (prefer the same minor line). See the [Bridge / Consumer Version Compatibility Guide](docs/guides/bridge-consumer-version-compatibility.md).
