@@ -9,6 +9,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Improved bridge disconnect diagnostics for incompatible RemNote marketplace plugins by naming the official
+  `MCP/OpenClaw Automation Bridge` plugin in logs and connection UI hints.
+- Added prominent README troubleshooting guidance for wrong or incompatible RemNote Marketplace plugin installs,
+  including the related `quentintou/remnote-mcp-bridge#8` report.
 - Clarified that MCP protocol versions such as `2025-11-25` are separate from bridge/server package versions and linked
   to the local Claude Desktop MCPB setup.
 - Updated documentation and agent repo maps to treat the old standalone `remnote-cli` repository as discontinued, with

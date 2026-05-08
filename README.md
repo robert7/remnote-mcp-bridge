@@ -14,6 +14,13 @@ bridge. It is the shared RemNote endpoint for the `remnote-mcp-server` package:
 > Further it is an improved and renamed fork of the original plugin
 > [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
 
+> **Connection issue? Check the installed RemNote Marketplace plugin.** Marketplace search may show several similarly
+> named `MCP Bridge` plugins. For this project, install **MCP/OpenClaw Automation Bridge** by Robert Spiegel and keep
+> the bridge plugin on the same `0.x` minor version line as `remnote-mcp-server` (for example `0.14.x` with `0.14.x`).
+> Wrong plugin flavors or incompatible marketplace copies can disconnect with a `1008` compatibility message. This is
+> the same class of confusion reported in
+> [quentintou/remnote-mcp-bridge#8](https://github.com/quentintou/remnote-mcp-bridge/issues/8).
+
 ## Integration Paths
 
 This project is a bridge layer with two consumer paths, both served by the `remnote-mcp-server` package:
@@ -115,6 +122,9 @@ optionally open the control panel to inspect status and logs:
 
 - Look for the **Automation Bridge** icon in RemNote's right sidebar toolbar
 - Click the icon to open the Automation Bridge panel
+
+If the panel disconnects immediately or shows a `1008` compatibility message, verify that RemNote has the official
+**MCP/OpenClaw Automation Bridge** plugin installed and not a similarly named marketplace fork or older flavor.
 
 The sidebar panel is no longer required to create the connection. It is a monitoring and manual-control surface for the
 background bridge runtime.

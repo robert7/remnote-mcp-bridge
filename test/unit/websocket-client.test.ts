@@ -266,6 +266,21 @@ describe('WebSocketClient', () => {
       expect(companionInfoChanges.at(-1)).toBeUndefined();
     });
 
+    it('should explain bridge compatibility policy disconnects', async () => {
+      client.connect();
+      await wait(10);
+
+      const ws = (client as unknown as { ws: MockWebSocket }).ws;
+      ws.close(1008, 'Bridge hello timeout');
+
+      expect(client.getReconnectMetadata().lastDisconnectReason).toBe(
+        '1008 Wrong/incompatible RemNote plugin installed. Install MCP/OpenClaw Automation Bridge 0.5.x.'
+      );
+      expect(
+        logs.some((log) => log.message.includes('Install MCP/OpenClaw Automation Bridge 0.5.x'))
+      ).toBe(true);
+    });
+
     it('should enter standby reconnect mode after burst attempts are exhausted', async () => {
       vi.useFakeTimers();
 

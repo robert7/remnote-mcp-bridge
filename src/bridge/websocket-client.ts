@@ -3,6 +3,11 @@
  * Connects to the automation bridge server and handles message routing
  */
 
+import {
+  formatBridgeCompatibilityDisconnect,
+  isBridgeCompatibilityDisconnect,
+} from './compatibility-message';
+
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 export type RetryPhase = 'idle' | 'burst' | 'standby';
 export type CompanionKind = 'cli' | 'mcp-server';
@@ -166,9 +171,7 @@ export class WebSocketClient {
       };
 
       this.ws.onclose = (event) => {
-        this.lastDisconnectReason = event.reason
-          ? `${event.code} ${event.reason}`
-          : `${event.code}`;
+        this.lastDisconnectReason = this.formatDisconnectReason(event);
         this.log(`Disconnected: ${this.lastDisconnectReason}`, 'warn');
         this.setCompanionInfo(undefined);
         this.setStatus('disconnected');
@@ -186,6 +189,14 @@ export class WebSocketClient {
       this.setStatus('disconnected');
       this.scheduleReconnect();
     }
+  }
+
+  private formatDisconnectReason(event: CloseEvent): string {
+    if (event.code === 1008 && isBridgeCompatibilityDisconnect(event.reason)) {
+      return `${event.code} ${formatBridgeCompatibilityDisconnect(this.config.pluginVersion)}`;
+    }
+
+    return event.reason ? `${event.code} ${event.reason}` : `${event.code}`;
   }
 
   private async handleMessage(data: string): Promise<void> {

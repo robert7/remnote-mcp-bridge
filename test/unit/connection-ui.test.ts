@@ -81,4 +81,21 @@ describe('connection-ui', () => {
     expect(ui.phaseLabel).toBeUndefined();
     expect(ui.lastConnectedLabel).toBeUndefined();
   });
+
+  it('explains bridge compatibility disconnects with the official plugin name', () => {
+    const ui = buildConnectionUiState(
+      createSnapshot({
+        bridgeVersion: '0.14.0',
+        lastDisconnectReason:
+          '1008 Wrong/incompatible RemNote plugin installed. Install MCP/OpenClaw Automation Bridge 0.14.x.',
+      })
+    );
+
+    expect(ui.lastDisconnectLabel).toBe(
+      'Wrong/incompatible RemNote plugin installed. Install MCP/OpenClaw Automation Bridge 0.14.x.'
+    );
+    expect(ui.hint).toBe(
+      'Disable the incompatible RemNote plugin and install the official bridge plugin.'
+    );
+  });
 });

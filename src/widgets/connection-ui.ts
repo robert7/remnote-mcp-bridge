@@ -1,4 +1,8 @@
 import type { BridgeRuntimeSnapshot } from '../bridge/runtime';
+import {
+  formatBridgeCompatibilityDisconnect,
+  isBridgeCompatibilityDisconnect,
+} from '../bridge/compatibility-message';
 
 export interface ConnectionUiState {
   badge: {
@@ -48,8 +52,11 @@ export function buildConnectionUiState(
     ? `Last seen ${formatRelativeDuration(now - snapshot.lastConnectedAt)} ago`
     : undefined;
 
+  const compatibilityDisconnect = isBridgeCompatibilityDisconnect(snapshot.lastDisconnectReason);
   const lastDisconnectLabel = snapshot.lastDisconnectReason
-    ? `Disconnect ${snapshot.lastDisconnectReason}`
+    ? compatibilityDisconnect
+      ? formatBridgeCompatibilityDisconnect(snapshot.bridgeVersion)
+      : `Disconnect ${snapshot.lastDisconnectReason}`
     : undefined;
 
   if (snapshot.status === 'connected') {
@@ -98,7 +105,9 @@ export function buildConnectionUiState(
       summary: 'Retrying connection',
       phaseLabel: `Burst retry ${Math.min(snapshot.reconnectAttempts, snapshot.maxReconnectAttempts)}/${snapshot.maxReconnectAttempts}`,
       nextRetryLabel,
-      hint: 'Reconnect Now skips the wait and tries immediately.',
+      hint: compatibilityDisconnect
+        ? 'Disable the incompatible RemNote plugin and install the official bridge plugin.'
+        : 'Reconnect Now skips the wait and tries immediately.',
       lastDisconnectLabel,
     };
   }
@@ -114,7 +123,9 @@ export function buildConnectionUiState(
       summary: 'Companion unavailable',
       phaseLabel: 'Standby reconnect',
       nextRetryLabel,
-      hint: 'Opening this panel or moving focus inside RemNote restarts faster retries. Browser visibility and online events can also wake it sooner.',
+      hint: compatibilityDisconnect
+        ? 'Disable the incompatible RemNote plugin and install the official bridge plugin.'
+        : 'Opening this panel or moving focus inside RemNote restarts faster retries. Browser visibility and online events can also wake it sooner.',
       lastDisconnectLabel,
       lastConnectedLabel,
     };
@@ -128,7 +139,9 @@ export function buildConnectionUiState(
       text: 'Disconnected',
     },
     summary: 'Companion disconnected',
-    hint: 'Use Reconnect Now after confirming the companion process is already listening.',
+    hint: compatibilityDisconnect
+      ? 'Disable the incompatible RemNote plugin and install the official bridge plugin.'
+      : 'Use Reconnect Now after confirming the companion process is already listening.',
     lastDisconnectLabel,
     lastConnectedLabel,
   };
