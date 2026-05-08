@@ -41,6 +41,12 @@ client for that server.**
 **Version compatibility warning (`0.x` semver):** install a `remnote-mcp-server` version that matches your installed
 bridge plugin version (prefer the same minor line). See the [Bridge / Consumer Version Compatibility Guide](docs/guides/bridge-consumer-version-compatibility.md).
 
+**MCP protocol note:** `protocolVersion` values such as `2025-11-25` are MCP protocol negotiation versions from the MCP
+SDK, not bridge/server package versions. Current `remnote-mcp-server` builds support `2025-11-25`; a Claude Desktop
+initialize timeout usually points to configuration or reachability rather than that version number. For local Claude
+Desktop, prefer the
+[Local MCPB guide](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/configuration-claude-desktop-local-mcpb.md).
+
 ## Why This Bridge Exists
 
 RemNote plugins cannot be called directly by external automation clients. This bridge provides one stable local

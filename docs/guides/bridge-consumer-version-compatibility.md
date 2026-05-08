@@ -7,6 +7,17 @@ The Automation Bridge plugin (`remnote-mcp-bridge`) is the shared protocol layer
 
 Because these projects are currently in `0.x` versions, **minor version changes may include breaking changes**.
 
+## Do not confuse package versions with MCP protocol versions
+
+- Bridge/server package versions look like `0.14.1`.
+- MCP protocol versions look like dates, for example `2025-11-25`.
+- Seeing `protocolVersion: "2025-11-25"` in Claude Desktop logs is normal and supported by current
+  `remnote-mcp-server` builds. It does not indicate a bridge/server package version mismatch.
+
+For local Claude Desktop, prefer the
+[Claude Desktop Local MCPB guide](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/configuration-claude-desktop-local-mcpb.md).
+For Claude Cowork or remote connector flows, verify that the `/mcp` endpoint is reachable over public HTTPS.
+
 ## What this means in practice
 
 Do **not** assume these combinations are compatible:

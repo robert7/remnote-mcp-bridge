@@ -9,6 +9,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Clarified that MCP protocol versions such as `2025-11-25` are separate from bridge/server package versions and linked
+  to the local Claude Desktop MCPB setup.
 - Updated documentation and agent repo maps to treat the old standalone `remnote-cli` repository as discontinued, with
   maintained CLI code living in `remnote-mcp-server`.
 
