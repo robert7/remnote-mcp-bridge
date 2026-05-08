@@ -4,6 +4,7 @@ A RemNote plugin that exposes your RemNote knowledge base to external automation
 bridge. It is the shared RemNote endpoint for the `remnote-mcp-server` package:
 
 - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)** for MCP-compatible AI assistants
+- **`remnote-mcp-stdio` bundled in remnote-mcp-server** for stdio-only MCP clients
 - **`remnote-cli` bundled in remnote-mcp-server** for scripts, local agents, and CLI-first workflows
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
@@ -29,6 +30,7 @@ This project is a bridge layer with two consumer paths, both served by the `remn
    - **RemNote Automation Bridge** (this project): RemNote plugin exposing RemNote API via WebSocket
    - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: companion server exposing MCP tools to AI
      assistants
+   - **`remnote-mcp-stdio`**: optional stdio-to-HTTP proxy for MCP clients that cannot use Streamable HTTP directly
    - Demo: **[View MCP Server Demo →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
 2. **CLI app path (e.g. for OpenClaw):**
    - This bridge plugin remains the RemNote endpoint
@@ -37,13 +39,14 @@ This project is a bridge layer with two consumer paths, both served by the `remn
    - **`remnote-cli`**: command-line MCP client bundled in `remnote-mcp-server` for OpenClaw and other agentic workflows
    - Demo: **[View RemNote CLI Demo →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md#remnote-cli)**
 
-**For both paths the required server component is `remnote-mcp-server`; `remnote-cli` is an optional command-line
-client for that server.**
+**For both paths the required server component is `remnote-mcp-server`; `remnote-mcp-stdio` and `remnote-cli` are
+optional proxy/client commands for that server.**
 
-| Companion            | Best fit                                      | Typical client                                              |
-| -------------------- | --------------------------------------------- | ----------------------------------------------------------- |
-| `remnote-mcp-server` | Conversational AI tool use via MCP            | Claude Code, ChatGPT Apps, Claude Cowork, other MCP clients |
-| `remnote-cli`        | Local automation and command-driven workflows | OpenClaw, shell scripts, local agents                       |
+| Companion             | Best fit                                      | Typical client                                              |
+| --------------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| `remnote-mcp-server`  | Conversational AI tool use via MCP over HTTP  | Claude Code, ChatGPT Apps, Claude Cowork, other MCP clients |
+| `remnote-mcp-stdio`   | Stdio-only MCP clients needing a local proxy  | Codex stdio setups, MCP clients without HTTP transport      |
+| `remnote-cli`         | Local automation and command-driven workflows | OpenClaw, shell scripts, local agents                       |
 
 **Version compatibility warning (`0.x` semver):** install a `remnote-mcp-server` version that matches your installed
 bridge plugin version (prefer the same minor line). See the [Bridge / Consumer Version Compatibility Guide](docs/guides/bridge-consumer-version-compatibility.md).
@@ -265,6 +268,7 @@ Once everything is connected, you can use either access path:
 
 ```text
 MCP clients / AI assistants -> MCP Server (HTTP) -> WebSocket :3002 -> RemNote Plugin (this repo) -> RemNote SDK
+stdio MCP clients -> remnote-mcp-stdio -> MCP Server (HTTP) -> WebSocket :3002 -> RemNote Plugin -> RemNote SDK
 CLI commands / local agents -> RemNote CLI -> MCP Server (HTTP) -> WebSocket :3002 -> RemNote Plugin -> RemNote SDK
 ```
 
@@ -273,6 +277,7 @@ CLI commands / local agents -> RemNote CLI -> MCP Server (HTTP) -> WebSocket :30
 - **RemNote Automation Bridge** (this repository) - RemNote plugin that executes bridge actions via the RemNote SDK
 - **RemNote MCP Server** ([separate repository](https://github.com/robert7/remnote-mcp-server)) - Exposes bridge
   actions to MCP-compatible AI assistants and CLI clients
+- **remnote-mcp-stdio** (bundled in the server package) - Proxies stdio MCP clients to the local MCP server
 - **remnote-cli** (bundled in the server package) - Exposes the same bridge actions as local commands by calling the
   MCP server
 

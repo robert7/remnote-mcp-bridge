@@ -17,6 +17,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   to the local Claude Desktop MCPB setup.
 - Updated documentation and agent repo maps to treat the old standalone `remnote-cli` repository as discontinued, with
   maintained CLI code living in `remnote-mcp-server`.
+- Clarified README companion roles for the bundled `remnote-mcp-stdio` stdio proxy.
 
 ## [0.14.0] - 2026-05-07
 
