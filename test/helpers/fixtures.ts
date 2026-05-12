@@ -8,6 +8,9 @@ import type {
   SearchParams,
   ReadNoteParams,
   UpdateNoteParams,
+  InsertChildrenParams,
+  ReplaceChildrenParams,
+  UpdateTagsParams,
   SearchResultItem,
   NoteChild,
 } from '../../src/api/rem-adapter';
@@ -45,9 +48,23 @@ export const readNoteInput: ReadNoteParams = {
 export const updateNoteInput: UpdateNoteParams = {
   remId: 'rem_123',
   title: 'Updated Title',
-  appendContent: 'New content line',
-  addTags: ['new-tag'],
-  removeTags: ['old-tag'],
+};
+
+export const insertChildrenInput: InsertChildrenParams = {
+  parentRemId: 'rem_123',
+  content: 'New content line',
+  position: 'last',
+};
+
+export const replaceChildrenInput: ReplaceChildrenParams = {
+  parentRemId: 'rem_123',
+  content: 'Replacement content line',
+};
+
+export const updateTagsInput: UpdateTagsParams = {
+  remId: 'rem_123',
+  addTagRemIds: ['new-tag-rem-id'],
+  removeTagRemIds: ['old-tag-rem-id'],
 };
 
 /**

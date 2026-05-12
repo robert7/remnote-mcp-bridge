@@ -66,10 +66,26 @@ export interface ReadNoteParams {
 export interface UpdateNoteParams {
   remId: string;
   title?: string;
-  appendContent?: string;
-  replaceContent?: string;
-  addTags?: string[];
-  removeTags?: string[];
+}
+
+export type InsertChildrenPosition = 'first' | 'last' | 'before' | 'after';
+
+export interface InsertChildrenParams {
+  parentRemId: string;
+  content: string;
+  position: InsertChildrenPosition;
+  siblingRemId?: string;
+}
+
+export interface ReplaceChildrenParams {
+  parentRemId: string;
+  content: string;
+}
+
+export interface UpdateTagsParams {
+  remId: string;
+  addTagRemIds?: string[];
+  removeTagRemIds?: string[];
 }
 
 export interface ReadTableParams {
@@ -1197,7 +1213,11 @@ export class RemAdapter {
    * This ensures that the SDK correctly parses structural markdown (esp. headers in first line)
    * even on what was originally the first line.
    */
-  private async createRemsFromMarkdown(markdown: string, parentId: string): Promise<PluginRem[]> {
+  private async createRemsFromMarkdown(
+    markdown: string,
+    parentId: string,
+    positionAmongstSiblings?: number
+  ): Promise<PluginRem[]> {
     if (!markdown.trim()) {
       return [];
     }
@@ -1225,10 +1245,18 @@ export class RemAdapter {
     // target parent exists. When the dummy root lives at the top level, the SDK should
     // leave promoted children top-level after the dummy root is removed.
     const targetParent = await this.plugin.rem.findOne(parentId);
+    const basePosition =
+      targetParent && positionAmongstSiblings === undefined
+        ? (await targetParent.getChildrenRem()).filter((child) => child._id !== dummyRoot._id)
+            .length
+        : positionAmongstSiblings;
 
-    for (const child of directChildren) {
+    for (const [index, child] of directChildren.entries()) {
       if (targetParent) {
-        await child.setParent(targetParent);
+        await child.setParent(
+          targetParent,
+          basePosition === undefined ? undefined : basePosition + index
+        );
       }
     }
 
@@ -1237,6 +1265,40 @@ export class RemAdapter {
 
     // Return all created Rems (all descendants in the tree except the dummy root).
     return tree.slice(1);
+  }
+
+  private async getInsertPosition(params: InsertChildrenParams): Promise<number> {
+    if ((params.position === 'before' || params.position === 'after') && !params.siblingRemId) {
+      throw new Error(`siblingRemId is required when position is ${params.position}`);
+    }
+
+    if ((params.position === 'first' || params.position === 'last') && params.siblingRemId) {
+      throw new Error(`siblingRemId must not be provided when position is ${params.position}`);
+    }
+
+    const parent = await this.plugin.rem.findOne(params.parentRemId);
+    if (!parent) {
+      throw new Error(`Parent note not found: ${params.parentRemId}`);
+    }
+
+    const children = await parent.getChildrenRem();
+
+    if (params.position === 'first') {
+      return 0;
+    }
+
+    if (params.position === 'last') {
+      return children.length;
+    }
+
+    const siblingIndex = children.findIndex((child) => child._id === params.siblingRemId);
+    if (siblingIndex === -1) {
+      throw new Error(
+        `Sibling note not found under parent ${params.parentRemId}: ${params.siblingRemId}`
+      );
+    }
+
+    return params.position === 'before' ? siblingIndex : siblingIndex + 1;
   }
 
   /**
@@ -1617,14 +1679,6 @@ export class RemAdapter {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
 
-    if (params.appendContent !== undefined && params.replaceContent !== undefined) {
-      throw new Error('appendContent and replaceContent cannot be used together');
-    }
-
-    if (params.replaceContent !== undefined && !this.settings.acceptReplaceOperation) {
-      throw new Error('Replace operation is disabled in Automation Bridge settings');
-    }
-
     const rem = await this.plugin.rem.findOne(params.remId);
 
     if (!rem) {
@@ -1642,53 +1696,90 @@ export class RemAdapter {
       remIds.push(params.remId);
     }
 
-    // Replace content by clearing all direct children first, then adding new child lines.
-    if (params.replaceContent !== undefined) {
-      await this.clearDirectChildren(rem);
-      const normalizedContent = this.normalizeContent(params.replaceContent);
-      if (normalizedContent) {
-        const createdRems = await this.createRemsFromMarkdown(normalizedContent, rem._id);
-
-        if (createdRems.length > 0) {
-          const results = await this.extractRemResults(createdRems);
-          remIds.push(...results.remIds);
-          titles.push(...results.titles);
-        }
-      }
-    }
-
-    // Append content as new direct children.
-    if (params.appendContent !== undefined) {
-      const normalizedContent = this.normalizeContent(params.appendContent);
-      if (normalizedContent) {
-        const createdRems = await this.createRemsFromMarkdown(normalizedContent, rem._id);
-
-        if (createdRems.length > 0) {
-          const results = await this.extractRemResults(createdRems);
-          remIds.push(...results.remIds);
-          titles.push(...results.titles);
-        }
-      }
-    }
-
-    // Add tags
-    if (params.addTags && params.addTags.length > 0) {
-      for (const tagName of params.addTags) {
-        await this.addTagToRem(rem, tagName);
-      }
-    }
-
-    // Remove tags
-    if (params.removeTags && params.removeTags.length > 0) {
-      for (const tagName of params.removeTags) {
-        const tagRem = await this.plugin.rem.findByName([tagName], null);
-        if (tagRem) {
-          await rem.removeTag(tagRem._id);
-        }
-      }
-    }
-
     return { titles, remIds };
+  }
+
+  async insertChildren(
+    params: InsertChildrenParams
+  ): Promise<{ titles: string[]; remIds: string[] }> {
+    if (!this.settings.acceptWriteOperations) {
+      throw new Error('Write operations are disabled in Automation Bridge settings');
+    }
+
+    const positionAmongstSiblings = await this.getInsertPosition(params);
+    const normalizedContent = this.normalizeContent(params.content);
+
+    if (!normalizedContent) {
+      return { titles: [], remIds: [] };
+    }
+
+    const createdRems = await this.createRemsFromMarkdown(
+      normalizedContent,
+      params.parentRemId,
+      positionAmongstSiblings
+    );
+
+    if (createdRems.length === 0) {
+      return { titles: [], remIds: [] };
+    }
+
+    return await this.extractRemResults(createdRems);
+  }
+
+  async replaceChildren(
+    params: ReplaceChildrenParams
+  ): Promise<{ titles: string[]; remIds: string[] }> {
+    if (!this.settings.acceptWriteOperations) {
+      throw new Error('Write operations are disabled in Automation Bridge settings');
+    }
+
+    if (!this.settings.acceptReplaceOperation) {
+      throw new Error('Replace operation is disabled in Automation Bridge settings');
+    }
+
+    const rem = await this.plugin.rem.findOne(params.parentRemId);
+
+    if (!rem) {
+      throw new Error(`Parent note not found: ${params.parentRemId}`);
+    }
+
+    await this.clearDirectChildren(rem);
+    const normalizedContent = this.normalizeContent(params.content);
+    if (normalizedContent) {
+      const createdRems = await this.createRemsFromMarkdown(normalizedContent, rem._id);
+
+      if (createdRems.length > 0) {
+        return await this.extractRemResults(createdRems);
+      }
+    }
+
+    return { titles: [], remIds: [] };
+  }
+
+  async updateTags(params: UpdateTagsParams): Promise<{ titles: string[]; remIds: string[] }> {
+    if (!this.settings.acceptWriteOperations) {
+      throw new Error('Write operations are disabled in Automation Bridge settings');
+    }
+
+    if (!params.addTagRemIds?.length && !params.removeTagRemIds?.length) {
+      throw new Error('update_tags requires addTagRemIds or removeTagRemIds');
+    }
+
+    const rem = await this.plugin.rem.findOne(params.remId);
+
+    if (!rem) {
+      throw new Error(`Note not found: ${params.remId}`);
+    }
+
+    for (const tagRemId of params.addTagRemIds ?? []) {
+      await rem.addTag(tagRemId);
+    }
+
+    for (const tagRemId of params.removeTagRemIds ?? []) {
+      await rem.removeTag(tagRemId);
+    }
+
+    return { titles: [], remIds: [params.remId] };
   }
 
   /**

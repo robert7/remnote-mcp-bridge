@@ -61,15 +61,25 @@ Use a known Rem ID (for example `testRemId` from `create_note`).
 
 - [`development-execute-bridge-commands-04-update-note.js`](./js/development-execute-bridge-commands-04-update-note.js)
 
-### 5) `search`
+### 5) Split write actions
+
+- [`development-execute-bridge-commands-04-insert-children.js`](./js/development-execute-bridge-commands-04-insert-children.js)
+- [`development-execute-bridge-commands-04-replace-children.js`](./js/development-execute-bridge-commands-04-replace-children.js)
+- [`development-execute-bridge-commands-04-update-tags.js`](./js/development-execute-bridge-commands-04-update-tags.js)
+
+Use `insert_children` for ordered additions that preserve existing child Rem IDs. Use `replace_children` only for
+explicitly approved destructive direct-child replacement. Use `update_tags` with exact tag Rem IDs for production
+tagging workflows.
+
+### 6) `search`
 
 - [`development-execute-bridge-commands-05-search.js`](./js/development-execute-bridge-commands-05-search.js)
 
-### 6) `append_journal`
+### 7) `append_journal`
 
 - [`development-execute-bridge-commands-06-append-journal.js`](./js/development-execute-bridge-commands-06-append-journal.js)
 
-### 7) `search_by_tag`
+### 8) `search_by_tag`
 
 - [`development-execute-bridge-commands-07-search-by-tag.js`](./js/development-execute-bridge-commands-07-search-by-tag.js)
 

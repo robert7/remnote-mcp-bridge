@@ -16,7 +16,14 @@ Purpose: give developers and AI agents a concise, reliable concept map of RemNot
 - `remnote_read_note`: depends heavily on hierarchy semantics, references/portals context, and Rem text interpretation.
 - `remnote_search`: depends on search behavior expectations, query scope, and what should be returned as summary
   context.
-- `remnote_create_note` / `remnote_update_note`: should preserve Rem hierarchy and text semantics.
+- `remnote_create_note`: should preserve Rem hierarchy and text semantics.
+- `remnote_update_note`: metadata-only update action for safe title changes.
+- `remnote_insert_children`: ordered child creation action; use this for tag description nodes and other hierarchy
+  maintenance that must preserve existing child Rem IDs.
+- `remnote_replace_children`: explicit destructive direct-child replacement action; use only when replacement is
+  intentionally approved because existing child Rem IDs will be removed.
+- `remnote_update_tags`: exact-ID tag mutation action; production tagging workflows should pass tag Rem IDs rather than
+  names.
 - `remnote_append_journal`: maps to daily document behavior.
 
 ## Source index (official docs)

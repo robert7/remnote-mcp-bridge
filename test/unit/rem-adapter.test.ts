@@ -1356,28 +1356,138 @@ describe('RemAdapter', () => {
       expect(rem!.text).toEqual(['New [Link](url)']);
     });
 
-    it('should append content as children', async () => {
-      const testRem = plugin.addTestRem('append_test', 'Parent');
+    it('should throw error for non-existent note', async () => {
+      await expect(
+        adapter.updateNote({
+          remId: 'nonexistent',
+          title: 'New title',
+        })
+      ).rejects.toThrow('Note not found: nonexistent');
+    });
+  });
 
-      const result = await adapter.updateNote({
-        remId: 'append_test',
-        appendContent: 'New line 1\nNew line 2',
+  describe('insertChildren', () => {
+    it('should insert children as first children without recreating existing children', async () => {
+      const parent = plugin.addTestRem('insert_first_test', 'Parent');
+      const oldChild = plugin.addTestRem('old_child_first', 'Old line');
+      await oldChild.setParent(parent);
+
+      const result = await adapter.insertChildren({
+        parentRemId: 'insert_first_test',
+        content: 'New line 1\nNew line 2',
+        position: 'first',
       });
 
-      expect(result.remIds).toHaveLength(2); // 2 new lines
-      const children = await testRem.getChildrenRem();
-      expect(children).toHaveLength(2);
+      expect(result.remIds).toHaveLength(2);
+      const children = await parent.getChildrenRem();
+      expect(children.map((c) => c.text?.[0])).toEqual(['New line 1', 'New line 2', 'Old line']);
+      expect(children[2]._id).toBe('old_child_first');
     });
 
-    it('should replace direct children when replaceContent is provided', async () => {
+    it('should insert children as last children', async () => {
+      const parent = plugin.addTestRem('insert_last_test', 'Parent');
+      const oldChild = plugin.addTestRem('old_child_last', 'Old line');
+      await oldChild.setParent(parent);
+
+      await adapter.insertChildren({
+        parentRemId: 'insert_last_test',
+        content: 'New line 1\nNew line 2',
+        position: 'last',
+      });
+
+      const children = await parent.getChildrenRem();
+      expect(children.map((c) => c.text?.[0])).toEqual(['Old line', 'New line 1', 'New line 2']);
+      expect(children[0]._id).toBe('old_child_last');
+    });
+
+    it('should insert children before a sibling', async () => {
+      const parent = plugin.addTestRem('insert_before_test', 'Parent');
+      const first = plugin.addTestRem('before_first', 'First');
+      const second = plugin.addTestRem('before_second', 'Second');
+      await first.setParent(parent);
+      await second.setParent(parent, 1);
+
+      await adapter.insertChildren({
+        parentRemId: 'insert_before_test',
+        content: 'Inserted',
+        position: 'before',
+        siblingRemId: 'before_second',
+      });
+
+      const children = await parent.getChildrenRem();
+      expect(children.map((c) => c.text?.[0])).toEqual(['First', 'Inserted', 'Second']);
+    });
+
+    it('should insert children after a sibling', async () => {
+      const parent = plugin.addTestRem('insert_after_test', 'Parent');
+      const first = plugin.addTestRem('after_first', 'First');
+      const second = plugin.addTestRem('after_second', 'Second');
+      await first.setParent(parent);
+      await second.setParent(parent, 1);
+
+      await adapter.insertChildren({
+        parentRemId: 'insert_after_test',
+        content: 'Inserted',
+        position: 'after',
+        siblingRemId: 'after_first',
+      });
+
+      const children = await parent.getChildrenRem();
+      expect(children.map((c) => c.text?.[0])).toEqual(['First', 'Inserted', 'Second']);
+    });
+
+    it('should reject before and after without siblingRemId', async () => {
+      plugin.addTestRem('insert_missing_sibling_test', 'Parent');
+
+      await expect(
+        adapter.insertChildren({
+          parentRemId: 'insert_missing_sibling_test',
+          content: 'Inserted',
+          position: 'before',
+        })
+      ).rejects.toThrow('siblingRemId is required when position is before');
+    });
+
+    it('should reject siblingRemId for first and last', async () => {
+      plugin.addTestRem('insert_extra_sibling_test', 'Parent');
+
+      await expect(
+        adapter.insertChildren({
+          parentRemId: 'insert_extra_sibling_test',
+          content: 'Inserted',
+          position: 'first',
+          siblingRemId: 'unused_sibling',
+        })
+      ).rejects.toThrow('siblingRemId must not be provided when position is first');
+    });
+
+    it('should reject a sibling outside the parent', async () => {
+      plugin.addTestRem('insert_wrong_parent_test', 'Parent');
+      plugin.addTestRem('outside_sibling', 'Outside');
+
+      await expect(
+        adapter.insertChildren({
+          parentRemId: 'insert_wrong_parent_test',
+          content: 'Inserted',
+          position: 'before',
+          siblingRemId: 'outside_sibling',
+        })
+      ).rejects.toThrow(
+        'Sibling note not found under parent insert_wrong_parent_test: outside_sibling'
+      );
+    });
+  });
+
+  describe('replaceChildren', () => {
+    it('should replace direct children when enabled', async () => {
       const testRem = plugin.addTestRem('replace_test', 'Parent');
       const oldChild = new MockRem('old_child', 'Old line');
       await oldChild.setParent(testRem);
       adapter.updateSettings({ acceptReplaceOperation: true });
 
-      const result = await adapter.updateNote({
-        remId: 'replace_test',
-        replaceContent: 'New line 1\nNew line 2',
+      const result = await adapter.replaceChildren({
+        parentRemId: 'replace_test',
+        content: 'New line 1\nNew line 2',
       });
 
       expect(result.remIds).toHaveLength(2);
@@ -1386,15 +1496,15 @@ describe('RemAdapter', () => {
       expect(children.map((c) => c.text?.[0])).toEqual(['New line 1', 'New line 2']);
     });
 
-    it('should clear direct children when replaceContent is empty string', async () => {
+    it('should clear direct children when replacement content is empty string', async () => {
       const testRem = plugin.addTestRem('replace_clear_test', 'Parent');
       const oldChild = new MockRem('old_child_clear', 'Old line');
       await oldChild.setParent(testRem);
       adapter.updateSettings({ acceptReplaceOperation: true });
 
-      await adapter.updateNote({
-        remId: 'replace_clear_test',
-        replaceContent: '',
+      await adapter.replaceChildren({
+        parentRemId: 'replace_clear_test',
+        content: '',
       });
 
       const children = await testRem.getChildrenRem();
@@ -1406,75 +1516,76 @@ describe('RemAdapter', () => {
       adapter.updateSettings({ acceptReplaceOperation: false });
 
       await expect(
-        adapter.updateNote({
-          remId: 'replace_disabled_test',
-          replaceContent: 'Should fail',
+        adapter.replaceChildren({
+          parentRemId: 'replace_disabled_test',
+          content: 'Should fail',
         })
       ).rejects.toThrow('Replace operation is disabled in Automation Bridge settings');
     });
 
-    it('should reject requests that include both appendContent and replaceContent', async () => {
-      plugin.addTestRem('append_replace_test', 'Parent');
-      adapter.updateSettings({ acceptReplaceOperation: true });
+    it('should reject all replacements when write operations are disabled', async () => {
+      plugin.addTestRem('replace_write_disabled_test', 'Parent');
+      adapter.updateSettings({ acceptWriteOperations: false, acceptReplaceOperation: true });
 
       await expect(
-        adapter.updateNote({
-          remId: 'append_replace_test',
-          appendContent: 'A',
-          replaceContent: 'B',
+        adapter.replaceChildren({
+          parentRemId: 'replace_write_disabled_test',
+          content: 'Should fail',
         })
-      ).rejects.toThrow('appendContent and replaceContent cannot be used together');
+      ).rejects.toThrow('Write operations are disabled in Automation Bridge settings');
     });
+  });
 
-    it('should add tags', async () => {
-      const testRem = plugin.addTestRem('tag_test', 'Tagged note');
-      plugin.addTestRem('tag_1', 'Tag1', 'Tag1');
+  describe('updateTags', () => {
+    it('should add and remove tags by exact Rem ID without name lookup', async () => {
+      const testRem = plugin.addTestRem('tag_id_test', 'Tagged note');
+      await testRem.addTag('remove_tag_id');
+      const addSpy = vi.spyOn(testRem, 'addTag');
+      const removeSpy = vi.spyOn(testRem, 'removeTag');
 
-      await adapter.updateNote({
-        remId: 'tag_test',
-        addTags: ['Tag1', 'Tag2'],
+      const result = await adapter.updateTags({
+        remId: 'tag_id_test',
+        addTagRemIds: ['add_tag_id'],
+        removeTagRemIds: ['remove_tag_id'],
       });
 
-      expect(testRem.getTags().length).toBeGreaterThan(0);
+      expect(result.remIds).toEqual(['tag_id_test']);
+      expect(addSpy).toHaveBeenCalledWith('add_tag_id');
+      expect(removeSpy).toHaveBeenCalledWith('remove_tag_id');
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
+      expect(testRem.getTags()).toContain('add_tag_id');
+      expect(testRem.getTags()).not.toContain('remove_tag_id');
     });
 
-    it('should remove tags', async () => {
-      const testRem = plugin.addTestRem('remove_tag_test', 'Note');
-      const tagRem = plugin.addTestRem('remove_tag', 'RemoveTag', 'RemoveTag');
-      await testRem.addTag(tagRem._id);
+    it('should reject update tags without tag IDs', async () => {
+      plugin.addTestRem('empty_tag_update_test', 'Tagged note');
 
-      await adapter.updateNote({
-        remId: 'remove_tag_test',
-        removeTags: ['RemoveTag'],
-      });
-
-      expect(testRem.getTags()).not.toContain(tagRem._id);
-    });
-
-    it('should handle multiple operations at once', async () => {
-      const testRem = plugin.addTestRem('multi_update', 'Original');
-
-      const result = await adapter.updateNote({
-        remId: 'multi_update',
-        title: 'Updated',
-        appendContent: '- New content1\n- More content2',
-        addTags: ['NewTag'],
-      });
-
-      expect(result.remIds).toContain('multi_update');
-      expect(testRem.text).toEqual(['Updated']);
-      const children = await testRem.getChildrenRem();
-      expect(children).toHaveLength(2);
-      expect(children.map((c) => c.text?.[0])).toEqual(['New content1', 'More content2']);
-    });
-
-    it('should throw error for non-existent note', async () => {
       await expect(
-        adapter.updateNote({
-          remId: 'nonexistent',
-          title: 'New title',
+        adapter.updateTags({
+          remId: 'empty_tag_update_test',
         })
-      ).rejects.toThrow('Note not found: nonexistent');
+      ).rejects.toThrow('update_tags requires addTagRemIds or removeTagRemIds');
+    });
+
+    it('should reject update tags for non-existent note', async () => {
+      await expect(
+        adapter.updateTags({
+          remId: 'missing_tag_update_test',
+          addTagRemIds: ['tag_id'],
+        })
+      ).rejects.toThrow('Note not found: missing_tag_update_test');
+    });
+
+    it('should reject all tag updates when write operations are disabled', async () => {
+      plugin.addTestRem('tag_write_disabled_test', 'Tagged note');
+      adapter.updateSettings({ acceptWriteOperations: false });
+
+      await expect(
+        adapter.updateTags({
+          remId: 'tag_write_disabled_test',
+          addTagRemIds: ['tag_id'],
+        })
+      ).rejects.toThrow('Write operations are disabled in Automation Bridge settings');
     });
   });
 
@@ -1899,27 +2010,26 @@ describe('RemAdapter', () => {
 
   describe('Tag management', () => {
     it('should create new tag if it does not exist', async () => {
-      const testRem = plugin.addTestRem('new_tag_test', 'Note');
-
-      await adapter.updateNote({
-        remId: 'new_tag_test',
-        addTags: ['BrandNewTag'],
+      const result = await adapter.createNote({
+        title: 'New tag test',
+        tags: ['BrandNewTag'],
       });
+      const testRem = await plugin.rem.findOne(result.remIds[0]);
 
       // Tag should be created and added
-      expect(testRem.getTags().length).toBeGreaterThan(0);
+      expect(testRem!.getTags().length).toBeGreaterThan(0);
     });
 
     it('should reuse existing tag', async () => {
       const existingTag = plugin.addTestRem('existing_tag', 'ExistingTag', 'ExistingTag');
-      const testRem = plugin.addTestRem('reuse_tag_test', 'Note');
 
-      await adapter.updateNote({
-        remId: 'reuse_tag_test',
-        addTags: ['ExistingTag'],
+      const result = await adapter.createNote({
+        title: 'Reuse tag test',
+        tags: ['ExistingTag'],
       });
+      const testRem = await plugin.rem.findOne(result.remIds[0]);
 
-      expect(testRem.getTags()).toContain(existingTag._id);
+      expect(testRem!.getTags()).toContain(existingTag._id);
     });
 
     it('should not duplicate tags', async () => {

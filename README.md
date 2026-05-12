@@ -42,11 +42,11 @@ This project is a bridge layer with two consumer paths, both served by the `remn
 **For both paths the required server component is `remnote-mcp-server`; `remnote-mcp-stdio` and `remnote-cli` are
 optional proxy/client commands for that server.**
 
-| Companion             | Best fit                                      | Typical client                                              |
-| --------------------- | --------------------------------------------- | ----------------------------------------------------------- |
-| `remnote-mcp-server`  | Conversational AI tool use via MCP over HTTP  | Claude Code, ChatGPT Apps, Claude Cowork, other MCP clients |
-| `remnote-mcp-stdio`   | Stdio-only MCP clients needing a local proxy  | Codex stdio setups, MCP clients without HTTP transport      |
-| `remnote-cli`         | Lightweight local automation and command-driven workflows | OpenClaw, coding harnesses, shell scripts, local agents     |
+| Companion             | Best fit                                                   | Typical client                                              |
+| --------------------- | ---------------------------------------------------------- | ----------------------------------------------------------- |
+| `remnote-mcp-server`  | Conversational AI tool use via MCP over HTTP               | Claude Code, ChatGPT Apps, Claude Cowork, other MCP clients |
+| `remnote-mcp-stdio`   | Stdio-only MCP clients needing a local proxy               | Codex stdio setups, MCP clients without HTTP transport      |
+| `remnote-cli`         | Lightweight local automation and command-driven workflows  | OpenClaw, coding harnesses, shell scripts, local agents     |
 
 **Version compatibility warning (`0.x` semver):** install a `remnote-mcp-server` version that matches your installed
 bridge plugin version (prefer the same minor line). See the [Bridge / Consumer Version Compatibility Guide](docs/guides/bridge-consumer-version-compatibility.md).

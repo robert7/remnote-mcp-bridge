@@ -384,13 +384,45 @@ class BridgeRuntimeController implements BridgeRuntime {
         const result = await this.adapter.updateNote({
           remId: payload.remId as string,
           title: payload.title as string | undefined,
-          appendContent: payload.appendContent as string | undefined,
-          replaceContent: payload.replaceContent as string | undefined,
-          addTags: payload.addTags as string[] | undefined,
-          removeTags: payload.removeTags as string[] | undefined,
         });
         this.stats = { ...this.stats, updated: this.stats.updated + 1 };
         this.addHistoryEntry('update', result.titles || ['Note updated'], result.remIds);
+        this.emit();
+        return result;
+      }
+
+      case 'insert_children': {
+        const result = await this.adapter.insertChildren({
+          parentRemId: payload.parentRemId as string,
+          content: payload.content as string,
+          position: payload.position as 'first' | 'last' | 'before' | 'after',
+          siblingRemId: payload.siblingRemId as string | undefined,
+        });
+        this.stats = { ...this.stats, updated: this.stats.updated + 1 };
+        this.addHistoryEntry('create', result.titles || ['Children inserted'], result.remIds);
+        this.emit();
+        return result;
+      }
+
+      case 'replace_children': {
+        const result = await this.adapter.replaceChildren({
+          parentRemId: payload.parentRemId as string,
+          content: payload.content as string,
+        });
+        this.stats = { ...this.stats, updated: this.stats.updated + 1 };
+        this.addHistoryEntry('update', result.titles || ['Children replaced'], result.remIds);
+        this.emit();
+        return result;
+      }
+
+      case 'update_tags': {
+        const result = await this.adapter.updateTags({
+          remId: payload.remId as string,
+          addTagRemIds: payload.addTagRemIds as string[] | undefined,
+          removeTagRemIds: payload.removeTagRemIds as string[] | undefined,
+        });
+        this.stats = { ...this.stats, updated: this.stats.updated + 1 };
+        this.addHistoryEntry('update', ['Tags updated'], result.remIds);
         this.emit();
         return result;
       }

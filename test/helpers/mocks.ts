@@ -251,10 +251,20 @@ export class MockRem implements Partial<PluginRem> {
     this.type = type as RemType;
   }
 
-  async setParent(parent: Rem | Rem): Promise<void> {
-    this.parent = parent as MockRem;
-    if (!this.parent.children.includes(this)) {
-      this.parent.children.push(this);
+  async setParent(parent: Rem | Rem | null, positionAmongstSiblings?: number): Promise<void> {
+    if (this.parent) {
+      this.parent.children = this.parent.children.filter((child) => child !== this);
+    }
+
+    this.parent = parent as MockRem | null;
+
+    if (this.parent) {
+      const existingIndex = this.parent.children.indexOf(this);
+      if (existingIndex !== -1) {
+        this.parent.children.splice(existingIndex, 1);
+      }
+      const insertIndex = positionAmongstSiblings ?? this.parent.children.length;
+      this.parent.children.splice(insertIndex, 0, this);
     }
   }
 
@@ -372,9 +382,12 @@ export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
 
           if (stack.length === 0) {
             // Top-level: attach to supplied parentRem
-            if (parentRem) await rem.setParent(parentRem as never);
+            if (parentRem) {
+              await rem.setParent(parentRem as never, (await parentRem.getChildrenRem()).length);
+            }
           } else {
-            await rem.setParent(stack[stack.length - 1].rem as never);
+            const stackParent = stack[stack.length - 1].rem;
+            await rem.setParent(stackParent as never, (await stackParent.getChildrenRem()).length);
           }
 
           stack.push({ rem, level });
