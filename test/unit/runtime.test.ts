@@ -32,6 +32,8 @@ import { wait } from '../helpers/test-server';
 
 global.WebSocket = MockWebSocket as unknown as typeof WebSocket;
 
+const TEST_COMPANION_VERSION = '1.2.3';
+
 describe('Bridge runtime', () => {
   let plugin: MockRemNotePlugin;
   let runtime: BridgeRuntime;
@@ -198,17 +200,19 @@ describe('Bridge runtime', () => {
     MockWebSocket.instances.at(-1)?.simulateMessage({
       type: 'companion_info',
       kind: 'mcp-server',
-      version: '0.14.0',
+      version: TEST_COMPANION_VERSION,
     });
     await wait(10);
 
     const snapshot = runtime.getSnapshot();
     expect(snapshot.companion).toEqual({
       kind: 'mcp-server',
-      version: '0.14.0',
+      version: TEST_COMPANION_VERSION,
     });
     expect(
-      snapshot.logs.some((entry) => entry.message.includes('Companion ready: MCP server v0.14.0'))
+      snapshot.logs.some((entry) =>
+        entry.message.includes(`Companion ready: MCP server v${TEST_COMPANION_VERSION}`)
+      )
     ).toBe(true);
   });
 

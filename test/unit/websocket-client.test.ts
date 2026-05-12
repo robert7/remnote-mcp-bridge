@@ -14,6 +14,8 @@ import { wait } from '../helpers/test-server';
 // Mock WebSocket globally
 global.WebSocket = MockWebSocket as unknown as typeof WebSocket;
 
+const TEST_COMPANION_VERSION = '1.2.3';
+
 describe('WebSocketClient', () => {
   let client: WebSocketClient;
   let statusChanges: ConnectionStatus[] = [];
@@ -159,16 +161,18 @@ describe('WebSocketClient', () => {
       await wait(10);
 
       const ws = (client as unknown as { ws: MockWebSocket }).ws;
-      ws.simulateMessage({ type: 'companion_info', kind: 'cli', version: '0.14.0' });
+      ws.simulateMessage({ type: 'companion_info', kind: 'cli', version: TEST_COMPANION_VERSION });
       await wait(10);
 
       expect(companionInfoChanges.at(-1)).toEqual({
         kind: 'cli',
-        version: '0.14.0',
+        version: TEST_COMPANION_VERSION,
       });
-      expect(logs.some((log) => log.message.includes('Companion identified: cli v0.14.0'))).toBe(
-        true
-      );
+      expect(
+        logs.some((log) =>
+          log.message.includes(`Companion identified: cli v${TEST_COMPANION_VERSION}`)
+        )
+      ).toBe(true);
     });
 
     it('should handle request messages with success', async () => {

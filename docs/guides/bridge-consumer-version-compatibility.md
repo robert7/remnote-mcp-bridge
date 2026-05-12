@@ -9,7 +9,7 @@ Because these projects are currently in `0.x` versions, **minor version changes 
 
 ## Do not confuse package versions with MCP protocol versions
 
-- Bridge/server package versions look like `0.14.1`.
+- Bridge/server package versions look like `0.x.y`.
 - MCP protocol versions look like dates, for example `2025-11-25`.
 - Seeing `protocolVersion: "2025-11-25"` in Claude Desktop logs is normal and supported by current
   `remnote-mcp-server` builds. It does not indicate a bridge/server package version mismatch.

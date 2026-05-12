@@ -26,6 +26,9 @@ vi.mock('@remnote/plugin-sdk', () => ({
 
 import { AutomationBridgeWidget, reconcileExpandedRows } from '../../src/widgets/mcp_bridge';
 
+const TEST_BRIDGE_VERSION = '1.2.3';
+const TEST_COMPANION_VERSION = '4.5.6';
+
 function createHistoryEntry(id: string, title: string, extraTitles: string[] = []): HistoryEntry {
   return {
     id,
@@ -40,11 +43,11 @@ function createSnapshot(history: HistoryEntry[]): BridgeRuntimeSnapshot {
   return {
     status: 'connected',
     retryPhase: 'idle',
-    bridgeVersion: '0.14.0',
+    bridgeVersion: TEST_BRIDGE_VERSION,
     installMode: 'development',
     companion: {
       kind: 'cli',
-      version: '0.14.0',
+      version: TEST_COMPANION_VERSION,
     },
     wsUrl: 'ws://127.0.0.1:3002',
     logs: [],
@@ -172,7 +175,9 @@ describe('AutomationBridgeWidget', () => {
 
     expect(container.textContent).toContain('Automation Bridge');
     expect(container.textContent).toContain('Ready');
-    expect(container.textContent).toContain('Bridge v0.14.0 dev · CLI v0.14.0');
+    expect(container.textContent).toContain(
+      `Bridge v${TEST_BRIDGE_VERSION} dev · CLI v${TEST_COMPANION_VERSION}`
+    );
     expect(container.textContent).toContain('ws://127.0.0.1:3002');
   });
 

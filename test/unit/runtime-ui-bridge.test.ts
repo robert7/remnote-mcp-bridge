@@ -8,6 +8,9 @@ import {
   registerBridgeRuntimeUiBridge,
 } from '../../src/widgets/runtime-ui-bridge';
 
+const TEST_BRIDGE_VERSION = '1.2.3';
+const TEST_COMPANION_VERSION = '4.5.6';
+
 describe('registerBridgeRuntimeUiBridge', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -19,11 +22,11 @@ describe('registerBridgeRuntimeUiBridge', () => {
     const snapshot: BridgeRuntimeSnapshot = {
       status: 'connected',
       retryPhase: 'idle',
-      bridgeVersion: '0.14.0',
+      bridgeVersion: TEST_BRIDGE_VERSION,
       installMode: 'development',
       companion: {
         kind: 'cli',
-        version: '0.14.0',
+        version: TEST_COMPANION_VERSION,
       },
       wsUrl: 'ws://127.0.0.1:3002',
       logs: [{ timestamp: logTimestamp, message: 'Connected', level: 'success' }],
@@ -88,7 +91,7 @@ describe('registerBridgeRuntimeUiBridge', () => {
         getSnapshot: () => ({
           status: 'disconnected',
           retryPhase: 'idle',
-          bridgeVersion: '0.14.0',
+          bridgeVersion: TEST_BRIDGE_VERSION,
           installMode: 'marketplace',
           wsUrl: 'ws://127.0.0.1:3002',
           logs: [],
