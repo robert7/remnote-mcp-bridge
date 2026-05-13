@@ -27,6 +27,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   maintained CLI code living in `remnote-mcp-server`.
 - Clarified AI-agent live integration instructions: use the server agent wrapper, preflight port `3001`, refuse to run
   when an existing server is listening, and run live integration outside the Codex sandbox.
+- Pointed AI-agent live integration preflight at the server wrapper's unsandboxed `--preflight-only` mode instead of
+  ad hoc port probes.
 - Clarified README companion roles for the bundled `remnote-mcp-stdio` stdio proxy.
 
 ### Fixed
