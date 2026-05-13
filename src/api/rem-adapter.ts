@@ -1178,6 +1178,33 @@ export class RemAdapter {
     return [text];
   }
 
+  private requireString(value: unknown, fieldName: string): string {
+    if (typeof value !== 'string') {
+      throw new Error(`${fieldName} must be a string`);
+    }
+    return value;
+  }
+
+  private optionalStringArray(value: unknown, fieldName: string): string[] {
+    if (value === undefined) {
+      return [];
+    }
+
+    if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+      throw new Error(`${fieldName} must be an array of strings`);
+    }
+
+    return value;
+  }
+
+  private requireInsertPosition(value: unknown): InsertChildrenPosition {
+    if (value === 'first' || value === 'last' || value === 'before' || value === 'after') {
+      return value;
+    }
+
+    throw new Error('position must be one of first, last, before, after');
+  }
+
   private async addTagRemIdsToRem(rem: PluginRem, tagRemIds: string[]): Promise<void> {
     for (const tagRemId of tagRemIds) {
       await rem.addTag(tagRemId);
@@ -1344,9 +1371,20 @@ export class RemAdapter {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
 
-    const parentId = params.parentId || this.settings.defaultParentId;
+    const title =
+      params.title === undefined || params.title === null
+        ? undefined
+        : this.requireString(params.title, 'title');
+    const content =
+      params.content === undefined || params.content === null
+        ? undefined
+        : this.requireString(params.content, 'content');
+    const parentId =
+      params.parentId === undefined || params.parentId === null
+        ? this.settings.defaultParentId
+        : this.requireString(params.parentId, 'parentId');
 
-    const tagRemIds = [...(params.tagRemIds || [])];
+    const tagRemIds = [...this.optionalStringArray(params.tagRemIds, 'tagRemIds')];
     if (this.settings.autoTagEnabled && this.settings.autoTagRemId) {
       if (!tagRemIds.includes(this.settings.autoTagRemId)) {
         tagRemIds.push(this.settings.autoTagRemId);
@@ -1355,21 +1393,21 @@ export class RemAdapter {
 
     const remIds: string[] = [];
     const titles: string[] = [];
-    const hasContent = params.content !== undefined && params.content !== null;
+    const hasContent = content !== undefined;
 
     // Scenario 1: title provided
-    if (params.title) {
-      const titleRem = await this.plugin.rem.createSingleRemWithMarkdown(params.title, parentId);
+    if (title) {
+      const titleRem = await this.plugin.rem.createSingleRemWithMarkdown(title, parentId);
       if (!titleRem) throw new Error('Failed to create Rem');
 
       await this.addTagRemIdsToRem(titleRem, tagRemIds);
 
       remIds.push(titleRem._id);
-      titles.push(params.title!);
+      titles.push(title);
 
       if (hasContent) {
         // Normalize content to collapse consecutive blank lines
-        const normalizedContent = this.normalizeContent(params.content!);
+        const normalizedContent = this.normalizeContent(content);
         if (normalizedContent) {
           const createdRems = await this.createRemsFromMarkdown(normalizedContent, titleRem._id);
           if (createdRems.length > 0) {
@@ -1384,7 +1422,7 @@ export class RemAdapter {
     } else if (hasContent) {
       // Scenario 2: content only
       // Normalize content to collapse consecutive blank lines
-      const normalizedContent = this.normalizeContent(params.content!);
+      const normalizedContent = this.normalizeContent(content);
       if (!normalizedContent) {
         throw new Error('Content is empty');
       }
@@ -1417,6 +1455,9 @@ export class RemAdapter {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
 
+    const content = this.requireString(params.content, 'content');
+    const tagRemIds = this.optionalStringArray(params.tagRemIds, 'tagRemIds');
+
     const today = new Date();
     const dailyDoc = await this.plugin.date.getDailyDoc(today);
 
@@ -1441,7 +1482,7 @@ export class RemAdapter {
     }
 
     // Normalize and create the tree
-    let normalizedContent = this.normalizeContent(params.content);
+    let normalizedContent = this.normalizeContent(content);
     if (!normalizedContent) {
       throw new Error('Journal content is empty');
     }
@@ -1460,18 +1501,18 @@ export class RemAdapter {
         }
       } else {
         // If content is only one line, add prefix to the content and add to daily doc directly
-        normalizedContent = prefixToCreate + params.content;
+        normalizedContent = prefixToCreate + content;
         parentRemId = dailyDoc._id;
       }
     }
 
     // Create the tree under daily document or the prefix Rem
     const createdRems = await this.createRemsFromMarkdown(normalizedContent, parentRemId);
-    if (params.tagRemIds?.length) {
+    if (tagRemIds.length) {
       if (journalRootRem) {
-        await this.addTagRemIdsToRem(journalRootRem, params.tagRemIds);
+        await this.addTagRemIdsToRem(journalRootRem, tagRemIds);
       } else {
-        await this.addTagRemIdsToTopLevelRems(createdRems, dailyDoc._id, params.tagRemIds);
+        await this.addTagRemIdsToTopLevelRems(createdRems, dailyDoc._id, tagRemIds);
       }
     }
     const results = await this.extractRemResults(createdRems);
@@ -1683,22 +1724,23 @@ export class RemAdapter {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
 
-    const rem = await this.plugin.rem.findOne(params.remId);
+    const remId = this.requireString(params.remId, 'remId');
+    const title = this.requireString(params.title, 'title');
+
+    const rem = await this.plugin.rem.findOne(remId);
 
     if (!rem) {
-      throw new Error(`Note not found: ${params.remId}`);
+      throw new Error(`Note not found: ${remId}`);
     }
 
     const remIds: string[] = [];
     const titles: string[] = [];
 
     // Update title if provided
-    if (params.title !== undefined && params.title !== null) {
-      const richText = await this.plugin.richText.parseFromMarkdown(params.title);
-      await rem.setText(richText);
-      titles.push(params.title);
-      remIds.push(params.remId);
-    }
+    const richText = await this.plugin.richText.parseFromMarkdown(title);
+    await rem.setText(richText);
+    titles.push(title);
+    remIds.push(remId);
 
     return { titles, remIds };
   }
@@ -1710,8 +1752,18 @@ export class RemAdapter {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
 
-    const positionAmongstSiblings = await this.getInsertPosition(params);
-    const normalizedContent = this.normalizeContent(params.content);
+    const safeParams: InsertChildrenParams = {
+      parentRemId: this.requireString(params.parentRemId, 'parentRemId'),
+      content: this.requireString(params.content, 'content'),
+      position: this.requireInsertPosition(params.position),
+      siblingRemId:
+        params.siblingRemId === undefined || params.siblingRemId === null
+          ? undefined
+          : this.requireString(params.siblingRemId, 'siblingRemId'),
+    };
+
+    const positionAmongstSiblings = await this.getInsertPosition(safeParams);
+    const normalizedContent = this.normalizeContent(safeParams.content);
 
     if (!normalizedContent) {
       return { titles: [], remIds: [] };
@@ -1719,7 +1771,7 @@ export class RemAdapter {
 
     const createdRems = await this.createRemsFromMarkdown(
       normalizedContent,
-      params.parentRemId,
+      safeParams.parentRemId,
       positionAmongstSiblings
     );
 
@@ -1741,14 +1793,17 @@ export class RemAdapter {
       throw new Error('Replace operation is disabled in Automation Bridge settings');
     }
 
-    const rem = await this.plugin.rem.findOne(params.parentRemId);
+    const parentRemId = this.requireString(params.parentRemId, 'parentRemId');
+    const content = this.requireString(params.content, 'content');
+    const normalizedContent = this.normalizeContent(content);
+
+    const rem = await this.plugin.rem.findOne(parentRemId);
 
     if (!rem) {
-      throw new Error(`Parent note not found: ${params.parentRemId}`);
+      throw new Error(`Parent note not found: ${parentRemId}`);
     }
 
     await this.clearDirectChildren(rem);
-    const normalizedContent = this.normalizeContent(params.content);
     if (normalizedContent) {
       const createdRems = await this.createRemsFromMarkdown(normalizedContent, rem._id);
 
@@ -1765,25 +1820,29 @@ export class RemAdapter {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
 
-    if (!params.addTagRemIds?.length && !params.removeTagRemIds?.length) {
+    const remId = this.requireString(params.remId, 'remId');
+    const addTagRemIds = this.optionalStringArray(params.addTagRemIds, 'addTagRemIds');
+    const removeTagRemIds = this.optionalStringArray(params.removeTagRemIds, 'removeTagRemIds');
+
+    if (!addTagRemIds.length && !removeTagRemIds.length) {
       throw new Error('update_tags requires addTagRemIds or removeTagRemIds');
     }
 
-    const rem = await this.plugin.rem.findOne(params.remId);
+    const rem = await this.plugin.rem.findOne(remId);
 
     if (!rem) {
-      throw new Error(`Note not found: ${params.remId}`);
+      throw new Error(`Note not found: ${remId}`);
     }
 
-    for (const tagRemId of params.addTagRemIds ?? []) {
+    for (const tagRemId of addTagRemIds) {
       await rem.addTag(tagRemId);
     }
 
-    for (const tagRemId of params.removeTagRemIds ?? []) {
+    for (const tagRemId of removeTagRemIds) {
       await rem.removeTag(tagRemId);
     }
 
-    return { titles: [], remIds: [params.remId] };
+    return { titles: [], remIds: [remId] };
   }
 
   /**

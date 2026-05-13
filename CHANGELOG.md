@@ -29,6 +29,11 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   when an existing server is listening, and run live integration outside the Codex sandbox.
 - Clarified README companion roles for the bundled `remnote-mcp-stdio` stdio proxy.
 
+### Fixed
+
+- Hardened bridge write validation so malformed direct bridge payloads cannot clear children, insert at invalid
+  positions, or mutate tags from non-array tag ID inputs.
+
 ## [0.14.0] - 2026-05-07
 
 ### Changed

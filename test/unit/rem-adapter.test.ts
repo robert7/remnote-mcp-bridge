@@ -108,6 +108,18 @@ describe('RemAdapter', () => {
       expect(plugin.rem.findByName).not.toHaveBeenCalled();
     });
 
+    it('should reject non-array create tag IDs before creating a note', async () => {
+      await expect(
+        adapter.createNote({
+          title: 'Bad Tagged Note',
+          tagRemIds: 'tag-rem-id',
+        } as unknown as Parameters<typeof adapter.createNote>[0])
+      ).rejects.toThrow('tagRemIds must be an array of strings');
+
+      const created = await plugin.rem.findByName(['Bad Tagged Note'], null);
+      expect(created).toBeNull();
+    });
+
     it('should add auto-tag Rem ID when enabled', async () => {
       adapter.updateSettings({ autoTagEnabled: true, autoTagRemId: 'auto-tag-rem-id' });
 
@@ -434,6 +446,21 @@ describe('RemAdapter', () => {
       expect(topRem!.getTags()).toEqual(['journal-tag-rem-id']);
       expect(nestedRem!.getTags()).toEqual([]);
       expect(plugin.rem.findByName).not.toHaveBeenCalled();
+    });
+
+    it('should reject non-array journal tag IDs before creating an entry', async () => {
+      const dailyDoc = await plugin.date.getDailyDoc(new Date());
+      const childrenBefore = await dailyDoc!.getChildrenRem();
+
+      await expect(
+        adapter.appendJournal({
+          content: 'Bad journal tag entry',
+          tagRemIds: 'journal-tag-rem-id',
+        } as unknown as Parameters<typeof adapter.appendJournal>[0])
+      ).rejects.toThrow('tagRemIds must be an array of strings');
+
+      const childrenAfter = await dailyDoc!.getChildrenRem();
+      expect(childrenAfter).toHaveLength(childrenBefore.length);
     });
 
     it('should tag the journal wrapper Rem by exact Rem ID when prefix creates one', async () => {
@@ -1394,6 +1421,16 @@ describe('RemAdapter', () => {
         })
       ).rejects.toThrow('Note not found: nonexistent');
     });
+
+    it('should reject update without title', async () => {
+      plugin.addTestRem('update_missing_title_test', 'Original title');
+
+      await expect(
+        adapter.updateNote({
+          remId: 'update_missing_title_test',
+        } as Parameters<typeof adapter.updateNote>[0])
+      ).rejects.toThrow('title must be a string');
+    });
   });
 
   describe('insertChildren', () => {
@@ -1506,6 +1543,24 @@ describe('RemAdapter', () => {
         'Sibling note not found under parent insert_wrong_parent_test: outside_sibling'
       );
     });
+
+    it('should reject invalid positions before inserting children', async () => {
+      const parent = plugin.addTestRem('insert_invalid_position_test', 'Parent');
+      const sibling = plugin.addTestRem('insert_invalid_position_sibling', 'Sibling');
+      await sibling.setParent(parent);
+
+      await expect(
+        adapter.insertChildren({
+          parentRemId: 'insert_invalid_position_test',
+          content: 'Inserted',
+          position: 'middle',
+          siblingRemId: 'insert_invalid_position_sibling',
+        } as unknown as Parameters<typeof adapter.insertChildren>[0])
+      ).rejects.toThrow('position must be one of first, last, before, after');
+
+      const children = await parent.getChildrenRem();
+      expect(children.map((c) => c.text?.[0])).toEqual(['Sibling']);
+    });
   });
 
   describe('replaceChildren', () => {
@@ -1539,6 +1594,24 @@ describe('RemAdapter', () => {
 
       const children = await testRem.getChildrenRem();
       expect(children).toHaveLength(0);
+    });
+
+    it('should reject malformed replacement content without clearing children', async () => {
+      const testRem = plugin.addTestRem('replace_malformed_content_test', 'Parent');
+      const oldChild = new MockRem('old_child_malformed_content', 'Old line');
+      await oldChild.setParent(testRem);
+      adapter.updateSettings({ acceptReplaceOperation: true });
+
+      await expect(
+        adapter.replaceChildren({
+          parentRemId: 'replace_malformed_content_test',
+          content: undefined,
+        } as unknown as Parameters<typeof adapter.replaceChildren>[0])
+      ).rejects.toThrow('content must be a string');
+
+      const children = await testRem.getChildrenRem();
+      expect(children).toHaveLength(1);
+      expect(children[0]._id).toBe('old_child_malformed_content');
     });
 
     it('should reject replace when replace operation is disabled', async () => {
@@ -1595,6 +1668,17 @@ describe('RemAdapter', () => {
           remId: 'empty_tag_update_test',
         })
       ).rejects.toThrow('update_tags requires addTagRemIds or removeTagRemIds');
+    });
+
+    it('should reject non-array tag ID inputs', async () => {
+      plugin.addTestRem('non_array_tag_update_test', 'Tagged note');
+
+      await expect(
+        adapter.updateTags({
+          remId: 'non_array_tag_update_test',
+          addTagRemIds: 'tag-id',
+        } as unknown as Parameters<typeof adapter.updateTags>[0])
+      ).rejects.toThrow('addTagRemIds must be an array of strings');
     });
 
     it('should reject update tags for non-existent note', async () => {
