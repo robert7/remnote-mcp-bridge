@@ -85,6 +85,12 @@ Use `./run-prod-build.sh` for production-style local verification (no hot reload
 - If bridge code changed after the currently running RemNote bridge session started, the agent must ask the human
   collaborator to restart the bridge before rerunning live integration tests.
 - CLI and MCP server live integration tests use the same `remnote-mcp-server` bridge connection.
+- AI agents must run server-side live integration through `../remnote-mcp-server/run-agent-integration-test.sh`, not
+  `run-integration-test.sh` or `npm run test:integration*`. Before invoking it, explicitly probe `127.0.0.1:3001`; if
+  anything is listening there, including a launchd-managed MCP server, refuse to run and ask Robert to stop that server
+  manually. Do not stop or restart existing MCP server or launchd processes yourself.
+- Agent-assisted live integration must run outside the Codex sandbox with escalated execution because the `tsx` runners
+  create macOS temp-directory IPC pipes that can fail under sandboxing with `listen EPERM`.
 - Use local unit/static/build checks for agent-side verification.
 
 ## Documentation and Changelog Rules

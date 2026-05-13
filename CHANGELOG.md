@@ -25,6 +25,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   to the local Claude Desktop MCPB setup.
 - Updated documentation and agent repo maps to treat the old standalone `remnote-cli` repository as discontinued, with
   maintained CLI code living in `remnote-mcp-server`.
+- Clarified AI-agent live integration instructions: use the server agent wrapper, preflight port `3001`, refuse to run
+  when an existing server is listening, and run live integration outside the Codex sandbox.
 - Clarified README companion roles for the bundled `remnote-mcp-stdio` stdio proxy.
 
 ## [0.14.0] - 2026-05-07
