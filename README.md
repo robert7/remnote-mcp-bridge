@@ -7,10 +7,6 @@ bridge. It is the shared RemNote endpoint for the `remnote-mcp-server` package:
 - **`remnote-mcp-stdio` bundled in remnote-mcp-server** for stdio-only MCP clients
 - **`remnote-cli` bundled in remnote-mcp-server** for scripts, local agents, and CLI-first workflows
 
-![License](https://img.shields.io/badge/license-MIT-blue)
-![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
-[![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
-
 > If you run into any issues, please [report them here](https://github.com/robert7/remnote-mcp-bridge/issues).
 > Further it is an improved and renamed fork of the original plugin
 > [MCP Bridge plugin by Quentin Tousart](https://github.com/quentintou/remnote-mcp-bridge).
@@ -391,3 +387,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [RemNote](https://remnote.com) for the amazing Personal Knowledge Management tool
 - [Anthropic](https://anthropic.com) for Claude and the MCP protocol
 - The RemNote plugin community for inspiration
+
+## Badges
+
+![License](https://img.shields.io/badge/license-MIT-blue)
+![CI](https://github.com/robert7/remnote-mcp-bridge/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/robert7/remnote-mcp-bridge/branch/main/graph/badge.svg)](https://codecov.io/gh/robert7/remnote-mcp-bridge)
