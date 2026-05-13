@@ -23,7 +23,7 @@ import {
   SETTING_ACCEPT_WRITE_OPERATIONS,
   SETTING_ACCEPT_REPLACE_OPERATION,
   SETTING_AUTO_TAG_ENABLED,
-  SETTING_AUTO_TAG,
+  SETTING_AUTO_TAG_REM_ID,
   SETTING_JOURNAL_PREFIX,
   SETTING_JOURNAL_TIMESTAMP,
   SETTING_DEFAULT_PARENT,
@@ -44,7 +44,7 @@ describe('Bridge runtime', () => {
     plugin.setTestSetting(SETTING_ACCEPT_WRITE_OPERATIONS, true);
     plugin.setTestSetting(SETTING_ACCEPT_REPLACE_OPERATION, false);
     plugin.setTestSetting(SETTING_AUTO_TAG_ENABLED, true);
-    plugin.setTestSetting(SETTING_AUTO_TAG, '');
+    plugin.setTestSetting(SETTING_AUTO_TAG_REM_ID, '');
     plugin.setTestSetting(SETTING_JOURNAL_PREFIX, '');
     plugin.setTestSetting(SETTING_JOURNAL_TIMESTAMP, true);
     plugin.setTestSetting(SETTING_DEFAULT_PARENT, '');

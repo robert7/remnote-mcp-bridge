@@ -6,14 +6,14 @@ import {
   SETTING_ACCEPT_WRITE_OPERATIONS,
   SETTING_ACCEPT_REPLACE_OPERATION,
   SETTING_AUTO_TAG_ENABLED,
-  SETTING_AUTO_TAG,
+  SETTING_AUTO_TAG_REM_ID,
   SETTING_JOURNAL_PREFIX,
   SETTING_JOURNAL_TIMESTAMP,
   SETTING_WS_URL,
   SETTING_DEFAULT_PARENT,
   DEFAULT_ACCEPT_WRITE_OPERATIONS,
   DEFAULT_ACCEPT_REPLACE_OPERATION,
-  DEFAULT_AUTO_TAG,
+  DEFAULT_AUTO_TAG_REM_ID,
   DEFAULT_JOURNAL_PREFIX,
   DEFAULT_WS_URL,
   AutomationBridgeSettings,
@@ -29,7 +29,7 @@ describe('Settings', () => {
         SETTING_ACCEPT_WRITE_OPERATIONS,
         SETTING_ACCEPT_REPLACE_OPERATION,
         SETTING_AUTO_TAG_ENABLED,
-        SETTING_AUTO_TAG,
+        SETTING_AUTO_TAG_REM_ID,
         SETTING_JOURNAL_PREFIX,
         SETTING_JOURNAL_TIMESTAMP,
         SETTING_WS_URL,
@@ -44,7 +44,7 @@ describe('Settings', () => {
       expect(SETTING_ACCEPT_WRITE_OPERATIONS).toBe('automation-bridge-accept-write-operations');
       expect(SETTING_ACCEPT_REPLACE_OPERATION).toBe('automation-bridge-accept-replace-operation');
       expect(SETTING_AUTO_TAG_ENABLED).toBe('automation-bridge-auto-tag-enabled');
-      expect(SETTING_AUTO_TAG).toBe('automation-bridge-auto-tag');
+      expect(SETTING_AUTO_TAG_REM_ID).toBe('automation-bridge-auto-tag-rem-id');
       expect(SETTING_JOURNAL_PREFIX).toBe('automation-bridge-journal-prefix');
       expect(SETTING_JOURNAL_TIMESTAMP).toBe('automation-bridge-journal-timestamp');
       expect(SETTING_WS_URL).toBe('automation-bridge-ws-url');
@@ -56,7 +56,7 @@ describe('Settings', () => {
     it('should have correct default values', () => {
       expect(DEFAULT_ACCEPT_WRITE_OPERATIONS).toBe(true);
       expect(DEFAULT_ACCEPT_REPLACE_OPERATION).toBe(false);
-      expect(DEFAULT_AUTO_TAG).toBe('');
+      expect(DEFAULT_AUTO_TAG_REM_ID).toBe('');
       expect(DEFAULT_JOURNAL_PREFIX).toBe('');
       expect(DEFAULT_WS_URL).toBe('ws://127.0.0.1:3002');
     });
@@ -76,7 +76,7 @@ describe('Settings', () => {
         acceptWriteOperations: true,
         acceptReplaceOperation: false,
         autoTagEnabled: true,
-        autoTag: '',
+        autoTagRemId: '',
         journalPrefix: '',
         journalTimestamp: true,
         wsUrl: 'ws://127.0.0.1:3002',
@@ -86,7 +86,7 @@ describe('Settings', () => {
       expect(settings.acceptWriteOperations).toBe(true);
       expect(settings.acceptReplaceOperation).toBe(false);
       expect(settings.autoTagEnabled).toBe(true);
-      expect(settings.autoTag).toBe('');
+      expect(settings.autoTagRemId).toBe('');
       expect(settings.journalPrefix).toBe('');
       expect(settings.journalTimestamp).toBe(true);
       expect(settings.wsUrl).toBe('ws://127.0.0.1:3002');
@@ -98,7 +98,7 @@ describe('Settings', () => {
         acceptWriteOperations: false,
         acceptReplaceOperation: false,
         autoTagEnabled: false,
-        autoTag: '',
+        autoTagRemId: '',
         journalPrefix: '',
         journalTimestamp: false,
         wsUrl: '',
@@ -108,7 +108,7 @@ describe('Settings', () => {
       expect(settings).toHaveProperty('acceptWriteOperations');
       expect(settings).toHaveProperty('acceptReplaceOperation');
       expect(settings).toHaveProperty('autoTagEnabled');
-      expect(settings).toHaveProperty('autoTag');
+      expect(settings).toHaveProperty('autoTagRemId');
       expect(settings).toHaveProperty('journalPrefix');
       expect(settings).toHaveProperty('journalTimestamp');
       expect(settings).toHaveProperty('wsUrl');
@@ -120,7 +120,7 @@ describe('Settings', () => {
         acceptWriteOperations: false,
         acceptReplaceOperation: true,
         autoTagEnabled: false,
-        autoTag: 'CustomTag',
+        autoTagRemId: 'custom_tag_rem_id',
         journalPrefix: '[AI]',
         journalTimestamp: false,
         wsUrl: 'ws://custom.host:9999',
@@ -129,7 +129,7 @@ describe('Settings', () => {
 
       expect(settings.acceptWriteOperations).toBe(false);
       expect(settings.acceptReplaceOperation).toBe(true);
-      expect(settings.autoTag).toBe('CustomTag');
+      expect(settings.autoTagRemId).toBe('custom_tag_rem_id');
       expect(settings.journalPrefix).toBe('[AI]');
       expect(settings.wsUrl).toBe('ws://custom.host:9999');
       expect(settings.defaultParentId).toBe('custom_parent_id');
@@ -142,7 +142,7 @@ describe('Settings', () => {
         acceptWriteOperations: true,
         acceptReplaceOperation: false,
         autoTagEnabled: true,
-        autoTag: '',
+        autoTagRemId: '',
         journalPrefix: '',
         journalTimestamp: true,
         wsUrl: 'ws://127.0.0.1:3002',
@@ -155,7 +155,7 @@ describe('Settings', () => {
       plugin.setTestSetting(SETTING_ACCEPT_WRITE_OPERATIONS, false);
       plugin.setTestSetting(SETTING_ACCEPT_REPLACE_OPERATION, true);
       plugin.setTestSetting(SETTING_AUTO_TAG_ENABLED, false);
-      plugin.setTestSetting(SETTING_AUTO_TAG, 'Robot');
+      plugin.setTestSetting(SETTING_AUTO_TAG_REM_ID, 'robot-tag-rem-id');
       plugin.setTestSetting(SETTING_JOURNAL_PREFIX, '[AI]');
       plugin.setTestSetting(SETTING_JOURNAL_TIMESTAMP, false);
       plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:4555');
@@ -167,7 +167,7 @@ describe('Settings', () => {
         acceptWriteOperations: false,
         acceptReplaceOperation: true,
         autoTagEnabled: false,
-        autoTag: 'Robot',
+        autoTagRemId: 'robot-tag-rem-id',
         journalPrefix: '[AI]',
         journalTimestamp: false,
         wsUrl: 'ws://127.0.0.1:4555',

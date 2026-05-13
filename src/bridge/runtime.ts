@@ -307,7 +307,7 @@ class BridgeRuntimeController implements BridgeRuntime {
           title: payload.title as string | undefined,
           content: payload.content as string | undefined,
           parentId: payload.parentId as string | undefined,
-          tags: payload.tags as string[] | undefined,
+          tagRemIds: payload.tagRemIds as string[] | undefined,
         });
         this.stats = { ...this.stats, created: this.stats.created + 1 };
         this.addHistoryEntry('create', result.titles || ['Note'], result.remIds);
@@ -319,6 +319,7 @@ class BridgeRuntimeController implements BridgeRuntime {
         const result = await this.adapter.appendJournal({
           content: payload.content as string,
           timestamp: payload.timestamp as boolean | undefined,
+          tagRemIds: payload.tagRemIds as string[] | undefined,
         });
         this.stats = { ...this.stats, journal: this.stats.journal + 1 };
         this.addHistoryEntry('journal', result.titles, result.remIds);

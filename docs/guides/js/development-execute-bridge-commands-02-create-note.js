@@ -1,7 +1,7 @@
 const created = await runAndLog('create_note', {
   title: 'DevTools test note',
   content: 'Line 1\nLine 2',
-  tags: ['automation-bridge', 'devtools'],
+  tagRemIds: ['YOUR_TAG_REM_ID'],
   // parentId: 'YOUR_PARENT_REM_ID',
 });
 

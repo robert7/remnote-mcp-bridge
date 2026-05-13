@@ -16,7 +16,7 @@ describe('RemAdapter', () => {
       acceptWriteOperations: true,
       acceptReplaceOperation: false,
       autoTagEnabled: true,
-      autoTag: '',
+      autoTagRemId: '',
       journalPrefix: '',
       journalTimestamp: true,
       wsUrl: 'ws://localhost:3002',
@@ -30,15 +30,15 @@ describe('RemAdapter', () => {
       expect(settings.acceptWriteOperations).toBe(true);
       expect(settings.acceptReplaceOperation).toBe(false);
       expect(settings.autoTagEnabled).toBe(true);
-      expect(settings.autoTag).toBe('');
+      expect(settings.autoTagRemId).toBe('');
       expect(settings.journalPrefix).toBe('');
     });
 
     it('should update settings', () => {
-      adapter.updateSettings({ autoTagEnabled: false, autoTag: 'Custom' });
+      adapter.updateSettings({ autoTagEnabled: false, autoTagRemId: 'custom-tag-rem-id' });
       const settings = adapter.getSettings();
       expect(settings.autoTagEnabled).toBe(false);
-      expect(settings.autoTag).toBe('Custom');
+      expect(settings.autoTagRemId).toBe('custom-tag-rem-id');
     });
   });
 
@@ -96,20 +96,20 @@ describe('RemAdapter', () => {
       expect(childRem).toBeDefined();
     });
 
-    it('should add custom tags', async () => {
+    it('should add custom tag Rem IDs without name lookup', async () => {
       const result = await adapter.createNote({
         title: 'Tagged Note',
-        tags: ['tag1', 'tag2'],
+        tagRemIds: ['tag-rem-id-1', 'tag-rem-id-2'],
       });
 
       const rem = await plugin.rem.findOne(result.remIds[0]);
       expect(rem).toBeDefined();
-      // Tags should have been added (auto-tag + custom tags)
-      expect(rem!.getTags().length).toBeGreaterThan(0);
+      expect(rem!.getTags()).toEqual(['tag-rem-id-1', 'tag-rem-id-2']);
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
     });
 
-    it('should add auto-tag when enabled', async () => {
-      adapter.updateSettings({ autoTagEnabled: true, autoTag: 'AutoTag' });
+    it('should add auto-tag Rem ID when enabled', async () => {
+      adapter.updateSettings({ autoTagEnabled: true, autoTagRemId: 'auto-tag-rem-id' });
 
       const result = await adapter.createNote({
         title: 'Auto Tagged Note',
@@ -117,7 +117,8 @@ describe('RemAdapter', () => {
 
       const rem = await plugin.rem.findOne(result.remIds[0]);
       expect(rem).toBeDefined();
-      expect(rem!.getTags().length).toBeGreaterThan(0);
+      expect(rem!.getTags()).toEqual(['auto-tag-rem-id']);
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
     });
 
     it('should not add auto-tag when disabled', async () => {
@@ -125,7 +126,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.createNote({
         title: 'Untagged Note',
-        tags: [],
+        tagRemIds: [],
       });
 
       const rem = await plugin.rem.findOne(result.remIds[0]);
@@ -292,29 +293,25 @@ describe('RemAdapter', () => {
     });
 
     it('should apply tags only to root when title exists', async () => {
-      const tagRem = plugin.addTestRem('tag_id_1', 'tree-tag', 'tree-tag');
-
       const result = await adapter.createNote({
         title: 'Tagged Root',
         content: '- Child 1\n- Child 2',
-        tags: ['tree-tag'],
+        tagRemIds: ['tag_id_1'],
       });
 
       const rootRemId = result.remIds[0];
       const rootRem = await plugin.rem.findOne(rootRemId);
-      expect(rootRem!.getTags()).toContain(tagRem._id);
+      expect(rootRem!.getTags()).toContain('tag_id_1');
 
       // Children should NOT have tags
       const childIds = result.remIds!.filter((id) => id !== rootRemId);
       for (const id of childIds) {
         const rem = await plugin.rem.findOne(id);
-        expect(rem!.getTags()).not.toContain(tagRem._id);
+        expect(rem!.getTags()).not.toContain('tag_id_1');
       }
     });
 
     it('should apply tags only to top-level rems when title is missing', async () => {
-      const tagRem = plugin.addTestRem('tag_id_2', 'top-tag', 'top-tag');
-
       // Setup mock: top-level rems have parentId = '' (root)
       const top1 = plugin.addTestRem('top1', 'Top 1');
       const top2 = plugin.addTestRem('top2', 'Top 2');
@@ -326,12 +323,13 @@ describe('RemAdapter', () => {
 
       await adapter.createNote({
         content: '- Top 1\n  - Nested\n- Top 2',
-        tags: ['top-tag'],
+        tagRemIds: ['tag_id_2'],
       });
 
-      expect(top1.getTags()).toContain(tagRem._id);
-      expect(top2.getTags()).toContain(tagRem._id);
-      expect(nested.getTags()).not.toContain(tagRem._id);
+      expect(top1.getTags()).toContain('tag_id_2');
+      expect(top2.getTags()).toContain('tag_id_2');
+      expect(nested.getTags()).not.toContain('tag_id_2');
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
     });
 
     it('should correctly parse ordered lists as the first line using plain dummy root', async () => {
@@ -421,6 +419,38 @@ describe('RemAdapter', () => {
 
       expect(result.titles[0]).toContain('[AI]');
       expect(result.titles[0]).not.toMatch(/^ /);
+    });
+
+    it('should tag top-level journal Rems by exact Rem ID', async () => {
+      const result = await adapter.appendJournal({
+        content: 'Top entry\n  - Nested entry',
+        timestamp: false,
+        tagRemIds: ['journal-tag-rem-id'],
+      });
+
+      const topRem = await plugin.rem.findOne(result.remIds[0]);
+      const nestedRem = await plugin.rem.findOne(result.remIds[1]);
+
+      expect(topRem!.getTags()).toEqual(['journal-tag-rem-id']);
+      expect(nestedRem!.getTags()).toEqual([]);
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
+    });
+
+    it('should tag the journal wrapper Rem by exact Rem ID when prefix creates one', async () => {
+      adapter.updateSettings({ journalPrefix: '[AI]' });
+
+      const result = await adapter.appendJournal({
+        content: 'Line 1\nLine 2\nLine 3',
+        timestamp: true,
+        tagRemIds: ['journal-wrapper-tag-rem-id'],
+      });
+
+      const wrapperRem = await plugin.rem.findOne(result.remIds[0]);
+      const childRem = await plugin.rem.findOne(result.remIds[1]);
+
+      expect(wrapperRem!.getTags()).toEqual(['journal-wrapper-tag-rem-id']);
+      expect(childRem!.getTags()).toEqual([]);
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
     });
   });
 
@@ -2009,27 +2039,27 @@ describe('RemAdapter', () => {
   });
 
   describe('Tag management', () => {
-    it('should create new tag if it does not exist', async () => {
+    it('should apply exact tag Rem IDs without creating tag Rems', async () => {
       const result = await adapter.createNote({
-        title: 'New tag test',
-        tags: ['BrandNewTag'],
+        title: 'Exact tag test',
+        tagRemIds: ['brand-new-tag-rem-id'],
       });
       const testRem = await plugin.rem.findOne(result.remIds[0]);
 
-      // Tag should be created and added
-      expect(testRem!.getTags().length).toBeGreaterThan(0);
+      expect(testRem!.getTags()).toEqual(['brand-new-tag-rem-id']);
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
+      expect(plugin.rem.createRem).not.toHaveBeenCalled();
     });
 
-    it('should reuse existing tag', async () => {
-      const existingTag = plugin.addTestRem('existing_tag', 'ExistingTag', 'ExistingTag');
-
+    it('should apply existing tag Rem IDs directly', async () => {
       const result = await adapter.createNote({
-        title: 'Reuse tag test',
-        tags: ['ExistingTag'],
+        title: 'Reuse tag ID test',
+        tagRemIds: ['existing_tag'],
       });
       const testRem = await plugin.rem.findOne(result.remIds[0]);
 
-      expect(testRem!.getTags()).toContain(existingTag._id);
+      expect(testRem!.getTags()).toContain('existing_tag');
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
     });
 
     it('should not duplicate tags', async () => {

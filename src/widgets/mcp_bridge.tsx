@@ -14,7 +14,7 @@ import {
   SETTING_ACCEPT_WRITE_OPERATIONS,
   SETTING_ACCEPT_REPLACE_OPERATION,
   SETTING_AUTO_TAG_ENABLED,
-  SETTING_AUTO_TAG,
+  SETTING_AUTO_TAG_REM_ID,
   SETTING_JOURNAL_PREFIX,
   SETTING_JOURNAL_TIMESTAMP,
   SETTING_WS_URL,
@@ -239,7 +239,10 @@ export function AutomationBridgeWidget() {
     () => plugin.settings.getSetting<boolean>(SETTING_AUTO_TAG_ENABLED),
     []
   );
-  const autoTag = useTracker(() => plugin.settings.getSetting<string>(SETTING_AUTO_TAG), []);
+  const autoTagRemId = useTracker(
+    () => plugin.settings.getSetting<string>(SETTING_AUTO_TAG_REM_ID),
+    []
+  );
   const journalPrefix = useTracker(
     () => plugin.settings.getSetting<string>(SETTING_JOURNAL_PREFIX),
     []
@@ -321,7 +324,7 @@ export function AutomationBridgeWidget() {
       acceptWriteOperations === undefined ||
       acceptReplaceOperation === undefined ||
       autoTagEnabled === undefined ||
-      autoTag === undefined ||
+      autoTagRemId === undefined ||
       journalPrefix === undefined ||
       journalTimestamp === undefined ||
       wsUrl === undefined ||
@@ -334,7 +337,7 @@ export function AutomationBridgeWidget() {
       acceptWriteOperations,
       acceptReplaceOperation,
       autoTagEnabled,
-      autoTag,
+      autoTagRemId,
       journalPrefix,
       journalTimestamp,
       wsUrl,
@@ -360,7 +363,7 @@ export function AutomationBridgeWidget() {
     acceptWriteOperations,
     acceptReplaceOperation,
     autoTagEnabled,
-    autoTag,
+    autoTagRemId,
     journalPrefix,
     journalTimestamp,
     wsUrl,

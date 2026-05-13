@@ -11,6 +11,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Split write actions so `update_note` handles title updates, `insert_children` handles ordered child creation,
   `replace_children` handles gated destructive child replacement, and `update_tags` mutates tags by exact Rem ID.
+- Changed `create_note`, `append_journal`, and automatic bridge-created note tagging to use exact tag Rem IDs instead
+  of tag names.
+  - `create_note` now accepts `tagRemIds` instead of `tags`.
+  - `append_journal` now accepts optional `tagRemIds`.
+  - Plugin setting `autoTag` was replaced by `autoTagRemId`; users who configured `autoTag` must manually set the new
+    `autoTagRemId` field to the desired tag Rem ID.
 - Improved bridge disconnect diagnostics for incompatible RemNote marketplace plugins by naming the official
   `MCP/OpenClaw Automation Bridge` plugin in logs and connection UI hints.
 - Added prominent README troubleshooting guidance for wrong or incompatible RemNote Marketplace plugin installs,

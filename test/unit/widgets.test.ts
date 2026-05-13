@@ -28,7 +28,7 @@ import {
   SETTING_ACCEPT_WRITE_OPERATIONS,
   SETTING_ACCEPT_REPLACE_OPERATION,
   SETTING_AUTO_TAG_ENABLED,
-  SETTING_AUTO_TAG,
+  SETTING_AUTO_TAG_REM_ID,
   SETTING_JOURNAL_PREFIX,
   SETTING_JOURNAL_TIMESTAMP,
   SETTING_WS_URL,
@@ -83,7 +83,11 @@ describe('Automation Bridge activation', () => {
       expect.objectContaining({ id: SETTING_JOURNAL_TIMESTAMP })
     );
     expect(registerStringSettingSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ id: SETTING_AUTO_TAG })
+      expect.objectContaining({
+        id: SETTING_AUTO_TAG_REM_ID,
+        title: 'Auto-tag Rem ID',
+        description: expect.stringContaining('Tag Rem ID'),
+      })
     );
     expect(registerStringSettingSpy).toHaveBeenCalledWith(
       expect.objectContaining({ id: SETTING_JOURNAL_PREFIX })

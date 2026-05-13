@@ -14,7 +14,7 @@ import {
   AutomationBridgeSettings,
   DEFAULT_ACCEPT_REPLACE_OPERATION,
   DEFAULT_ACCEPT_WRITE_OPERATIONS,
-  DEFAULT_AUTO_TAG,
+  DEFAULT_AUTO_TAG_REM_ID,
   DEFAULT_JOURNAL_PREFIX,
 } from '../settings';
 import { withScopedLogPrefix } from '../logging';
@@ -29,12 +29,13 @@ export interface CreateNoteParams {
   title?: string;
   content?: string;
   parentId?: string;
-  tags?: string[];
+  tagRemIds?: string[];
 }
 
 export interface AppendJournalParams {
   content: string;
   timestamp?: boolean;
+  tagRemIds?: string[];
 }
 
 export interface SearchParams {
@@ -249,7 +250,7 @@ export class RemAdapter {
       acceptWriteOperations: DEFAULT_ACCEPT_WRITE_OPERATIONS,
       acceptReplaceOperation: DEFAULT_ACCEPT_REPLACE_OPERATION,
       autoTagEnabled: true,
-      autoTag: DEFAULT_AUTO_TAG,
+      autoTagRemId: DEFAULT_AUTO_TAG_REM_ID,
       journalPrefix: DEFAULT_JOURNAL_PREFIX,
       journalTimestamp: true,
       wsUrl: 'ws://127.0.0.1:3002',
@@ -1177,18 +1178,29 @@ export class RemAdapter {
     return [text];
   }
 
-  /**
-   * Add a tag to a Rem (helper function)
-   */
-  private async addTagToRem(rem: PluginRem, tagName: string): Promise<void> {
-    const tagRem = await this.plugin.rem.findByName([tagName], null);
-    if (tagRem) {
-      await rem.addTag(tagRem._id);
-    } else {
-      const newTag = await this.plugin.rem.createRem();
-      if (newTag) {
-        await newTag.setText(this.textToRichText(tagName));
-        await rem.addTag(newTag._id);
+  private async addTagRemIdsToRem(rem: PluginRem, tagRemIds: string[]): Promise<void> {
+    for (const tagRemId of tagRemIds) {
+      await rem.addTag(tagRemId);
+    }
+  }
+
+  private async addTagRemIdsToTopLevelRems(
+    rems: PluginRem[],
+    parentId: string,
+    tagRemIds: string[]
+  ): Promise<void> {
+    if (tagRemIds.length === 0) {
+      return;
+    }
+
+    for (const rem of rems) {
+      const parentOfRem = await this.getParentRem(rem);
+      if (
+        (!parentId && !parentOfRem) ||
+        (parentOfRem && parentOfRem._id === parentId) ||
+        (!parentOfRem && parentId === '')
+      ) {
+        await this.addTagRemIdsToRem(rem, tagRemIds);
       }
     }
   }
@@ -1334,12 +1346,10 @@ export class RemAdapter {
 
     const parentId = params.parentId || this.settings.defaultParentId;
 
-    // Collect all tags to add
-    const allTags = [...(params.tags || [])];
-    // Add auto-tag if enabled
-    if (this.settings.autoTagEnabled && this.settings.autoTag) {
-      if (!allTags.includes(this.settings.autoTag)) {
-        allTags.push(this.settings.autoTag);
+    const tagRemIds = [...(params.tagRemIds || [])];
+    if (this.settings.autoTagEnabled && this.settings.autoTagRemId) {
+      if (!tagRemIds.includes(this.settings.autoTagRemId)) {
+        tagRemIds.push(this.settings.autoTagRemId);
       }
     }
 
@@ -1352,10 +1362,7 @@ export class RemAdapter {
       const titleRem = await this.plugin.rem.createSingleRemWithMarkdown(params.title, parentId);
       if (!titleRem) throw new Error('Failed to create Rem');
 
-      // Apply tags only to the title Rem
-      for (const tagName of allTags) {
-        await this.addTagToRem(titleRem, tagName);
-      }
+      await this.addTagRemIdsToRem(titleRem, tagRemIds);
 
       remIds.push(titleRem._id);
       titles.push(params.title!);
@@ -1388,19 +1395,7 @@ export class RemAdapter {
         throw new Error('No Rems created from markdown content');
       }
 
-      // Apply tags only to direct children of parent rem
-      for (const rem of createdRems) {
-        const parentOfRem = await this.getParentRem(rem);
-        if (
-          (!parentId && !parentOfRem) ||
-          (parentOfRem && parentOfRem._id === parentId) ||
-          (!parentOfRem && parentId === '')
-        ) {
-          for (const tagName of allTags) {
-            await this.addTagToRem(rem, tagName);
-          }
-        }
-      }
+      await this.addTagRemIdsToTopLevelRems(createdRems, parentId, tagRemIds);
 
       const results = await this.extractRemResults(createdRems);
       remIds.push(...results.remIds);
@@ -1432,6 +1427,7 @@ export class RemAdapter {
     const remIds: string[] = [];
     const titles: string[] = [];
     let parentRemId: string = dailyDoc._id;
+    let journalRootRem: PluginRem | undefined;
     // Build the content with optional timestamp
     const useTimestamp = params.timestamp ?? this.settings.journalTimestamp;
     const prefix = this.settings.journalPrefix;
@@ -1456,6 +1452,7 @@ export class RemAdapter {
         if (titleRem) {
           await titleRem.setText(this.textToRichText(prefixToCreate));
           await titleRem.setParent(dailyDoc);
+          journalRootRem = titleRem;
 
           remIds.push(titleRem._id);
           titles.push(await this.extractText(titleRem.text));
@@ -1470,6 +1467,13 @@ export class RemAdapter {
 
     // Create the tree under daily document or the prefix Rem
     const createdRems = await this.createRemsFromMarkdown(normalizedContent, parentRemId);
+    if (params.tagRemIds?.length) {
+      if (journalRootRem) {
+        await this.addTagRemIdsToRem(journalRootRem, params.tagRemIds);
+      } else {
+        await this.addTagRemIdsToTopLevelRems(createdRems, dailyDoc._id, params.tagRemIds);
+      }
+    }
     const results = await this.extractRemResults(createdRems);
     remIds.push(...results.remIds);
     titles.push(...results.titles);

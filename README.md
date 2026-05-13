@@ -68,13 +68,13 @@ connection point that the server package can target:
 - **Create Notes & Flashcards** - Create simple notes, hierarchical markdown trees, or RemNote-native flashcards
 - **Search Knowledge Base** - Full-text search across your Rems, plus tag-based search with ancestor context
 - **Read Notes** - Read notes with tags plus markdown or structured child content for follow-up navigation
-- **Update Notes** - Rename notes, append or replace hierarchical content, and manage tags
-- **Daily Journal** - Append entries to today's daily document, including hierarchical markdown content
+- **Update Notes** - Rename notes, insert or replace hierarchical content, and manage tags by exact Rem ID
+- **Daily Journal** - Append entries to today's daily document, including hierarchical markdown content and optional exact tag Rem IDs
 
 ### Plugin Features
 
 - **Sidebar Control Panel** - Monitor Automation Bridge connection status, statistics, and action history
-- **Auto-tagging** - Automatically tag notes created via Automation Bridge actions (configurable)
+- **Auto-tagging** - Automatically tag notes created via Automation Bridge actions with an exact tag Rem ID
 - **Session Statistics** - Track created/updated/journal entries/searches
 - **Action History** - View last 10 bridge actions with timestamps
 - **Configurable Settings** - Customize behavior through RemNote settings
@@ -206,30 +206,33 @@ Access plugin settings in RemNote via **Settings > Plugins > Automation Bridge (
 
 | Setting                  | Description                                                          | Default               |
 | ------------------------ | -------------------------------------------------------------------- | --------------------- |
-| Accept write operations  | Allow write actions (`create_note`, `update_note`, `append_journal`) | `true`                |
-| Accept replace operation | Allow destructive `update_note` replace operations                   | `false`               |
-| Auto-tag created notes   | Add a tag to notes created via bridge actions                        | `true`                |
-| Auto-tag name            | Tag name for auto-tagged created notes                               | ``                    |
-| Journal entry prefix     | Optional prefix for journal entries                                  | ``                    |
-| Add timestamp to journal | Include time in journal entries                                      | `true`                |
-| WebSocket server URL     | Automation bridge server connection URL                              | `ws://127.0.0.1:3002` |
-| Default parent Rem ID    | Parent for new notes (empty = root)                                  | ``                    |
+| Accept write operations  | Allow write actions (`create_note`, `update_note`, `append_journal`)       | `true`                |
+| Accept replace operation | Allow destructive child replacement actions                               | `false`               |
+| Auto-tag created notes   | Add a tag to notes created via bridge actions                              | `true`                |
+| Auto-tag Rem ID          | Exact tag Rem ID for auto-tagged created notes; tag names are not accepted | ``                    |
+| Journal entry prefix     | Optional prefix for journal entries                                        | ``                    |
+| Add timestamp to journal | Include time in journal entries                                            | `true`                |
+| WebSocket server URL     | Automation bridge server connection URL                                    | `ws://127.0.0.1:3002` |
+| Default parent Rem ID    | Parent for new notes (empty = root)                                        | ``                    |
 
 ## Bridge Action Surface
 
 The bridge exposes this shared action surface to companion clients. The MCP server maps these actions to MCP tools, and
 the CLI maps them to commands:
 
-| Action           | Description                                                                       |
-| ---------------- | --------------------------------------------------------------------------------- |
-| `create_note`    | Create notes, markdown trees, or flashcards with title, content, parent, and tags |
-| `search`         | Search the knowledge base with query, filters, and note metadata (including tags) |
-| `search_by_tag`  | Search by tag with ancestor context and content controls                          |
-| `read_note`      | Read a note's metadata, tags, and content in markdown or structured form by ID    |
-| `update_note`    | Update title, append or replace content, add/remove tags                          |
-| `append_journal` | Add hierarchical markdown content to today's daily document                       |
-| `read_table`     | Read Advanced Table columns, rows, and typed property metadata                    |
-| `get_status`     | Check connection status                                                           |
+| Action             | Description                                                                 |
+| ------------------ | --------------------------------------------------------------------------- |
+| `create_note`      | Create notes, markdown trees, or flashcards with optional exact tag Rem IDs |
+| `search`           | Search the knowledge base with query, filters, and readable tag metadata    |
+| `search_by_tag`    | Search by tag with ancestor context and content controls                    |
+| `read_note`        | Read a note's metadata, tags, and content in markdown or structured form    |
+| `update_note`      | Update note title                                                           |
+| `insert_children`  | Insert child Rems at deterministic positions                                |
+| `replace_children` | Replace direct children when destructive replacement is enabled             |
+| `update_tags`      | Add or remove tags by exact tag Rem ID                                      |
+| `append_journal`   | Add markdown content to today's daily document with optional tag Rem IDs    |
+| `read_table`       | Read Advanced Table columns, rows, and typed property metadata              |
+| `get_status`       | Check connection status                                                     |
 
 ## Usage
 

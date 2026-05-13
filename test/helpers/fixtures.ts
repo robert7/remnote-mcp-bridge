@@ -26,12 +26,13 @@ export const sampleRichText: RichTextInterface = ['Sample text content'];
 export const createNoteInput: CreateNoteParams = {
   title: 'Test Note',
   content: 'This is test content\nWith multiple lines',
-  tags: ['test', 'sample'],
+  tagRemIds: ['test-tag-rem-id', 'sample-tag-rem-id'],
 };
 
 export const appendJournalInput: AppendJournalParams = {
   content: 'Journal entry for today',
   timestamp: true,
+  tagRemIds: ['journal-tag-rem-id'],
 };
 
 export const searchInput: SearchParams = {

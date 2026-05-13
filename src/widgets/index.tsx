@@ -13,14 +13,14 @@ import {
   SETTING_ACCEPT_WRITE_OPERATIONS,
   SETTING_ACCEPT_REPLACE_OPERATION,
   SETTING_AUTO_TAG_ENABLED,
-  SETTING_AUTO_TAG,
+  SETTING_AUTO_TAG_REM_ID,
   SETTING_JOURNAL_PREFIX,
   SETTING_JOURNAL_TIMESTAMP,
   SETTING_WS_URL,
   SETTING_DEFAULT_PARENT,
   DEFAULT_ACCEPT_WRITE_OPERATIONS,
   DEFAULT_ACCEPT_REPLACE_OPERATION,
-  DEFAULT_AUTO_TAG,
+  DEFAULT_AUTO_TAG_REM_ID,
   DEFAULT_JOURNAL_PREFIX,
   DEFAULT_WS_URL,
 } from '../settings';
@@ -51,10 +51,10 @@ export async function activateAutomationBridge(plugin: ReactRNPlugin) {
   });
 
   await plugin.settings.registerStringSetting({
-    id: SETTING_AUTO_TAG,
-    title: 'Auto-tag name',
-    description: 'Tag name to add to bridge-created notes (leave empty to disable default tag)',
-    defaultValue: DEFAULT_AUTO_TAG,
+    id: SETTING_AUTO_TAG_REM_ID,
+    title: 'Auto-tag Rem ID',
+    description: 'Tag Rem ID to add to bridge-created notes (leave empty to disable default tag)',
+    defaultValue: DEFAULT_AUTO_TAG_REM_ID,
   });
 
   await plugin.settings.registerStringSetting({
