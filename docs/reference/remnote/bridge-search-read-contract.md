@@ -50,8 +50,9 @@ contract keeps iterations safe and predictable.
 
 ### `tags` (optional)
 
-- `tags` is an array of human-readable tag names applied directly to the returned Rem.
-- Omitted when no tags exist or when returned tag Rems cannot be resolved to readable names.
+- `tags` is an array of direct tag identity objects applied to the returned Rem.
+- Each item has `tagRemId` (exact tag Rem ID) and `name` (human-readable tag name).
+- Omitted when no tags exist or when returned tag Rems cannot be resolved to both exact Rem ID and readable name.
 - Present in both search and read outputs.
 - In `search_by_tag`, `tags` belongs to the resolved target Rem that is returned, not necessarily the originally
   tagged descendant that caused the match.
@@ -141,13 +142,15 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 ## Search-by-tag behavior contract
 
 - `remnote_search_by_tag` accepts:
-  - `tag` (required)
+  - `tagRemId` (required)
   - `limit` (default: 50)
   - `includeContent` (`"none" | "markdown" | "structured"`, default: `"none"`)
   - `depth` (default: 1)
   - `childLimit` (default: 20)
   - `maxContentLength` (default: 3000; markdown mode only)
-- Tag lookup accepts either `tag` or `#tag` input.
+- Tag lookup uses the exact tag Rem ID. Name, `#name`, and alias lookup are intentionally not used, so duplicate names,
+  renamed tags, and aliases cannot change the target tag identity.
+- If the exact `tagRemId` is valid input but does not resolve to a Rem, the result set is empty.
 - For each tagged match, bridge resolves the returned result target as:
   1. nearest ancestor `document` / `dailyDocument` (preferred),
   2. otherwise nearest non-document ancestor,
@@ -182,6 +185,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - MCP server should advertise these response fields in tool `outputSchema` so AI clients can plan tool usage correctly.
 - MCP server should advertise `parentRemId` and `parentTitle` in search/read `outputSchema`.
-- MCP server should advertise `tags` in search/read root items and structured child items.
+- MCP server should advertise `tags` as `{ tagRemId, name }` objects in search/read root items and structured child
+  items.
 - MCP server should keep `remnote_search_by_tag` output schema aligned with `remnote_search`.
 - CLI text output may summarize/abbreviate some fields for readability; JSON output should preserve full bridge data.

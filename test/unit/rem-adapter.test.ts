@@ -825,7 +825,10 @@ describe('RemAdapter', () => {
       plugin.search.search.mockResolvedValueOnce([rem]);
 
       const result = await adapter.search({ query: 'Tagged' });
-      expect(result.results[0].tags).toEqual(['work', 'urgent']);
+      expect(result.results[0].tags).toEqual([
+        { tagRemId: 'tag_work', name: 'work' },
+        { tagRemId: 'tag_urgent', name: 'urgent' },
+      ]);
     });
 
     it('should include tags in search results when getTagRems returns tag rem objects', async () => {
@@ -838,7 +841,22 @@ describe('RemAdapter', () => {
       plugin.search.search.mockResolvedValueOnce([rem]);
 
       const result = await adapter.search({ query: 'Tagged' });
-      expect(result.results[0].tags).toEqual(['work', 'urgent']);
+      expect(result.results[0].tags).toEqual([
+        { tagRemId: 'tag_work_rems', name: 'work' },
+        { tagRemId: 'tag_urgent_rems', name: 'urgent' },
+      ]);
+    });
+
+    it('should resolve tag names by Rem ID when getTagRems returns ID-only references', async () => {
+      plugin.clearTestData();
+      plugin.addTestRem('tag_id_only', 'id-only-tag');
+      const rem = plugin.addTestRem('tagged_search_id_only', 'Tagged Search Note');
+      rem.getTagRems = vi.fn(async () => [{ _id: 'tag_id_only' } as never]);
+
+      plugin.search.search.mockResolvedValueOnce([rem]);
+
+      const result = await adapter.search({ query: 'Tagged' });
+      expect(result.results[0].tags).toEqual([{ tagRemId: 'tag_id_only', name: 'id-only-tag' }]);
     });
 
     it('should omit aliases when empty', async () => {
@@ -867,7 +885,7 @@ describe('RemAdapter', () => {
           title: 'Tagged Child',
           headline: 'Tagged Child',
           remType: 'text',
-          tags: ['next-action'],
+          tags: [{ tagRemId: 'search_tags_child_tag', name: 'next-action' }],
         },
       ]);
     });
@@ -961,10 +979,11 @@ describe('RemAdapter', () => {
       await child.setParent(doc);
       tag.setTaggedRemsMock([child]);
 
-      const result = await adapter.searchByTag({ tag: 'daily' });
+      const result = await adapter.searchByTag({ tagRemId: 'tag_daily' });
       expect(result.results).toHaveLength(1);
       expect(result.results[0].remId).toBe('doc_parent');
       expect(result.results[0].title).toBe('Parent Document');
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
     });
 
     it('should fallback to nearest non-document ancestor when no document exists', async () => {
@@ -975,7 +994,7 @@ describe('RemAdapter', () => {
       await child.setParent(parent);
       tag.setTaggedRemsMock([child]);
 
-      const result = await adapter.searchByTag({ tag: 'task' });
+      const result = await adapter.searchByTag({ tagRemId: 'tag_task' });
       expect(result.results).toHaveLength(1);
       expect(result.results[0].remId).toBe('non_doc_parent');
       expect(result.results[0].title).toBe('Grouping Parent');
@@ -991,20 +1010,23 @@ describe('RemAdapter', () => {
       await childB.setParent(parent);
       tag.setTaggedRemsMock([childA, childB]);
 
-      const result = await adapter.searchByTag({ tag: 'dedupe' });
+      const result = await adapter.searchByTag({ tagRemId: 'tag_dedupe' });
       expect(result.results).toHaveLength(1);
       expect(result.results[0].remId).toBe('dedupe_parent');
     });
 
-    it('should support hash-prefixed tag lookup', async () => {
+    it('should search by exact tag Rem ID without name or alias lookup', async () => {
       plugin.clearTestData();
-      const tag = plugin.addTestRem('tag_hash', 'daily', 'daily');
-      const note = plugin.addTestRem('hash_target', 'Hash Target');
+      const tag = plugin.addTestRem('tag_exact_id', 'Daily Renamed', 'old-name');
+      tag.setAliasesMock([['daily'], ['#daily']]);
+      const note = plugin.addTestRem('exact_id_target', 'Exact ID Target');
       tag.setTaggedRemsMock([note]);
 
-      const result = await adapter.searchByTag({ tag: '#daily' });
+      const result = await adapter.searchByTag({ tagRemId: 'tag_exact_id' });
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].remId).toBe('hash_target');
+      expect(result.results[0].remId).toBe('exact_id_target');
+      expect(plugin.rem.findOne).toHaveBeenCalledWith('tag_exact_id');
+      expect(plugin.rem.findByName).not.toHaveBeenCalled();
     });
 
     it('should support search content rendering modes', async () => {
@@ -1015,12 +1037,18 @@ describe('RemAdapter', () => {
       await child.setParent(parent);
       tag.setTaggedRemsMock([child]);
 
-      const markdown = await adapter.searchByTag({ tag: 'mode', includeContent: 'markdown' });
+      const markdown = await adapter.searchByTag({
+        tagRemId: 'tag_mode',
+        includeContent: 'markdown',
+      });
       expect(markdown.results[0].content).toBeDefined();
       expect(markdown.results[0].content).toContain('Mode Child');
       expect(markdown.results[0].contentProperties).toBeDefined();
 
-      const structured = await adapter.searchByTag({ tag: 'mode', includeContent: 'structured' });
+      const structured = await adapter.searchByTag({
+        tagRemId: 'tag_mode',
+        includeContent: 'structured',
+      });
       expect(structured.results[0].contentStructured).toEqual([
         {
           remId: 'mode_child',
@@ -1031,7 +1059,7 @@ describe('RemAdapter', () => {
       ]);
       expect(structured.results[0].content).toBeUndefined();
 
-      const none = await adapter.searchByTag({ tag: 'mode', includeContent: 'none' });
+      const none = await adapter.searchByTag({ tagRemId: 'tag_mode', includeContent: 'none' });
       expect(none.results[0].content).toBeUndefined();
       expect(none.results[0].contentStructured).toBeUndefined();
     });
@@ -1044,14 +1072,18 @@ describe('RemAdapter', () => {
       note.setTagRemsMock([targetTag]);
       queryTag.setTaggedRemsMock([note]);
 
-      const result = await adapter.searchByTag({ tag: 'project' });
-      expect(result.results[0].tags).toEqual(['work']);
+      const result = await adapter.searchByTag({ tagRemId: 'tag_query' });
+      expect(result.results[0].tags).toEqual([{ tagRemId: 'tag_target', name: 'work' }]);
     });
 
-    it('should return empty results when tag is not found', async () => {
+    it('should return empty results when tag Rem ID is not found', async () => {
       plugin.clearTestData();
-      const result = await adapter.searchByTag({ tag: 'missing-tag' });
+      const result = await adapter.searchByTag({ tagRemId: 'missing-tag-rem-id' });
       expect(result.results).toEqual([]);
+    });
+
+    it('should reject missing tag Rem ID', async () => {
+      await expect(adapter.searchByTag({} as never)).rejects.toThrow('tagRemId must be a string');
     });
   });
 
@@ -1268,7 +1300,10 @@ describe('RemAdapter', () => {
       rem.setTagRemsMock([workTag, urgentTag]);
 
       const result = await adapter.readNote({ remId: 'tagged_read', includeContent: 'none' });
-      expect(result.tags).toEqual(['work', 'urgent']);
+      expect(result.tags).toEqual([
+        { tagRemId: 'read_tag_work', name: 'work' },
+        { tagRemId: 'read_tag_urgent', name: 'urgent' },
+      ]);
     });
 
     it('should include tags on read results when getTagRems returns tag rem objects', async () => {
@@ -1281,7 +1316,10 @@ describe('RemAdapter', () => {
         remId: 'tagged_read_rems',
         includeContent: 'none',
       });
-      expect(result.tags).toEqual(['work', 'urgent']);
+      expect(result.tags).toEqual([
+        { tagRemId: 'read_tag_work_rems', name: 'work' },
+        { tagRemId: 'read_tag_urgent_rems', name: 'urgent' },
+      ]);
     });
 
     it('should log a concise warning when getTagRems is missing on read results', async () => {
@@ -1326,7 +1364,7 @@ describe('RemAdapter', () => {
           title: 'Tagged Child',
           headline: 'Tagged Child',
           remType: 'text',
-          tags: ['reference'],
+          tags: [{ tagRemId: 'read_tags_child_tag', name: 'reference' }],
         },
       ]);
     });

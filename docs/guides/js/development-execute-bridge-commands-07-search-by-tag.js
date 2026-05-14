@@ -1,5 +1,5 @@
 await runBridge('search_by_tag', {
-  tag: 'mcp-test-tag',
+  tagRemId: 'YOUR_TAG_REM_ID',
   limit: 5,
   includeContent: 'markdown',
   depth: 1,

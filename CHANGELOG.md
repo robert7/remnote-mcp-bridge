@@ -9,6 +9,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Changed `tags` output metadata to return exact tag Rem IDs plus names as `{ tagRemId, name }` objects.
+- Changed `search_by_tag` to use exact tag Rem IDs via `tagRemId`, avoiding ambiguous tag name or alias lookup.
 - Split write actions so `update_note` handles title updates, `insert_children` handles ordered child creation,
   `replace_children` handles gated destructive child replacement, and `update_tags` mutates tags by exact Rem ID.
 - Changed `create_note`, `append_journal`, and automatic bridge-created note tagging to use exact tag Rem IDs instead

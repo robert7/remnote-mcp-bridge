@@ -48,7 +48,7 @@ export interface SearchParams {
 }
 
 export interface SearchByTagParams {
-  tag: string;
+  tagRemId: string;
   limit?: number;
   includeContent?: SearchIncludeContentMode;
   depth?: number;
@@ -131,7 +131,7 @@ export interface SearchResultItem {
   parentRemId?: string;
   parentTitle?: string;
   aliases?: string[];
-  tags?: string[];
+  tags?: TagInfo[];
   remType: RemClassification;
   cardDirection?: CardDirection;
   content?: string;
@@ -145,9 +145,14 @@ export interface StructuredContentNode {
   headline: string;
   remType: RemClassification;
   aliases?: string[];
-  tags?: string[];
+  tags?: TagInfo[];
   cardDirection?: CardDirection;
   children?: StructuredContentNode[];
+}
+
+export interface TagInfo {
+  tagRemId: string;
+  name: string;
 }
 
 export type RemClassification =
@@ -496,11 +501,11 @@ export class RemAdapter {
   }
 
   /**
-   * Resolve human-readable tag names for a Rem.
+   * Resolve direct tags for a Rem.
    *
    * Live validation in RemNote confirmed `getTagRems()` as the working reverse tag-read path.
    */
-  private async getTagNames(rem: PluginRem, tagNameCache: TagNameCache): Promise<string[]> {
+  private async getTags(rem: PluginRem, tagNameCache: TagNameCache): Promise<TagInfo[]> {
     const getTagRems = (
       rem as unknown as { getTagRems?: () => TagReferenceLike[] | Promise<TagReferenceLike[]> }
     ).getTagRems;
@@ -543,19 +548,19 @@ export class RemAdapter {
       return [];
     }
 
-    const results: string[] = [];
+    const results: TagInfo[] = [];
     const seen = new Set<string>();
 
     for (const tagRef of tagRefs) {
       const resolvedTag = await this.resolveTagReference(tagRef, tagNameCache);
-      const { tagId, tagName } = resolvedTag;
+      const { tagRemId, name } = resolvedTag;
 
-      if (!tagName || seen.has(tagName)) continue;
-      seen.add(tagName);
-      results.push(tagName);
+      if (!tagRemId || !name || seen.has(tagRemId)) continue;
+      seen.add(tagRemId);
+      results.push({ tagRemId, name });
 
-      if (tagId && tagNameCache.get(tagId) === undefined) {
-        tagNameCache.set(tagId, tagName);
+      if (tagNameCache.get(tagRemId) === undefined) {
+        tagNameCache.set(tagRemId, name);
       }
     }
 
@@ -576,16 +581,16 @@ export class RemAdapter {
   private async resolveTagReference(
     tagRef: TagReferenceLike,
     tagNameCache: TagNameCache
-  ): Promise<{ tagId?: string; tagName: string | null }> {
+  ): Promise<{ tagRemId?: string; name: string | null }> {
     if (!tagRef || typeof tagRef !== 'object') {
-      return { tagName: null };
+      return { name: null };
     }
 
-    const tagId = typeof tagRef._id === 'string' && tagRef._id ? tagRef._id : undefined;
-    if (tagId) {
-      const cachedTagName = tagNameCache.get(tagId);
+    const tagRemId = typeof tagRef._id === 'string' && tagRef._id ? tagRef._id : undefined;
+    if (tagRemId) {
+      const cachedTagName = tagNameCache.get(tagRemId);
       if (cachedTagName !== undefined) {
-        return { tagId, tagName: cachedTagName };
+        return { tagRemId, name: cachedTagName };
       }
     }
 
@@ -593,31 +598,31 @@ export class RemAdapter {
       Array.isArray(tagRef.text) && tagRef.text.length > 0
         ? (await this.extractText(tagRef.text)) || null
         : null;
-    if (tagId) {
-      tagNameCache.set(tagId, inlineTagName);
+    if (tagRemId && inlineTagName !== null) {
+      tagNameCache.set(tagRemId, inlineTagName);
     }
 
-    if (inlineTagName || !tagId) {
-      return { tagId, tagName: inlineTagName };
+    if (inlineTagName || !tagRemId) {
+      return { tagRemId, name: inlineTagName };
     }
 
-    const resolvedById = await this.resolveTagId(tagId, tagNameCache);
+    const resolvedById = await this.resolveTagId(tagRemId, tagNameCache);
     return resolvedById;
   }
 
   private async resolveTagId(
-    tagId: string,
+    tagRemId: string,
     tagNameCache: TagNameCache
-  ): Promise<{ tagId: string; tagName: string | null }> {
-    const cachedTagName = tagNameCache.get(tagId);
+  ): Promise<{ tagRemId: string; name: string | null }> {
+    const cachedTagName = tagNameCache.get(tagRemId);
     if (cachedTagName !== undefined) {
-      return { tagId, tagName: cachedTagName };
+      return { tagRemId, name: cachedTagName };
     }
 
-    const tagRem = await this.plugin.rem.findOne(tagId);
+    const tagRem = await this.plugin.rem.findOne(tagRemId);
     const tagName = tagRem ? (await this.extractText(tagRem.text)) || null : null;
-    tagNameCache.set(tagId, tagName);
-    return { tagId, tagName };
+    tagNameCache.set(tagRemId, tagName);
+    return { tagRemId, name: tagName };
   }
 
   private describeTagReference(tagRef: TagReferenceLike): Record<string, unknown> {
@@ -934,7 +939,7 @@ export class RemAdapter {
           ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
           : Promise.resolve(undefined),
         this.getAliases(rem),
-        this.getTagNames(rem, tagNameCache),
+        this.getTags(rem, tagNameCache),
         this.getParentContext(rem),
       ]);
 
@@ -1007,23 +1012,6 @@ export class RemAdapter {
     }
 
     return nearestNonDocumentAncestor ?? rem;
-  }
-
-  private async findTagRem(tag: string): Promise<PluginRem | null> {
-    const candidates = [tag];
-    if (tag.startsWith('#') && tag.length > 1) {
-      candidates.push(tag.slice(1));
-    } else if (!tag.startsWith('#')) {
-      candidates.push(`#${tag}`);
-    }
-
-    const uniqueCandidates = [...new Set(candidates)];
-    for (const candidate of uniqueCandidates) {
-      const match = await this.plugin.rem.findByName([candidate], null);
-      if (match) return match;
-    }
-
-    return null;
   }
 
   private normalizeLookupText(text: string): string {
@@ -1146,7 +1134,7 @@ export class RemAdapter {
           ? child.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
           : Promise.resolve(undefined),
         this.getAliases(child),
-        this.getTagNames(child, tagNameCache),
+        this.getTags(child, tagNameCache),
       ]);
 
       const children = await this.renderContentStructured(
@@ -1574,7 +1562,7 @@ export class RemAdapter {
   }
 
   /**
-   * Search by tag and return ancestor context targets (document-first fallback).
+   * Search by exact tag Rem ID and return ancestor context targets (document-first fallback).
    *
    * For each tagged Rem:
    * 1) Return the nearest ancestor document/daily document when available.
@@ -1582,12 +1570,8 @@ export class RemAdapter {
    * 3) If no ancestor exists, return the tagged Rem itself.
    */
   async searchByTag(params: SearchByTagParams): Promise<{ results: SearchResultItem[] }> {
-    const tag = params.tag.trim();
-    if (!tag) {
-      throw new Error('Tag cannot be empty');
-    }
-
-    const tagRem = await this.findTagRem(tag);
+    const tagRemId = this.requireString(params.tagRemId, 'tagRemId');
+    const tagRem = await this.plugin.rem.findOne(tagRemId);
     if (!tagRem) {
       return { results: [] };
     }
@@ -1642,7 +1626,7 @@ export class RemAdapter {
     parentRemId?: string;
     parentTitle?: string;
     aliases?: string[];
-    tags?: string[];
+    tags?: TagInfo[];
     remType: RemClassification;
     cardDirection?: CardDirection;
     content?: string;
@@ -1669,7 +1653,7 @@ export class RemAdapter {
           ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
           : Promise.resolve(undefined),
         this.getAliases(rem),
-        this.getTagNames(rem, tagNameCache),
+        this.getTags(rem, tagNameCache),
         this.getParentContext(rem),
       ]);
 

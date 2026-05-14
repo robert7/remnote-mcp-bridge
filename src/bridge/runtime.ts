@@ -344,7 +344,7 @@ class BridgeRuntimeController implements BridgeRuntime {
 
       case 'search_by_tag': {
         const result = await this.adapter.searchByTag({
-          tag: payload.tag as string,
+          tagRemId: payload.tagRemId as string,
           limit: payload.limit as number | undefined,
           includeContent: payload.includeContent as 'none' | 'markdown' | 'structured' | undefined,
           depth: payload.depth as number | undefined,
@@ -352,7 +352,7 @@ class BridgeRuntimeController implements BridgeRuntime {
           maxContentLength: payload.maxContentLength as number | undefined,
         });
         this.stats = { ...this.stats, searches: this.stats.searches + 1 };
-        this.addHistoryEntry('search', [`Search by tag: "${payload.tag}"`]);
+        this.addHistoryEntry('search', [`Search by tag Rem ID: "${payload.tagRemId}"`]);
         this.emit();
         return result;
       }
