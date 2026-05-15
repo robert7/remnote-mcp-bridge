@@ -16,8 +16,8 @@ bridge. It is the shared RemNote endpoint for the `remnote-mcp-server` package:
 > [Marketplace plugin install guide](docs/guides/install-plugin-via-marketplace-beginner.md),
 > [local plugin guide](docs/guides/development-run-plugin-locally.md), and
 > [server installation guide](https://github.com/robert7/remnote-mcp-server/blob/main/docs/guides/installation.md).
-> After setup, you can run the
-> [agent validation prompt](https://github.com/robert7/remnote-mcp-server/blob/main/docs/agent-validation-prompts/mcp-tool-smoke-test.md)
+> After setup, see the
+> [agent validation prompts](https://github.com/robert7/remnote-mcp-server/blob/main/docs/agent-validation-prompts/README.md)
 > to verify that your chosen AI agent can use the installed RemNote MCP tools end to end.
 > If the guides do not resolve your problem, [open an issue](https://github.com/robert7/remnote-mcp-bridge/issues)
 > with the relevant versions, setup path, observed behavior, and exact error/status message.
