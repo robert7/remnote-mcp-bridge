@@ -100,6 +100,10 @@ Use `./run-prod-build.sh` for production-style local verification (no hot reload
 - Any functional or documentation change must be recorded in `CHANGELOG.md`.
 - Keep AGENTS/docs map-level: rationale, constraints, contracts, and navigation.
   - Avoid restating implementation details obvious from code.
+- When changing bridge action contracts or response semantics that are visible through MCP/CLI consumers:
+  - Check sibling `../remnote-mcp-server` schemas, tool definitions, integration tests, `remnote_get_playbook`, and
+    `docs/agent-validation-prompts/mcp-tool-smoke-test.md`.
+  - Update bridge/server contract docs and changelogs together when behavior spans both repos.
 
 ## Release and Publishing Map
 
