@@ -7,34 +7,25 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-05-15
+
 ### Changed
 
-- Changed `tags` output metadata to return exact tag Rem IDs plus names as `{ tagRemId, name }` objects.
-- Changed `search_by_tag` to use exact tag Rem IDs via `tagRemId`, avoiding ambiguous tag name or alias lookup.
-- Split write actions so `update_note` handles title updates, `insert_children` handles ordered child creation,
+- Changed tag metadata to return exact tag Rem IDs plus names as `{ tagRemId, name }` objects.
+- Changed `search_by_tag` to use exact tag Rem IDs through `tagRemId`, avoiding ambiguous tag name or alias lookup.
+- Split bridge write actions so `update_note` handles title updates, `insert_children` handles ordered child creation,
   `replace_children` handles gated destructive child replacement, and `update_tags` mutates tags by exact Rem ID.
-- Changed `create_note`, `append_journal`, and automatic bridge-created note tagging to use exact tag Rem IDs instead
-  of tag names.
+- Changed note creation, journal appends, and automatic bridge-created note tagging to use exact tag Rem IDs instead of
+  tag names.
   - `create_note` now accepts `tagRemIds` instead of `tags`.
   - `append_journal` now accepts optional `tagRemIds`.
   - Plugin setting `autoTag` was replaced by `autoTagRemId`; users who configured `autoTag` must manually set the new
     `autoTagRemId` field to the desired tag Rem ID.
 - Improved bridge disconnect diagnostics for incompatible RemNote marketplace plugins by naming the official
   `MCP/OpenClaw Automation Bridge` plugin in logs and connection UI hints.
-- Added prominent README troubleshooting guidance for wrong or incompatible RemNote Marketplace plugin installs,
-  including the related `quentintou/remnote-mcp-bridge#8` report.
-- Clarified the README intro notice to emphasize both the official bridge plugin and compatible `remnote-mcp-server`
-  version, with links to setup guides and issue-reporting guidance.
-- Clarified that MCP protocol versions such as `2025-11-25` are separate from bridge/server package versions and linked
-  to the local Claude Desktop MCPB setup.
-- Updated documentation and agent repo maps to treat the old standalone `remnote-cli` repository as discontinued, with
-  maintained CLI code living in `remnote-mcp-server`.
-- Clarified AI-agent live integration instructions: use the server agent wrapper, preflight port `3001`, refuse to run
-  when an existing server is listening, and run live integration outside the Codex sandbox.
-- Pointed AI-agent live integration preflight at the server wrapper's unsandboxed `--preflight-only` mode instead of
-  ad hoc port probes.
-- Clarified README companion roles for the bundled `remnote-mcp-stdio` stdio proxy.
-- Linked the README to the server testing strategy and end-user agent validation prompt.
+- Expanded setup and troubleshooting documentation for official bridge plugin installs, compatible
+  `remnote-mcp-server` versions, local MCP protocol/version terminology, the bundled `remnote-mcp-stdio` proxy, and
+  end-user validation guidance.
 
 ### Fixed
 
