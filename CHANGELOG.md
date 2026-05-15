@@ -34,6 +34,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Pointed AI-agent live integration preflight at the server wrapper's unsandboxed `--preflight-only` mode instead of
   ad hoc port probes.
 - Clarified README companion roles for the bundled `remnote-mcp-stdio` stdio proxy.
+- Linked the README to the server testing strategy and end-user agent validation prompt.
 
 ### Fixed
 
