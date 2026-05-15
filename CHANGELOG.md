@@ -9,6 +9,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Preserve inline Rem references in `search`, `search_by_tag`, and `read_note` output by rendering resolvable
+  references as `[[Target Title]]` and exposing `inlineRefs` metadata with exact target Rem IDs.
 - Add `search_by_tag.resultMode` with direct tagged Rem results and `matchedRems` metadata for context results.
 - Document the cross-repo MCP contract-change checklist for keeping server schemas, integration tests, playbook
   guidance, and smoke prompts aligned.

@@ -29,6 +29,18 @@ contract keeps iterations safe and predictable.
 - When no secondary/back content exists, `headline` equals `title`.
 - Present in both search and read outputs.
 
+### `inlineRefs` (optional)
+
+- `inlineRefs` lists direct inline Rem references found while rendering a Rem's `title`/`headline`.
+- Each item has:
+  - `text` — rendered target text used in output.
+  - `targetRemId` — exact target Rem ID.
+  - `kind` — currently `rem`.
+- Omitted when the rendered Rem text contains no resolvable inline Rem references.
+- Markdown rendering preserves inline Rem references as `[[Target Title]]`; use `inlineRefs` when consumers need exact
+  graph traversal instead of parsing markdown.
+- In `contentStructured`, each child node exposes its own `inlineRefs` when present.
+
 ### `parentRemId` (optional)
 
 - `parentRemId` is the Rem ID of the note's direct parent.
@@ -120,6 +132,8 @@ contract keeps iterations safe and predictable.
 The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - Resolve Rem references/global names to readable text when possible.
+- Preserve resolvable inline Rem references as `[[Target Title]]` and expose their exact target Rem IDs through
+  `inlineRefs`.
 - Guard against true circular references while avoiding false positives for repeated sibling references.
 - Surface non-text content with placeholders instead of silent loss (for example `[image]`, `[audio]`, `[drawing]`).
 - Keep structural markers (for example card delimiter tokens) out of rendered `title` text.

@@ -126,10 +126,17 @@ export interface ContentProperties {
   contentTruncated: boolean;
 }
 
+export interface InlineReference {
+  text: string;
+  targetRemId: string;
+  kind: 'rem';
+}
+
 export interface SearchResultItem {
   remId: string;
   title: string;
   headline: string;
+  inlineRefs?: InlineReference[];
   parentRemId?: string;
   parentTitle?: string;
   aliases?: string[];
@@ -149,6 +156,7 @@ export interface MatchedRemMetadata {
   remId: string;
   title: string;
   headline: string;
+  inlineRefs?: InlineReference[];
   remType: RemClassification;
   parentRemId?: string;
   parentTitle?: string;
@@ -159,6 +167,7 @@ export interface StructuredContentNode {
   remId: string;
   title: string;
   headline: string;
+  inlineRefs?: InlineReference[];
   remType: RemClassification;
   aliases?: string[];
   tags?: TagInfo[];
@@ -252,6 +261,17 @@ type TagReferenceLike = {
   text?: RichTextInterface;
 };
 
+interface RichTextRenderResult {
+  text: string;
+  inlineRefs: InlineReference[];
+}
+
+interface TitleDetailRenderResult {
+  title: string;
+  detail?: string;
+  inlineRefs: InlineReference[];
+}
+
 const SEARCH_INCLUDE_CONTENT_MODES: readonly SearchIncludeContentMode[] = [
   'none',
   'markdown',
@@ -299,8 +319,12 @@ export class RemAdapter {
     return { ...this.settings };
   }
 
+  private mergeInlineRefs(...refGroups: InlineReference[][]): InlineReference[] {
+    return refGroups.flat();
+  }
+
   /**
-   * Extract text from RichTextInterface, resolving references and applying markdown formatting.
+   * Render RichTextInterface, resolving references and applying markdown formatting.
    *
    * Handles all SDK rich text element types:
    * - Plain strings, formatted text (bold/italic/code/links), Rem references,
@@ -308,14 +332,15 @@ export class RemAdapter {
    * - Card delimiters and plugin elements produce empty strings.
    * - Circular references are guarded via visitedIds set.
    */
-  private async extractText(
+  private async renderRichText(
     richText: RichTextInterface | undefined,
     visitedIds?: Set<string>
-  ): Promise<string> {
-    if (!richText || !Array.isArray(richText)) return '';
+  ): Promise<RichTextRenderResult> {
+    if (!richText || !Array.isArray(richText)) return { text: '', inlineRefs: [] };
 
     const visited = visitedIds ?? new Set<string>();
     const parts: string[] = [];
+    const inlineRefs: InlineReference[] = [];
 
     for (const element of richText) {
       if (typeof element === 'string') {
@@ -365,14 +390,20 @@ export class RemAdapter {
           try {
             const refRem = await this.plugin.rem.findOne(refId);
             if (refRem) {
-              const refText = await this.extractText(refRem.text, visited);
-              parts.push(refText);
+              const refRender = await this.renderRichText(refRem.text, visited);
+              const refText = refRender.text || '[untitled reference]';
+              parts.push(`[[${refText}]]`);
+              inlineRefs.push({
+                text: refText,
+                targetRemId: refId,
+                kind: 'rem',
+              });
             } else if (el.textOfDeletedRem) {
-              const deletedText = await this.extractText(
+              const deletedRender = await this.renderRichText(
                 el.textOfDeletedRem as RichTextInterface,
                 visited
               );
-              parts.push(deletedText || '[deleted reference]');
+              parts.push(deletedRender.text || '[deleted reference]');
             } else {
               parts.push('[deleted reference]');
             }
@@ -395,8 +426,8 @@ export class RemAdapter {
           try {
             const gRem = await this.plugin.rem.findOne(gId);
             if (gRem) {
-              const gText = await this.extractText(gRem.text, visited);
-              parts.push(gText);
+              const gRender = await this.renderRichText(gRem.text, visited);
+              parts.push(gRender.text);
             }
           } finally {
             visited.delete(gId);
@@ -435,7 +466,20 @@ export class RemAdapter {
       }
     }
 
-    return parts.join('');
+    return {
+      text: parts.join(''),
+      inlineRefs,
+    };
+  }
+
+  /**
+   * Extract rendered text from RichTextInterface.
+   */
+  private async extractText(
+    richText: RichTextInterface | undefined,
+    visitedIds?: Set<string>
+  ): Promise<string> {
+    return (await this.renderRichText(richText, visitedIds)).text;
   }
 
   /**
@@ -480,10 +524,12 @@ export class RemAdapter {
     );
   }
 
-  private async getTitleAndDetail(rem: PluginRem): Promise<{ title: string; detail?: string }> {
+  private async getTitleAndDetail(rem: PluginRem): Promise<TitleDetailRenderResult> {
     const delimiterIndex = this.getCardDelimiterIndex(rem.text);
     if (delimiterIndex >= 0 && Array.isArray(rem.text)) {
-      const front = await this.extractText(rem.text.slice(0, delimiterIndex) as RichTextInterface);
+      const front = await this.renderRichText(
+        rem.text.slice(0, delimiterIndex) as RichTextInterface
+      );
 
       // Prefer canonical SDK backText when available; fallback to right side of inline delimiter.
       const detailSource =
@@ -491,17 +537,25 @@ export class RemAdapter {
           ? rem.backText
           : (rem.text.slice(delimiterIndex + 1) as RichTextInterface);
 
-      const detail = await this.extractText(detailSource);
-      return { title: front, ...(detail ? { detail } : {}) };
+      const detail = await this.renderRichText(detailSource);
+      return {
+        title: front.text,
+        ...(detail.text ? { detail: detail.text } : {}),
+        inlineRefs: this.mergeInlineRefs(front.inlineRefs, detail.inlineRefs),
+      };
     }
 
-    const title = await this.extractText(rem.text);
+    const title = await this.renderRichText(rem.text);
     if (rem.backText && rem.backText.length > 0) {
-      const detail = await this.extractText(rem.backText);
-      return { title, ...(detail ? { detail } : {}) };
+      const detail = await this.renderRichText(rem.backText);
+      return {
+        title: title.text,
+        ...(detail.text ? { detail: detail.text } : {}),
+        inlineRefs: this.mergeInlineRefs(title.inlineRefs, detail.inlineRefs),
+      };
     }
 
-    return { title };
+    return { title: title.text, inlineRefs: title.inlineRefs };
   }
 
   /**
@@ -966,7 +1020,7 @@ export class RemAdapter {
     options: SearchContentOptions,
     tagNameCache: TagNameCache
   ): Promise<SearchResultItem & { _sourceIndex: number }> {
-    const [{ title, detail }, remType, cardDirection, aliases, tags, parentContext] =
+    const [{ title, detail, inlineRefs }, remType, cardDirection, aliases, tags, parentContext] =
       await Promise.all([
         this.getTitleAndDetail(rem),
         this.classifyRem(rem),
@@ -1011,6 +1065,7 @@ export class RemAdapter {
       remId: rem._id,
       title,
       headline,
+      ...(inlineRefs.length > 0 ? { inlineRefs } : {}),
       ...parentContext,
       ...(aliases.length > 0 ? { aliases } : {}),
       ...(tags.length > 0 ? { tags } : {}),
@@ -1027,7 +1082,7 @@ export class RemAdapter {
     rem: PluginRem,
     tagNameCache: TagNameCache
   ): Promise<MatchedRemMetadata> {
-    const [{ title, detail }, remType, tags, parentContext] = await Promise.all([
+    const [{ title, detail, inlineRefs }, remType, tags, parentContext] = await Promise.all([
       this.getTitleAndDetail(rem),
       this.classifyRem(rem),
       this.getTags(rem, tagNameCache),
@@ -1040,6 +1095,7 @@ export class RemAdapter {
       remId: rem._id,
       title,
       headline,
+      ...(inlineRefs.length > 0 ? { inlineRefs } : {}),
       remType,
       ...parentContext,
       ...(tags.length > 0 ? { tags } : {}),
@@ -1205,15 +1261,16 @@ export class RemAdapter {
     const results: StructuredContentNode[] = [];
 
     for (const child of limitedChildren) {
-      const [{ title, detail }, remType, cardDirection, aliases, tags] = await Promise.all([
-        this.getTitleAndDetail(child),
-        this.classifyRem(child),
-        child.backText
-          ? child.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
-          : Promise.resolve(undefined),
-        this.getAliases(child),
-        this.getTags(child, tagNameCache),
-      ]);
+      const [{ title, detail, inlineRefs }, remType, cardDirection, aliases, tags] =
+        await Promise.all([
+          this.getTitleAndDetail(child),
+          this.classifyRem(child),
+          child.backText
+            ? child.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+            : Promise.resolve(undefined),
+          this.getAliases(child),
+          this.getTags(child, tagNameCache),
+        ]);
 
       const children = await this.renderContentStructured(
         child,
@@ -1226,6 +1283,7 @@ export class RemAdapter {
         remId: child._id,
         title,
         headline: this.formatHeadline(title, detail, remType),
+        ...(inlineRefs.length > 0 ? { inlineRefs } : {}),
         remType,
         ...(aliases.length > 0 ? { aliases } : {}),
         ...(tags.length > 0 ? { tags } : {}),
@@ -1727,6 +1785,7 @@ export class RemAdapter {
     remId: string;
     title: string;
     headline: string;
+    inlineRefs?: InlineReference[];
     parentRemId?: string;
     parentTitle?: string;
     aliases?: string[];
@@ -1749,7 +1808,7 @@ export class RemAdapter {
     }
 
     const tagNameCache: TagNameCache = new Map();
-    const [{ title, detail }, remType, cardDirection, aliases, tags, parentContext] =
+    const [{ title, detail, inlineRefs }, remType, cardDirection, aliases, tags, parentContext] =
       await Promise.all([
         this.getTitleAndDetail(rem),
         this.classifyRem(rem),
@@ -1793,6 +1852,7 @@ export class RemAdapter {
       remId: rem._id,
       title,
       headline,
+      ...(inlineRefs.length > 0 ? { inlineRefs } : {}),
       ...parentContext,
       ...(aliases.length > 0 ? { aliases } : {}),
       ...(tags.length > 0 ? { tags } : {}),

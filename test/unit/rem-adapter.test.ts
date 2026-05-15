@@ -525,6 +525,26 @@ describe('RemAdapter', () => {
       expect(result.results[0].headline).toBe('First note');
     });
 
+    it('should preserve inline Rem references in search titles', async () => {
+      plugin.clearTestData();
+      plugin.addTestRem('search_ref_target', 'Referenced Search Note');
+      const rem = plugin.addTestRem('search_ref_source', '');
+      rem.text = ['See ', { i: 'q', _id: 'search_ref_target' }, ' today'] as unknown as string[];
+      plugin.search.search.mockResolvedValueOnce([rem]);
+
+      const result = await adapter.search({ query: 'See' });
+
+      expect(result.results[0].title).toBe('See [[Referenced Search Note]] today');
+      expect(result.results[0].headline).toBe('See [[Referenced Search Note]] today');
+      expect(result.results[0].inlineRefs).toEqual([
+        {
+          text: 'Referenced Search Note',
+          targetRemId: 'search_ref_target',
+          kind: 'rem',
+        },
+      ]);
+    });
+
     it('should include parent context in search results when parent exists', async () => {
       plugin.clearTestData();
       const parent = plugin.addTestRem('search_parent_ctx', 'Parent context note');
@@ -575,7 +595,12 @@ describe('RemAdapter', () => {
     it('should include structured child content when includeContent is structured', async () => {
       plugin.clearTestData();
       const parent = plugin.addTestRem('search_struct_parent', 'Parent');
+      plugin.addTestRem('search_struct_ref_target', 'Linked Child Target');
       const child = new MockRem('search_struct_child', 'Child');
+      child.text = [
+        'Child links ',
+        { i: 'q', _id: 'search_struct_ref_target' },
+      ] as unknown as string[];
       const grandchild = new MockRem('search_struct_grandchild', 'Grandchild');
       await child.setParent(parent);
       await grandchild.setParent(child);
@@ -593,8 +618,15 @@ describe('RemAdapter', () => {
       expect(result.results[0].contentStructured).toEqual([
         {
           remId: 'search_struct_child',
-          title: 'Child',
-          headline: 'Child',
+          title: 'Child links [[Linked Child Target]]',
+          headline: 'Child links [[Linked Child Target]]',
+          inlineRefs: [
+            {
+              text: 'Linked Child Target',
+              targetRemId: 'search_struct_ref_target',
+              kind: 'rem',
+            },
+          ],
           remType: 'text',
           children: [
             {
@@ -1018,9 +1050,14 @@ describe('RemAdapter', () => {
     it('should expose all direct matches for deduplicated context results', async () => {
       plugin.clearTestData();
       const tag = plugin.addTestRem('tag_matches', 'matches', 'matches');
+      plugin.addTestRem('tagged_match_ref_target', 'Matched Reference');
       const parent = plugin.addTestRem('matches_parent', 'Shared Parent');
       const childA = new MockRem('tagged_match_a', 'Tagged child A');
       const childB = new MockRem('tagged_match_b', 'Tagged child B');
+      childA.text = [
+        'Tagged child A refs ',
+        { i: 'q', _id: 'tagged_match_ref_target' },
+      ] as unknown as string[];
       childA.setTagRemsMock([tag]);
       childB.setTagRemsMock([tag]);
       await childA.setParent(parent);
@@ -1033,8 +1070,15 @@ describe('RemAdapter', () => {
       expect(result.results[0].matchedRems).toEqual([
         {
           remId: 'tagged_match_a',
-          title: 'Tagged child A',
-          headline: 'Tagged child A',
+          title: 'Tagged child A refs [[Matched Reference]]',
+          headline: 'Tagged child A refs [[Matched Reference]]',
+          inlineRefs: [
+            {
+              text: 'Matched Reference',
+              targetRemId: 'tagged_match_ref_target',
+              kind: 'rem',
+            },
+          ],
           remType: 'text',
           parentRemId: 'matches_parent',
           parentTitle: 'Shared Parent',
@@ -1277,14 +1321,16 @@ describe('RemAdapter', () => {
 
     it('should render children as indented markdown', async () => {
       const parent = plugin.addTestRem('md_test', 'Parent');
+      plugin.addTestRem('md_ref_target', 'Markdown Target');
       const child = new MockRem('md_child', 'Child line');
+      child.text = ['Child line ', { i: 'q', _id: 'md_ref_target' }] as unknown as string[];
       const grandchild = new MockRem('md_grandchild', 'Grandchild line');
       await child.setParent(parent);
       await grandchild.setParent(child);
 
       const result = await adapter.readNote({ remId: 'md_test' });
 
-      expect(result.content).toBe('- Child line\n  - Grandchild line\n');
+      expect(result.content).toBe('- Child line [[Markdown Target]]\n  - Grandchild line\n');
     });
 
     it('should respect depth parameter', async () => {
@@ -1854,7 +1900,14 @@ describe('RemAdapter', () => {
       testRem.text = ['Before ', { i: 'q', _id: 'ref_target' }, ' after'] as unknown as string[];
 
       const result = await adapter.readNote({ remId: 'ref_test' });
-      expect(result.title).toBe('Before Referenced Note after');
+      expect(result.title).toBe('Before [[Referenced Note]] after');
+      expect(result.inlineRefs).toEqual([
+        {
+          text: 'Referenced Note',
+          targetRemId: 'ref_target',
+          kind: 'rem',
+        },
+      ]);
     });
 
     it('should handle deleted Rem references with textOfDeletedRem', async () => {
@@ -1899,7 +1952,11 @@ describe('RemAdapter', () => {
       ] as unknown as string[];
 
       const result = await adapter.readNote({ remId: 'repeat_ref_test' });
-      expect(result.title).toBe('one Shared two Shared');
+      expect(result.title).toBe('one [[Shared]] two [[Shared]]');
+      expect(result.inlineRefs).toEqual([
+        { text: 'Shared', targetRemId: 'shared_ref', kind: 'rem' },
+        { text: 'Shared', targetRemId: 'shared_ref', kind: 'rem' },
+      ]);
       expect(result.title).not.toContain('[circular reference]');
     });
 
