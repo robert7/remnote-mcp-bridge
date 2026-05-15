@@ -53,6 +53,7 @@ export interface SearchByTagParams {
   tagRemId: string;
   resultMode?: SearchByTagResultMode;
   limit?: number;
+  cursor?: string;
   includeContent?: SearchIncludeContentMode;
   depth?: number;
   childLimit?: number;
@@ -282,6 +283,27 @@ interface SearchCursorSnapshot {
   truncationReason?: SearchTruncationReason;
 }
 
+interface SearchByTagSnapshotEntry {
+  remId: string;
+  remType: RemClassification;
+  sourceIndex: number;
+  matchedRemIds?: string[];
+  contextRemId?: string;
+  contextReason?: SearchByTagContextReason;
+}
+
+interface SearchByTagCursorSnapshot {
+  id: string;
+  tagRemId: string;
+  resultMode: SearchByTagResultMode;
+  bindingHash: string;
+  entries: SearchByTagSnapshotEntry[];
+  createdAt: number;
+  lastAccessedAt: number;
+  truncated: boolean;
+  truncationReason?: SearchTruncationReason;
+}
+
 interface ParsedSearchCursor {
   snapshotId: string;
   offset: number;
@@ -321,6 +343,7 @@ export class RemAdapter {
   private settings: AutomationBridgeSettings;
   private readonly emittedTagDebugKeys = new Set<string>();
   private readonly searchCursorSnapshots = new Map<string, SearchCursorSnapshot>();
+  private readonly searchByTagCursorSnapshots = new Map<string, SearchByTagCursorSnapshot>();
 
   constructor(
     private plugin: ReactRNPlugin,
@@ -1071,6 +1094,16 @@ export class RemAdapter {
     return `search:v1:${snapshot.id}:${offset}:${snapshot.queryHash}`;
   }
 
+  private createSearchByTagCursor(
+    snapshot: SearchByTagCursorSnapshot,
+    offset: number
+  ): string | undefined {
+    if (offset >= snapshot.entries.length) {
+      return undefined;
+    }
+    return `search_by_tag:v1:${snapshot.id}:${offset}:${snapshot.bindingHash}`;
+  }
+
   private parseSearchCursor(cursor: string): ParsedSearchCursor {
     const parts = cursor.split(':');
     if (parts.length !== 5 || parts[0] !== 'search' || parts[1] !== 'v1') {
@@ -1089,20 +1122,49 @@ export class RemAdapter {
     };
   }
 
+  private parseSearchByTagCursor(cursor: string): ParsedSearchCursor {
+    const parts = cursor.split(':');
+    if (parts.length !== 5 || parts[0] !== 'search_by_tag' || parts[1] !== 'v1') {
+      throw new Error('Invalid search_by_tag cursor');
+    }
+
+    const offset = Number(parts[3]);
+    if (!Number.isInteger(offset) || offset < 0) {
+      throw new Error('Invalid search_by_tag cursor offset');
+    }
+
+    return {
+      snapshotId: parts[2],
+      offset,
+      queryHash: parts[4],
+    };
+  }
+
   private pruneExpiredSearchSnapshots(now = Date.now()): void {
     for (const [id, snapshot] of this.searchCursorSnapshots.entries()) {
       if (now - snapshot.lastAccessedAt > SEARCH_CURSOR_TTL_MS) {
         this.searchCursorSnapshots.delete(id);
       }
     }
+
+    for (const [id, snapshot] of this.searchByTagCursorSnapshots.entries()) {
+      if (now - snapshot.lastAccessedAt > SEARCH_CURSOR_TTL_MS) {
+        this.searchByTagCursorSnapshots.delete(id);
+      }
+    }
   }
 
   private enforceSearchSnapshotLimit(): void {
-    while (this.searchCursorSnapshots.size > SEARCH_CURSOR_MAX_ACTIVE) {
+    this.enforceSnapshotMapLimit(this.searchCursorSnapshots);
+    this.enforceSnapshotMapLimit(this.searchByTagCursorSnapshots);
+  }
+
+  private enforceSnapshotMapLimit(snapshots: Map<string, { lastAccessedAt: number }>): void {
+    while (snapshots.size > SEARCH_CURSOR_MAX_ACTIVE) {
       let oldestId: string | undefined;
       let oldestAccess = Number.POSITIVE_INFINITY;
 
-      for (const [id, snapshot] of this.searchCursorSnapshots.entries()) {
+      for (const [id, snapshot] of snapshots.entries()) {
         if (snapshot.lastAccessedAt < oldestAccess) {
           oldestAccess = snapshot.lastAccessedAt;
           oldestId = id;
@@ -1110,7 +1172,7 @@ export class RemAdapter {
       }
 
       if (!oldestId) return;
-      this.searchCursorSnapshots.delete(oldestId);
+      snapshots.delete(oldestId);
     }
   }
 
@@ -1131,6 +1193,36 @@ export class RemAdapter {
 
     if (snapshot.query !== query || snapshot.queryHash !== parsed.queryHash) {
       throw new Error('Search cursor does not match query');
+    }
+
+    snapshot.lastAccessedAt = Date.now();
+    return { snapshot, offset: parsed.offset };
+  }
+
+  private getSearchByTagSnapshotFromCursor(
+    tagRemId: string,
+    resultMode: SearchByTagResultMode,
+    cursor: string
+  ): {
+    snapshot: SearchByTagCursorSnapshot;
+    offset: number;
+  } {
+    this.pruneExpiredSearchSnapshots();
+    const parsed = this.parseSearchByTagCursor(cursor);
+    const snapshot = this.searchByTagCursorSnapshots.get(parsed.snapshotId);
+
+    if (!snapshot) {
+      throw new Error('Search by tag cursor expired or not found; rerun search_by_tag');
+    }
+
+    const bindingHash = this.hashSearchQuery(`${tagRemId}\0${resultMode}`);
+    if (
+      snapshot.tagRemId !== tagRemId ||
+      snapshot.resultMode !== resultMode ||
+      snapshot.bindingHash !== parsed.queryHash ||
+      snapshot.bindingHash !== bindingHash
+    ) {
+      throw new Error('Search by tag cursor does not match tagRemId/resultMode');
     }
 
     snapshot.lastAccessedAt = Date.now();
@@ -1203,6 +1295,139 @@ export class RemAdapter {
 
     const nextOffset = offset + limit;
     const nextCursor = this.createSearchCursor(snapshot, nextOffset);
+
+    return {
+      results,
+      hasMore: nextCursor !== undefined,
+      nextCursor,
+      truncated: snapshot.truncated,
+      truncationReason: snapshot.truncationReason,
+    };
+  }
+
+  private async createSearchByTagSnapshot(
+    tagRem: PluginRem,
+    tagRemId: string,
+    resultMode: SearchByTagResultMode
+  ): Promise<SearchByTagCursorSnapshot> {
+    this.pruneExpiredSearchSnapshots();
+    const taggedRems =
+      'taggedRem' in tagRem && typeof tagRem.taggedRem === 'function'
+        ? await tagRem.taggedRem()
+        : [];
+
+    const entries: SearchByTagSnapshotEntry[] = [];
+    const seenTargets = new Set<string>();
+    let sourceIndex = 0;
+    let scannedCount = 0;
+
+    for (const taggedRem of taggedRems) {
+      if (scannedCount >= SEARCH_CURSOR_SNAPSHOT_LIMIT) break;
+      scannedCount += 1;
+      const { targetRem, contextReason } = await this.resolveSearchByTagContext(taggedRem);
+
+      if (resultMode === 'context') {
+        const existing = entries.find((item) => item.remId === targetRem._id);
+        if (existing) {
+          existing.matchedRemIds = [...(existing.matchedRemIds ?? []), taggedRem._id];
+          continue;
+        }
+
+        if (entries.length >= SEARCH_CURSOR_SNAPSHOT_LIMIT) break;
+        seenTargets.add(targetRem._id);
+        entries.push({
+          remId: targetRem._id,
+          remType: await this.classifyRem(targetRem),
+          sourceIndex: sourceIndex++,
+          matchedRemIds: [taggedRem._id],
+        });
+        continue;
+      }
+
+      if (seenTargets.has(taggedRem._id)) continue;
+      if (entries.length >= SEARCH_CURSOR_SNAPSHOT_LIMIT) break;
+      seenTargets.add(taggedRem._id);
+
+      entries.push({
+        remId: taggedRem._id,
+        remType: await this.classifyRem(taggedRem),
+        sourceIndex: sourceIndex++,
+        contextRemId: targetRem._id,
+        contextReason,
+      });
+    }
+
+    entries.sort((a, b) => {
+      const pa = TYPE_PRIORITY[a.remType] ?? 5;
+      const pb = TYPE_PRIORITY[b.remType] ?? 5;
+      if (pa !== pb) return pa - pb;
+      return a.sourceIndex - b.sourceIndex;
+    });
+
+    const now = Date.now();
+    const truncated = scannedCount < taggedRems.length;
+    const snapshot: SearchByTagCursorSnapshot = {
+      id: this.createSearchSnapshotId(),
+      tagRemId,
+      resultMode,
+      bindingHash: this.hashSearchQuery(`${tagRemId}\0${resultMode}`),
+      entries,
+      createdAt: now,
+      lastAccessedAt: now,
+      truncated,
+      truncationReason: truncated ? 'cursor_snapshot_limit' : undefined,
+    };
+
+    this.searchByTagCursorSnapshots.set(snapshot.id, snapshot);
+    this.enforceSearchSnapshotLimit();
+    return snapshot;
+  }
+
+  private async renderSearchByTagPage(
+    snapshot: SearchByTagCursorSnapshot,
+    offset: number,
+    limit: number,
+    options: SearchContentOptions,
+    tagNameCache: TagNameCache
+  ): Promise<SearchResult> {
+    const pageEntries = snapshot.entries.slice(offset, offset + limit);
+    const results: SearchResultItem[] = [];
+
+    for (let i = 0; i < pageEntries.length; i++) {
+      const entry = pageEntries[i];
+      const rem = await this.plugin.rem.findOne(entry.remId);
+      if (!rem) continue;
+
+      const item = await this.buildSearchResultItem(rem, offset + i, options, tagNameCache);
+
+      if (snapshot.resultMode === 'context') {
+        const matchedRems: MatchedRemMetadata[] = [];
+        for (const matchedRemId of entry.matchedRemIds ?? []) {
+          const matchedRem = await this.plugin.rem.findOne(matchedRemId);
+          if (matchedRem) {
+            matchedRems.push(await this.buildMatchedRemMetadata(matchedRem, tagNameCache));
+          }
+        }
+        results.push({ ...item, matchedRems });
+        continue;
+      }
+
+      const contextRem = entry.contextRemId
+        ? await this.plugin.rem.findOne(entry.contextRemId)
+        : undefined;
+      const contextTitle = contextRem
+        ? (await this.getTitleAndDetail(contextRem)).title
+        : undefined;
+      results.push({
+        ...item,
+        ...(entry.contextRemId ? { contextRemId: entry.contextRemId } : {}),
+        ...(contextTitle ? { contextTitle } : {}),
+        ...(entry.contextReason ? { contextReason: entry.contextReason } : {}),
+      });
+    }
+
+    const nextOffset = offset + limit;
+    const nextCursor = this.createSearchByTagCursor(snapshot, nextOffset);
 
     return {
       results,
@@ -1887,75 +2112,22 @@ export class RemAdapter {
    * direct tagged Rems that produced each context result. Tagged mode returns those direct
    * tagged Rems as top-level results with lightweight context metadata.
    */
-  async searchByTag(params: SearchByTagParams): Promise<{ results: SearchResultItem[] }> {
+  async searchByTag(params: SearchByTagParams): Promise<SearchResult> {
     const tagRemId = this.requireString(params.tagRemId, 'tagRemId');
     const tagRem = await this.plugin.rem.findOne(tagRemId);
     if (!tagRem) {
-      return { results: [] };
+      return { results: [], hasMore: false, truncated: false };
     }
 
     const options = this.getSearchContentOptions(params);
     const resultMode = this.parseSearchByTagResultMode(params.resultMode);
-    const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
+    const limit = this.getSearchLimit(params.limit);
     const tagNameCache: TagNameCache = new Map();
-    const taggedRems =
-      'taggedRem' in tagRem && typeof tagRem.taggedRem === 'function'
-        ? await tagRem.taggedRem()
-        : [];
+    const { snapshot, offset } = params.cursor
+      ? this.getSearchByTagSnapshotFromCursor(tagRemId, resultMode, params.cursor)
+      : { snapshot: await this.createSearchByTagSnapshot(tagRem, tagRemId, resultMode), offset: 0 };
 
-    const collected: Array<SearchResultItem & { _sourceIndex: number }> = [];
-    const seenTargets = new Set<string>();
-    let sourceIndex = 0;
-
-    for (const taggedRem of taggedRems) {
-      const { targetRem, contextReason } = await this.resolveSearchByTagContext(taggedRem);
-      const matchedRem = await this.buildMatchedRemMetadata(taggedRem, tagNameCache);
-
-      if (resultMode === 'context') {
-        const existing = collected.find((item) => item.remId === targetRem._id);
-        if (existing) {
-          existing.matchedRems = [...(existing.matchedRems ?? []), matchedRem];
-          continue;
-        }
-
-        seenTargets.add(targetRem._id);
-        const item = await this.buildSearchResultItem(
-          targetRem,
-          sourceIndex++,
-          options,
-          tagNameCache
-        );
-        collected.push({ ...item, matchedRems: [matchedRem] });
-        continue;
-      }
-
-      if (seenTargets.has(taggedRem._id)) continue;
-      seenTargets.add(taggedRem._id);
-
-      const item = await this.buildSearchResultItem(
-        taggedRem,
-        sourceIndex++,
-        options,
-        tagNameCache
-      );
-      const { title: contextTitle } = await this.getTitleAndDetail(targetRem);
-      collected.push({
-        ...item,
-        contextRemId: targetRem._id,
-        contextTitle,
-        contextReason,
-      });
-    }
-
-    collected.sort((a, b) => {
-      const pa = TYPE_PRIORITY[a.remType ?? 'text'] ?? 5;
-      const pb = TYPE_PRIORITY[b.remType ?? 'text'] ?? 5;
-      if (pa !== pb) return pa - pb;
-      return a._sourceIndex - b._sourceIndex;
-    });
-
-    const results = collected.map(({ _sourceIndex, ...rest }) => rest).slice(0, limit);
-    return { results };
+    return this.renderSearchByTagPage(snapshot, offset, limit, options, tagNameCache);
   }
 
   /**

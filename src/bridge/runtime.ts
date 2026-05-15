@@ -348,6 +348,7 @@ class BridgeRuntimeController implements BridgeRuntime {
           tagRemId: payload.tagRemId as string,
           resultMode: payload.resultMode as 'context' | 'tagged' | undefined,
           limit: payload.limit as number | undefined,
+          cursor: payload.cursor as string | undefined,
           includeContent: payload.includeContent as 'none' | 'markdown' | 'structured' | undefined,
           depth: payload.depth as number | undefined,
           childLimit: payload.childLimit as number | undefined,

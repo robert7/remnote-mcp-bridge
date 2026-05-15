@@ -166,6 +166,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
   - `tagRemId` (required)
   - `resultMode` (`"context" | "tagged"`, default: `"context"`)
   - `limit` (default: 50)
+  - `cursor` (optional)
   - `includeContent` (`"none" | "markdown" | "structured"`, default: `"none"`)
   - `depth` (default: 1)
   - `childLimit` (default: 20)
@@ -186,8 +187,15 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
   - top-level results are the direct Rems carrying the requested tag;
   - each result includes `contextRemId`, `contextTitle`, and `contextReason` (`ancestor-document`,
     `ancestor-concept`, `ancestor-context`, or `self`).
-- `limit` applies to top-level results. In `context` mode, `matchedRems` contains direct matches observed for the
-  returned context results from the SDK tag lookup.
+- Cursor paging returns the same top-level paging metadata as `remnote_search`: `hasMore`, optional `nextCursor`,
+  `truncated`, and optional `truncationReason`.
+- Cursors are bound to `tagRemId` and `resultMode`; `context` and `tagged` cursors are not interchangeable.
+- The bridge captures a short-lived ordered snapshot from up to 1000 direct tagged matches. Page content is rendered
+  only for the current page.
+- If the snapshot reaches the 1000-result cap, `truncated` is `true` with `truncationReason:
+  "cursor_snapshot_limit"`.
+- `limit` applies to top-level results. In `context` mode, `matchedRems` contains direct matches observed for each
+  returned context result while building the snapshot.
 - Results are sorted with the same type-priority ordering as `remnote_search`, applied to the top-level result Rems.
 
 ## Read behavior contract

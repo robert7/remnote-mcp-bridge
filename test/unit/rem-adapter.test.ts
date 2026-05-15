@@ -1072,7 +1072,7 @@ describe('RemAdapter', () => {
       const tag = plugin.addTestRem('tag_daily', 'daily', 'daily');
       const doc = plugin.addTestRem('doc_parent', 'Parent Document');
       doc.setIsDocumentMock(true);
-      const child = new MockRem('tagged_child_doc', 'Tagged child');
+      const child = plugin.addTestRem('tagged_child_doc', 'Tagged child');
       await child.setParent(doc);
       tag.setTaggedRemsMock([child]);
 
@@ -1087,7 +1087,7 @@ describe('RemAdapter', () => {
       plugin.clearTestData();
       const tag = plugin.addTestRem('tag_task', 'task', 'task');
       const parent = plugin.addTestRem('non_doc_parent', 'Grouping Parent');
-      const child = new MockRem('tagged_child_non_doc', 'Tagged child');
+      const child = plugin.addTestRem('tagged_child_non_doc', 'Tagged child');
       await child.setParent(parent);
       tag.setTaggedRemsMock([child]);
 
@@ -1101,8 +1101,8 @@ describe('RemAdapter', () => {
       plugin.clearTestData();
       const tag = plugin.addTestRem('tag_dedupe', 'dedupe', 'dedupe');
       const parent = plugin.addTestRem('dedupe_parent', 'Shared Parent');
-      const childA = new MockRem('tagged_child_a', 'Tagged child A');
-      const childB = new MockRem('tagged_child_b', 'Tagged child B');
+      const childA = plugin.addTestRem('tagged_child_a', 'Tagged child A');
+      const childB = plugin.addTestRem('tagged_child_b', 'Tagged child B');
       await childA.setParent(parent);
       await childB.setParent(parent);
       tag.setTaggedRemsMock([childA, childB]);
@@ -1117,8 +1117,8 @@ describe('RemAdapter', () => {
       const tag = plugin.addTestRem('tag_matches', 'matches', 'matches');
       plugin.addTestRem('tagged_match_ref_target', 'Matched Reference');
       const parent = plugin.addTestRem('matches_parent', 'Shared Parent');
-      const childA = new MockRem('tagged_match_a', 'Tagged child A');
-      const childB = new MockRem('tagged_match_b', 'Tagged child B');
+      const childA = plugin.addTestRem('tagged_match_a', 'Tagged child A');
+      const childB = plugin.addTestRem('tagged_match_b', 'Tagged child B');
       childA.text = [
         'Tagged child A refs ',
         { i: 'q', _id: 'tagged_match_ref_target' },
@@ -1166,7 +1166,7 @@ describe('RemAdapter', () => {
       const tag = plugin.addTestRem('tag_direct', 'direct', 'direct');
       const parent = plugin.addTestRem('direct_parent', 'Direct Parent');
       await parent.setType(RemType.CONCEPT);
-      const child = new MockRem('direct_child', 'Direct child');
+      const child = plugin.addTestRem('direct_child', 'Direct child');
       child.setTagRemsMock([tag]);
       await child.setParent(parent);
       tag.setTaggedRemsMock([child]);
@@ -1189,6 +1189,115 @@ describe('RemAdapter', () => {
       expect(result.results[0].matchedRems).toBeUndefined();
     });
 
+    it('should page through stable tagged-mode snapshots', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_page_tagged', 'page tagged', 'page tagged');
+      const noteA = plugin.addTestRem('tagged_page_a', 'Tagged Page A');
+      const noteB = plugin.addTestRem('tagged_page_b', 'Tagged Page B');
+      const noteC = plugin.addTestRem('tagged_page_c', 'Tagged Page C');
+      tag.setTaggedRemsMock([noteA, noteB, noteC]);
+
+      const firstPage = await adapter.searchByTag({
+        tagRemId: 'tag_page_tagged',
+        resultMode: 'tagged',
+        limit: 2,
+      });
+
+      expect(firstPage.results.map((r) => r.remId)).toEqual(['tagged_page_a', 'tagged_page_b']);
+      expect(firstPage.hasMore).toBe(true);
+      expect(firstPage.nextCursor).toBeDefined();
+      expect(firstPage.truncated).toBe(false);
+
+      const noteD = plugin.addTestRem('tagged_page_d', 'Tagged Page D');
+      tag.setTaggedRemsMock([noteD]);
+
+      const secondPage = await adapter.searchByTag({
+        tagRemId: 'tag_page_tagged',
+        resultMode: 'tagged',
+        limit: 2,
+        cursor: firstPage.nextCursor,
+      });
+
+      expect(secondPage.results.map((r) => r.remId)).toEqual(['tagged_page_c']);
+      expect(secondPage.hasMore).toBe(false);
+      expect(secondPage.nextCursor).toBeUndefined();
+      expect(secondPage.truncated).toBe(false);
+    });
+
+    it('should page context-mode snapshots with matched rem metadata intact', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_page_context', 'page context', 'page context');
+      const parentA = plugin.addTestRem('context_page_parent_a', 'Context Page Parent A');
+      const parentB = plugin.addTestRem('context_page_parent_b', 'Context Page Parent B');
+      const childA1 = plugin.addTestRem('context_page_child_a1', 'Context Page Child A1');
+      const childA2 = plugin.addTestRem('context_page_child_a2', 'Context Page Child A2');
+      const childB = plugin.addTestRem('context_page_child_b', 'Context Page Child B');
+      childA1.setTagRemsMock([tag]);
+      childA2.setTagRemsMock([tag]);
+      childB.setTagRemsMock([tag]);
+      await childA1.setParent(parentA);
+      await childA2.setParent(parentA);
+      await childB.setParent(parentB);
+      tag.setTaggedRemsMock([childA1, childA2, childB]);
+
+      const firstPage = await adapter.searchByTag({ tagRemId: 'tag_page_context', limit: 1 });
+      expect(firstPage.results).toHaveLength(1);
+      expect(firstPage.results[0].remId).toBe('context_page_parent_a');
+      expect(firstPage.results[0].matchedRems?.map((r) => r.remId)).toEqual([
+        'context_page_child_a1',
+        'context_page_child_a2',
+      ]);
+      expect(firstPage.hasMore).toBe(true);
+
+      const secondPage = await adapter.searchByTag({
+        tagRemId: 'tag_page_context',
+        limit: 1,
+        cursor: firstPage.nextCursor,
+      });
+
+      expect(secondPage.results).toHaveLength(1);
+      expect(secondPage.results[0].remId).toBe('context_page_parent_b');
+      expect(secondPage.results[0].matchedRems?.map((r) => r.remId)).toEqual([
+        'context_page_child_b',
+      ]);
+      expect(secondPage.hasMore).toBe(false);
+    });
+
+    it('should reject search-by-tag cursors used with a different tag or mode', async () => {
+      plugin.clearTestData();
+      const tagA = plugin.addTestRem('tag_cursor_a', 'cursor a', 'cursor a');
+      const tagB = plugin.addTestRem('tag_cursor_b', 'cursor b', 'cursor b');
+      tagA.setTaggedRemsMock([
+        plugin.addTestRem('tag_cursor_note_a', 'Cursor Note A'),
+        plugin.addTestRem('tag_cursor_note_b', 'Cursor Note B'),
+      ]);
+      tagB.setTaggedRemsMock([plugin.addTestRem('tag_cursor_note_c', 'Cursor Note C')]);
+
+      const firstPage = await adapter.searchByTag({
+        tagRemId: 'tag_cursor_a',
+        resultMode: 'tagged',
+        limit: 1,
+      });
+
+      await expect(
+        adapter.searchByTag({
+          tagRemId: 'tag_cursor_b',
+          resultMode: 'tagged',
+          limit: 1,
+          cursor: firstPage.nextCursor,
+        })
+      ).rejects.toThrow('Search by tag cursor does not match tagRemId/resultMode');
+
+      await expect(
+        adapter.searchByTag({
+          tagRemId: 'tag_cursor_a',
+          resultMode: 'context',
+          limit: 1,
+          cursor: firstPage.nextCursor,
+        })
+      ).rejects.toThrow('Search by tag cursor does not match tagRemId/resultMode');
+    });
+
     it('should search by exact tag Rem ID without name or alias lookup', async () => {
       plugin.clearTestData();
       const tag = plugin.addTestRem('tag_exact_id', 'Daily Renamed', 'old-name');
@@ -1207,7 +1316,7 @@ describe('RemAdapter', () => {
       plugin.clearTestData();
       const tag = plugin.addTestRem('tag_mode', 'mode', 'mode');
       const parent = plugin.addTestRem('mode_parent', 'Mode Parent');
-      const child = new MockRem('mode_child', 'Mode Child');
+      const child = plugin.addTestRem('mode_child', 'Mode Child');
       await child.setParent(parent);
       tag.setTaggedRemsMock([child]);
 
