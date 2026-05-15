@@ -9,9 +9,9 @@ bridge. It is the shared RemNote endpoint for the `remnote-mcp-server` package:
 
 > **Connection issue? Check the RemNote bridge plugin and server versions first.** Use the official
 > **MCP/OpenClaw Automation Bridge** by Robert Spiegel in RemNote, and run a compatible `remnote-mcp-server` on the same
-> `0.x` minor line (for example, `0.15.x` with `0.15.x`). Wrong plugin flavors or mismatched versions can disconnect
-> with a `1008` compatibility message. If Marketplace and npm releases are temporarily out of sync, pin the matching
-> server package or run matching bridge/server checkouts from source. Start with the
+> `0.x` minor line. Wrong plugin flavors or mismatched versions can disconnect with a `1008` compatibility message.
+> If Marketplace and npm releases are temporarily out of
+> sync, pin the matching server package or run matching bridge/server checkouts from source. Start with the
 > [version compatibility guide](docs/guides/bridge-consumer-version-compatibility.md),
 > [Marketplace plugin install guide](docs/guides/install-plugin-via-marketplace-beginner.md),
 > [local plugin guide](docs/guides/development-run-plugin-locally.md), and
