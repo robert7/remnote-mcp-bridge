@@ -143,6 +143,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - `remnote_search_by_tag` accepts:
   - `tagRemId` (required)
+  - `resultMode` (`"context" | "tagged"`, default: `"context"`)
   - `limit` (default: 50)
   - `includeContent` (`"none" | "markdown" | "structured"`, default: `"none"`)
   - `depth` (default: 1)
@@ -155,9 +156,18 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
   1. nearest ancestor `document` / `dailyDocument` (preferred),
   2. otherwise nearest non-document ancestor,
   3. otherwise the tagged Rem itself (no ancestor case).
-- Output item fields and content rendering semantics match `remnote_search`.
-- Results are deduplicated by resolved target `remId`.
-- Results are sorted with the same type-priority ordering as `remnote_search`.
+- In `context` mode:
+  - output item fields and content rendering semantics match `remnote_search`;
+  - results are deduplicated by resolved target `remId`;
+  - each result includes `matchedRems` with the direct Rems carrying the requested tag that produced that context
+    result.
+- In `tagged` mode:
+  - top-level results are the direct Rems carrying the requested tag;
+  - each result includes `contextRemId`, `contextTitle`, and `contextReason` (`ancestor-document`,
+    `ancestor-concept`, `ancestor-context`, or `self`).
+- `limit` applies to top-level results. In `context` mode, `matchedRems` contains direct matches observed for the
+  returned context results from the SDK tag lookup.
+- Results are sorted with the same type-priority ordering as `remnote_search`, applied to the top-level result Rems.
 
 ## Read behavior contract
 

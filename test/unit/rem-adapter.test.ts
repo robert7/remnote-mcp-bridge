@@ -1015,6 +1015,71 @@ describe('RemAdapter', () => {
       expect(result.results[0].remId).toBe('dedupe_parent');
     });
 
+    it('should expose all direct matches for deduplicated context results', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_matches', 'matches', 'matches');
+      const parent = plugin.addTestRem('matches_parent', 'Shared Parent');
+      const childA = new MockRem('tagged_match_a', 'Tagged child A');
+      const childB = new MockRem('tagged_match_b', 'Tagged child B');
+      childA.setTagRemsMock([tag]);
+      childB.setTagRemsMock([tag]);
+      await childA.setParent(parent);
+      await childB.setParent(parent);
+      tag.setTaggedRemsMock([childA, childB]);
+
+      const result = await adapter.searchByTag({ tagRemId: 'tag_matches' });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].remId).toBe('matches_parent');
+      expect(result.results[0].matchedRems).toEqual([
+        {
+          remId: 'tagged_match_a',
+          title: 'Tagged child A',
+          headline: 'Tagged child A',
+          remType: 'text',
+          parentRemId: 'matches_parent',
+          parentTitle: 'Shared Parent',
+          tags: [{ tagRemId: 'tag_matches', name: 'matches' }],
+        },
+        {
+          remId: 'tagged_match_b',
+          title: 'Tagged child B',
+          headline: 'Tagged child B',
+          remType: 'text',
+          parentRemId: 'matches_parent',
+          parentTitle: 'Shared Parent',
+          tags: [{ tagRemId: 'tag_matches', name: 'matches' }],
+        },
+      ]);
+    });
+
+    it('should return directly tagged rems with context metadata in tagged mode', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_direct', 'direct', 'direct');
+      const parent = plugin.addTestRem('direct_parent', 'Direct Parent');
+      await parent.setType(RemType.CONCEPT);
+      const child = new MockRem('direct_child', 'Direct child');
+      child.setTagRemsMock([tag]);
+      await child.setParent(parent);
+      tag.setTaggedRemsMock([child]);
+
+      const result = await adapter.searchByTag({
+        tagRemId: 'tag_direct',
+        resultMode: 'tagged',
+      });
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0]).toMatchObject({
+        remId: 'direct_child',
+        title: 'Direct child',
+        parentRemId: 'direct_parent',
+        parentTitle: 'Direct Parent',
+        tags: [{ tagRemId: 'tag_direct', name: 'direct' }],
+        contextRemId: 'direct_parent',
+        contextTitle: 'Direct Parent',
+        contextReason: 'ancestor-concept',
+      });
+      expect(result.results[0].matchedRems).toBeUndefined();
+    });
+
     it('should search by exact tag Rem ID without name or alias lookup', async () => {
       plugin.clearTestData();
       const tag = plugin.addTestRem('tag_exact_id', 'Daily Renamed', 'old-name');

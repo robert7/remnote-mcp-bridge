@@ -7,6 +7,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Add `search_by_tag.resultMode` with direct tagged Rem results and `matchedRems` metadata for context results.
+
 ## [0.15.0] - 2026-05-15
 
 ### Changed

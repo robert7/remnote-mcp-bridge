@@ -24,6 +24,7 @@ declare const __PLUGIN_VERSION__: string;
 
 export type IncludeContentMode = 'none' | 'markdown' | 'structured';
 export type SearchIncludeContentMode = IncludeContentMode;
+export type SearchByTagResultMode = 'context' | 'tagged';
 
 export interface CreateNoteParams {
   title?: string;
@@ -49,6 +50,7 @@ export interface SearchParams {
 
 export interface SearchByTagParams {
   tagRemId: string;
+  resultMode?: SearchByTagResultMode;
   limit?: number;
   includeContent?: SearchIncludeContentMode;
   depth?: number;
@@ -133,10 +135,24 @@ export interface SearchResultItem {
   aliases?: string[];
   tags?: TagInfo[];
   remType: RemClassification;
+  matchedRems?: MatchedRemMetadata[];
+  contextRemId?: string;
+  contextTitle?: string;
+  contextReason?: SearchByTagContextReason;
   cardDirection?: CardDirection;
   content?: string;
   contentStructured?: StructuredContentNode[];
   contentProperties?: ContentProperties;
+}
+
+export interface MatchedRemMetadata {
+  remId: string;
+  title: string;
+  headline: string;
+  remType: RemClassification;
+  parentRemId?: string;
+  parentTitle?: string;
+  tags?: TagInfo[];
 }
 
 export interface StructuredContentNode {
@@ -164,6 +180,11 @@ export type RemClassification =
   | 'text';
 
 export type CardDirection = 'forward' | 'reverse' | 'bidirectional';
+export type SearchByTagContextReason =
+  | 'ancestor-document'
+  | 'ancestor-concept'
+  | 'ancestor-context'
+  | 'self';
 
 /** Default number of search results when no limit is specified. */
 const DEFAULT_SEARCH_LIMIT = 50;
@@ -896,6 +917,20 @@ export class RemAdapter {
     );
   }
 
+  private parseSearchByTagResultMode(
+    resultMode: SearchByTagParams['resultMode']
+  ): SearchByTagResultMode {
+    const mode = resultMode ?? 'context';
+    if (mode === 'context' || mode === 'tagged') {
+      return mode;
+    }
+    throw new Error(
+      `Invalid resultMode for search_by_tag: ${String(
+        resultMode
+      )}. Expected one of: context, tagged`
+    );
+  }
+
   private parseReadIncludeContentMode(
     includeContent: ReadNoteParams['includeContent']
   ): IncludeContentMode {
@@ -988,10 +1023,47 @@ export class RemAdapter {
     };
   }
 
-  private async resolveSearchByTagTarget(rem: PluginRem): Promise<PluginRem> {
+  private async buildMatchedRemMetadata(
+    rem: PluginRem,
+    tagNameCache: TagNameCache
+  ): Promise<MatchedRemMetadata> {
+    const [{ title, detail }, remType, tags, parentContext] = await Promise.all([
+      this.getTitleAndDetail(rem),
+      this.classifyRem(rem),
+      this.getTags(rem, tagNameCache),
+      this.getParentContext(rem),
+    ]);
+
+    const headline = this.formatHeadline(title, detail, remType);
+
+    return {
+      remId: rem._id,
+      title,
+      headline,
+      remType,
+      ...parentContext,
+      ...(tags.length > 0 ? { tags } : {}),
+    };
+  }
+
+  private getSearchByTagContextReason(
+    taggedRem: PluginRem,
+    contextRem: PluginRem,
+    contextType: RemClassification
+  ): SearchByTagContextReason {
+    if (taggedRem._id === contextRem._id) return 'self';
+    if (contextType === 'document' || contextType === 'dailyDocument') return 'ancestor-document';
+    if (contextType === 'concept') return 'ancestor-concept';
+    return 'ancestor-context';
+  }
+
+  private async resolveSearchByTagContext(rem: PluginRem): Promise<{
+    targetRem: PluginRem;
+    contextReason: SearchByTagContextReason;
+  }> {
     const remType = await this.classifyRem(rem);
     if (remType === 'document' || remType === 'dailyDocument') {
-      return rem;
+      return { targetRem: rem, contextReason: 'self' };
     }
 
     let current: PluginRem = rem;
@@ -1004,14 +1076,20 @@ export class RemAdapter {
 
       const parentType = await this.classifyRem(parentRem);
       if (parentType === 'document' || parentType === 'dailyDocument') {
-        return parentRem;
+        return { targetRem: parentRem, contextReason: 'ancestor-document' };
       }
 
       current = parentRem;
       parentRem = await this.getParentRem(current);
     }
 
-    return nearestNonDocumentAncestor ?? rem;
+    const targetRem = nearestNonDocumentAncestor ?? rem;
+    const targetType =
+      targetRem._id === rem._id && targetRem === rem ? remType : await this.classifyRem(targetRem);
+    return {
+      targetRem,
+      contextReason: this.getSearchByTagContextReason(rem, targetRem, targetType),
+    };
   }
 
   private normalizeLookupText(text: string): string {
@@ -1562,12 +1640,11 @@ export class RemAdapter {
   }
 
   /**
-   * Search by exact tag Rem ID and return ancestor context targets (document-first fallback).
+   * Search by exact tag Rem ID.
    *
-   * For each tagged Rem:
-   * 1) Return the nearest ancestor document/daily document when available.
-   * 2) Otherwise, return the nearest non-document ancestor.
-   * 3) If no ancestor exists, return the tagged Rem itself.
+   * Default context mode preserves navigation-friendly ancestor targets and exposes the
+   * direct tagged Rems that produced each context result. Tagged mode returns those direct
+   * tagged Rems as top-level results with lightweight context metadata.
    */
   async searchByTag(params: SearchByTagParams): Promise<{ results: SearchResultItem[] }> {
     const tagRemId = this.requireString(params.tagRemId, 'tagRemId');
@@ -1577,6 +1654,7 @@ export class RemAdapter {
     }
 
     const options = this.getSearchContentOptions(params);
+    const resultMode = this.parseSearchByTagResultMode(params.resultMode);
     const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
     const tagNameCache: TagNameCache = new Map();
     const taggedRems =
@@ -1589,17 +1667,43 @@ export class RemAdapter {
     let sourceIndex = 0;
 
     for (const taggedRem of taggedRems) {
-      const targetRem = await this.resolveSearchByTagTarget(taggedRem);
-      if (seenTargets.has(targetRem._id)) continue;
-      seenTargets.add(targetRem._id);
+      const { targetRem, contextReason } = await this.resolveSearchByTagContext(taggedRem);
+      const matchedRem = await this.buildMatchedRemMetadata(taggedRem, tagNameCache);
+
+      if (resultMode === 'context') {
+        const existing = collected.find((item) => item.remId === targetRem._id);
+        if (existing) {
+          existing.matchedRems = [...(existing.matchedRems ?? []), matchedRem];
+          continue;
+        }
+
+        seenTargets.add(targetRem._id);
+        const item = await this.buildSearchResultItem(
+          targetRem,
+          sourceIndex++,
+          options,
+          tagNameCache
+        );
+        collected.push({ ...item, matchedRems: [matchedRem] });
+        continue;
+      }
+
+      if (seenTargets.has(taggedRem._id)) continue;
+      seenTargets.add(taggedRem._id);
 
       const item = await this.buildSearchResultItem(
-        targetRem,
+        taggedRem,
         sourceIndex++,
         options,
         tagNameCache
       );
-      collected.push(item);
+      const { title: contextTitle } = await this.getTitleAndDetail(targetRem);
+      collected.push({
+        ...item,
+        contextRemId: targetRem._id,
+        contextTitle,
+        contextReason,
+      });
     }
 
     collected.sort((a, b) => {

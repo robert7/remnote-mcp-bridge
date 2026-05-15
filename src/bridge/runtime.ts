@@ -345,6 +345,7 @@ class BridgeRuntimeController implements BridgeRuntime {
       case 'search_by_tag': {
         const result = await this.adapter.searchByTag({
           tagRemId: payload.tagRemId as string,
+          resultMode: payload.resultMode as 'context' | 'tagged' | undefined,
           limit: payload.limit as number | undefined,
           includeContent: payload.includeContent as 'none' | 'markdown' | 'structured' | undefined,
           depth: payload.depth as number | undefined,
