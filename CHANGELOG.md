@@ -9,6 +9,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add cursor paging metadata to `search`, including `hasMore`, `nextCursor`, and explicit snapshot-cap truncation
+  reporting.
 - Preserve inline Rem references in `search`, `search_by_tag`, and `read_note` output by rendering resolvable
   references as `[[Target Title]]` and exposing `inlineRefs` metadata with exact target Rem IDs.
 - Add `search_by_tag.resultMode` with direct tagged Rem results and `matchedRems` metadata for context results.

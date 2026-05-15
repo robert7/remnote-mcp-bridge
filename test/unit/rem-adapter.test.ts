@@ -508,6 +508,12 @@ describe('RemAdapter', () => {
       expect(result.results.length).toBeLessThanOrEqual(2);
     });
 
+    it('should reject non-positive search limits', async () => {
+      await expect(adapter.search({ query: 'note', limit: 0 })).rejects.toThrow(
+        'Search limit must be a positive integer'
+      );
+    });
+
     it('should use default limit when not specified', async () => {
       const result = await adapter.search({
         query: 'note',
@@ -548,7 +554,7 @@ describe('RemAdapter', () => {
     it('should include parent context in search results when parent exists', async () => {
       plugin.clearTestData();
       const parent = plugin.addTestRem('search_parent_ctx', 'Parent context note');
-      const child = new MockRem('search_child_ctx', 'Child note');
+      const child = plugin.addTestRem('search_child_ctx', 'Child note');
       await child.setParent(parent);
 
       plugin.search.search.mockResolvedValueOnce([child]);
@@ -742,17 +748,17 @@ describe('RemAdapter', () => {
       expect(plugin.search.search).toHaveBeenCalledWith(
         expect.anything(),
         undefined,
-        expect.objectContaining({ numResults: 100 })
+        expect.objectContaining({ numResults: 1000 })
       );
     });
 
-    it('should oversample search requests by 2x before dedupe', async () => {
+    it('should capture up to 1000 results for cursor-backed paging', async () => {
       await adapter.search({ query: 'test', limit: 7 });
 
       expect(plugin.search.search).toHaveBeenCalledWith(
         expect.anything(),
         undefined,
-        expect.objectContaining({ numResults: 14 })
+        expect.objectContaining({ numResults: 1000 })
       );
     });
 
@@ -768,6 +774,65 @@ describe('RemAdapter', () => {
 
       const result = await adapter.search({ query: 'r', limit: 3 });
       expect(result.results.map((r) => r.remId)).toEqual(['r1', 'r2', 'r3']);
+    });
+
+    it('should return a cursor and page through a stable search snapshot', async () => {
+      plugin.clearTestData();
+
+      const r1 = plugin.addTestRem('page_r1', 'Page R1');
+      const r2 = plugin.addTestRem('page_r2', 'Page R2');
+      const r3 = plugin.addTestRem('page_r3', 'Page R3');
+
+      plugin.search.search.mockResolvedValueOnce([r1, r2, r3]);
+
+      const firstPage = await adapter.search({ query: 'page', limit: 2 });
+      expect(firstPage.results.map((r) => r.remId)).toEqual(['page_r1', 'page_r2']);
+      expect(firstPage.hasMore).toBe(true);
+      expect(firstPage.nextCursor).toBeDefined();
+      expect(firstPage.truncated).toBe(false);
+
+      plugin.search.search.mockClear();
+
+      const secondPage = await adapter.search({
+        query: 'page',
+        limit: 2,
+        cursor: firstPage.nextCursor,
+      });
+
+      expect(plugin.search.search).not.toHaveBeenCalled();
+      expect(secondPage.results.map((r) => r.remId)).toEqual(['page_r3']);
+      expect(secondPage.hasMore).toBe(false);
+      expect(secondPage.nextCursor).toBeUndefined();
+      expect(secondPage.truncated).toBe(false);
+    });
+
+    it('should reject a cursor used with a different query', async () => {
+      plugin.clearTestData();
+      const r1 = plugin.addTestRem('cursor_query_r1', 'Cursor Query R1');
+      const r2 = plugin.addTestRem('cursor_query_r2', 'Cursor Query R2');
+      plugin.search.search.mockResolvedValueOnce([r1, r2]);
+
+      const firstPage = await adapter.search({ query: 'original', limit: 1 });
+
+      await expect(
+        adapter.search({ query: 'different', limit: 1, cursor: firstPage.nextCursor })
+      ).rejects.toThrow('Search cursor does not match query');
+    });
+
+    it('should make snapshot-cap truncation explicit', async () => {
+      plugin.clearTestData();
+      const rems = Array.from({ length: 1000 }, (_, index) =>
+        plugin.addTestRem(`cap_${index}`, `Cap ${index}`)
+      );
+      plugin.search.search.mockResolvedValueOnce(rems);
+
+      const result = await adapter.search({ query: 'cap', limit: 5 });
+
+      expect(result.results).toHaveLength(5);
+      expect(result.hasMore).toBe(true);
+      expect(result.nextCursor).toBeDefined();
+      expect(result.truncated).toBe(true);
+      expect(result.truncationReason).toBe('cursor_snapshot_limit');
     });
 
     it('should reject unsupported search includeContent mode', async () => {

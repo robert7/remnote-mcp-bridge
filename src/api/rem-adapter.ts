@@ -42,6 +42,7 @@ export interface AppendJournalParams {
 export interface SearchParams {
   query: string;
   limit?: number;
+  cursor?: string;
   includeContent?: SearchIncludeContentMode;
   depth?: number;
   childLimit?: number;
@@ -152,6 +153,16 @@ export interface SearchResultItem {
   contentProperties?: ContentProperties;
 }
 
+export type SearchTruncationReason = 'cursor_snapshot_limit';
+
+export interface SearchResult {
+  results: SearchResultItem[];
+  hasMore: boolean;
+  nextCursor?: string;
+  truncated: boolean;
+  truncationReason?: SearchTruncationReason;
+}
+
 export interface MatchedRemMetadata {
   remId: string;
   title: string;
@@ -199,6 +210,12 @@ export type SearchByTagContextReason =
 const DEFAULT_SEARCH_LIMIT = 50;
 /** Fetch extra search results from SDK before dedupe to reduce underfilled unique result sets. */
 const SEARCH_OVERSAMPLE_FACTOR = 2;
+/** Maximum SDK result window captured for cursor-backed search snapshots. */
+const SEARCH_CURSOR_SNAPSHOT_LIMIT = 1000;
+/** Maximum active search snapshots retained by the bridge. */
+const SEARCH_CURSOR_MAX_ACTIVE = 20;
+/** Search snapshots are short-lived because they capture an ordering view of mutable KB state. */
+const SEARCH_CURSOR_TTL_MS = 15 * 60 * 1000;
 
 /** Default recursion depth for read operations. */
 const DEFAULT_DEPTH = 5;
@@ -254,6 +271,23 @@ interface SearchContentOptions {
   maxContentLength: number;
 }
 
+interface SearchCursorSnapshot {
+  id: string;
+  query: string;
+  queryHash: string;
+  remIds: string[];
+  createdAt: number;
+  lastAccessedAt: number;
+  truncated: boolean;
+  truncationReason?: SearchTruncationReason;
+}
+
+interface ParsedSearchCursor {
+  snapshotId: string;
+  offset: number;
+  queryHash: string;
+}
+
 type TagNameCache = Map<string, string | null>;
 
 type TagReferenceLike = {
@@ -286,6 +320,7 @@ const READ_INCLUDE_CONTENT_MODES: readonly IncludeContentMode[] = [
 export class RemAdapter {
   private settings: AutomationBridgeSettings;
   private readonly emittedTagDebugKeys = new Set<string>();
+  private readonly searchCursorSnapshots = new Map<string, SearchCursorSnapshot>();
 
   constructor(
     private plugin: ReactRNPlugin,
@@ -1003,6 +1038,181 @@ export class RemAdapter {
     return Math.max(requestedLimit, Math.trunc(requestedLimit * SEARCH_OVERSAMPLE_FACTOR));
   }
 
+  private getSearchLimit(requestedLimit: number | undefined): number {
+    const limit = requestedLimit ?? DEFAULT_SEARCH_LIMIT;
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new Error('Search limit must be a positive integer');
+    }
+    return limit;
+  }
+
+  private createSearchSnapshotId(): string {
+    const cryptoWithUuid = globalThis.crypto as Crypto | undefined;
+    if (cryptoWithUuid?.randomUUID) {
+      return cryptoWithUuid.randomUUID();
+    }
+
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  private hashSearchQuery(query: string): string {
+    let hash = 2166136261;
+    for (let i = 0; i < query.length; i++) {
+      hash ^= query.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16);
+  }
+
+  private createSearchCursor(snapshot: SearchCursorSnapshot, offset: number): string | undefined {
+    if (offset >= snapshot.remIds.length) {
+      return undefined;
+    }
+    return `search:v1:${snapshot.id}:${offset}:${snapshot.queryHash}`;
+  }
+
+  private parseSearchCursor(cursor: string): ParsedSearchCursor {
+    const parts = cursor.split(':');
+    if (parts.length !== 5 || parts[0] !== 'search' || parts[1] !== 'v1') {
+      throw new Error('Invalid search cursor');
+    }
+
+    const offset = Number(parts[3]);
+    if (!Number.isInteger(offset) || offset < 0) {
+      throw new Error('Invalid search cursor offset');
+    }
+
+    return {
+      snapshotId: parts[2],
+      offset,
+      queryHash: parts[4],
+    };
+  }
+
+  private pruneExpiredSearchSnapshots(now = Date.now()): void {
+    for (const [id, snapshot] of this.searchCursorSnapshots.entries()) {
+      if (now - snapshot.lastAccessedAt > SEARCH_CURSOR_TTL_MS) {
+        this.searchCursorSnapshots.delete(id);
+      }
+    }
+  }
+
+  private enforceSearchSnapshotLimit(): void {
+    while (this.searchCursorSnapshots.size > SEARCH_CURSOR_MAX_ACTIVE) {
+      let oldestId: string | undefined;
+      let oldestAccess = Number.POSITIVE_INFINITY;
+
+      for (const [id, snapshot] of this.searchCursorSnapshots.entries()) {
+        if (snapshot.lastAccessedAt < oldestAccess) {
+          oldestAccess = snapshot.lastAccessedAt;
+          oldestId = id;
+        }
+      }
+
+      if (!oldestId) return;
+      this.searchCursorSnapshots.delete(oldestId);
+    }
+  }
+
+  private getSearchSnapshotFromCursor(
+    query: string,
+    cursor: string
+  ): {
+    snapshot: SearchCursorSnapshot;
+    offset: number;
+  } {
+    this.pruneExpiredSearchSnapshots();
+    const parsed = this.parseSearchCursor(cursor);
+    const snapshot = this.searchCursorSnapshots.get(parsed.snapshotId);
+
+    if (!snapshot) {
+      throw new Error('Search cursor expired or not found; rerun search');
+    }
+
+    if (snapshot.query !== query || snapshot.queryHash !== parsed.queryHash) {
+      throw new Error('Search cursor does not match query');
+    }
+
+    snapshot.lastAccessedAt = Date.now();
+    return { snapshot, offset: parsed.offset };
+  }
+
+  private async createSearchSnapshot(query: string): Promise<SearchCursorSnapshot> {
+    this.pruneExpiredSearchSnapshots();
+    const searchResults = await this.plugin.search.search(this.textToRichText(query), undefined, {
+      numResults: SEARCH_CURSOR_SNAPSHOT_LIMIT,
+    });
+
+    const collected: Array<{ remId: string; remType: RemClassification; sourceIndex: number }> = [];
+    const seen = new Set<string>();
+    let sourceIndex = 0;
+
+    for (const rem of searchResults) {
+      if (seen.has(rem._id)) continue;
+      seen.add(rem._id);
+
+      collected.push({
+        remId: rem._id,
+        remType: await this.classifyRem(rem),
+        sourceIndex: sourceIndex++,
+      });
+    }
+
+    collected.sort((a, b) => {
+      const pa = TYPE_PRIORITY[a.remType] ?? 5;
+      const pb = TYPE_PRIORITY[b.remType] ?? 5;
+      if (pa !== pb) return pa - pb;
+      return a.sourceIndex - b.sourceIndex;
+    });
+
+    const now = Date.now();
+    const snapshot: SearchCursorSnapshot = {
+      id: this.createSearchSnapshotId(),
+      query,
+      queryHash: this.hashSearchQuery(query),
+      remIds: collected.map((item) => item.remId),
+      createdAt: now,
+      lastAccessedAt: now,
+      truncated: searchResults.length >= SEARCH_CURSOR_SNAPSHOT_LIMIT,
+      truncationReason:
+        searchResults.length >= SEARCH_CURSOR_SNAPSHOT_LIMIT ? 'cursor_snapshot_limit' : undefined,
+    };
+
+    this.searchCursorSnapshots.set(snapshot.id, snapshot);
+    this.enforceSearchSnapshotLimit();
+    return snapshot;
+  }
+
+  private async renderSearchPage(
+    snapshot: SearchCursorSnapshot,
+    offset: number,
+    limit: number,
+    options: SearchContentOptions,
+    tagNameCache: TagNameCache
+  ): Promise<SearchResult> {
+    const pageRemIds = snapshot.remIds.slice(offset, offset + limit);
+    const results: SearchResultItem[] = [];
+
+    for (let i = 0; i < pageRemIds.length; i++) {
+      const rem = await this.plugin.rem.findOne(pageRemIds[i]);
+      if (!rem) continue;
+
+      const item = await this.buildSearchResultItem(rem, offset + i, options, tagNameCache);
+      results.push(item);
+    }
+
+    const nextOffset = offset + limit;
+    const nextCursor = this.createSearchCursor(snapshot, nextOffset);
+
+    return {
+      results,
+      hasMore: nextCursor !== undefined,
+      nextCursor,
+      truncated: snapshot.truncated,
+      truncationReason: snapshot.truncationReason,
+    };
+  }
+
   private getSearchContentOptions(
     params: Pick<SearchParams, 'includeContent' | 'depth' | 'childLimit' | 'maxContentLength'>
   ): SearchContentOptions {
@@ -1653,48 +1863,21 @@ export class RemAdapter {
    * descriptor > text) with intra-group ordering preserved from RemNote's search API as a proxy
    * for relevance (no score is available from the SDK).
    *
+   * Cursor paging uses a short-lived snapshot of up to 1000 ordered Rem IDs. Page rendering is
+   * intentionally deferred so content options only apply to the page being returned.
+   *
    * The RemNote SDK search API may enforce an opaque hard limit on result count beyond the
    * requested value — this is not controllable from the plugin side.
    */
-  async search(params: SearchParams): Promise<{ results: SearchResultItem[] }> {
-    const limit = params.limit ?? DEFAULT_SEARCH_LIMIT;
+  async search(params: SearchParams): Promise<SearchResult> {
+    const limit = this.getSearchLimit(params.limit);
     const options = this.getSearchContentOptions(params);
-    const sdkFetchLimit = this.getSearchSdkFetchLimit(limit);
     const tagNameCache: TagNameCache = new Map();
+    const { snapshot, offset } = params.cursor
+      ? this.getSearchSnapshotFromCursor(params.query, params.cursor)
+      : { snapshot: await this.createSearchSnapshot(params.query), offset: 0 };
 
-    // Use the search API - query must be RichTextInterface
-    const searchResults = await this.plugin.search.search(
-      this.textToRichText(params.query),
-      undefined,
-      { numResults: sdkFetchLimit }
-    );
-
-    const collected: Array<SearchResultItem & { _sourceIndex: number }> = [];
-    const seen = new Set<string>();
-    let sourceIndex = 0;
-
-    for (const rem of searchResults) {
-      if (seen.has(rem._id)) continue;
-      seen.add(rem._id);
-
-      const item = await this.buildSearchResultItem(rem, sourceIndex++, options, tagNameCache);
-      collected.push(item);
-    }
-
-    // Sort by type priority, then by original SDK position within each type group
-    collected.sort((a, b) => {
-      const pa = TYPE_PRIORITY[a.remType ?? 'text'] ?? 5;
-      const pb = TYPE_PRIORITY[b.remType ?? 'text'] ?? 5;
-      if (pa !== pb) return pa - pb;
-      return a._sourceIndex - b._sourceIndex;
-    });
-
-    // Strip internal _sourceIndex before returning
-    const results: SearchResultItem[] = collected
-      .map(({ _sourceIndex, ...rest }) => rest)
-      .slice(0, limit);
-
-    return { results };
+    return this.renderSearchPage(snapshot, offset, limit, options, tagNameCache);
   }
 
   /**

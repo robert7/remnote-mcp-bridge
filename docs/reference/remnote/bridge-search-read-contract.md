@@ -146,12 +146,19 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 - Default `depth` for search content rendering is 1.
 - Default `childLimit` for search content rendering is 20.
 - Default `maxContentLength` for search is 3000.
+- Cursor paging:
+  - responses include `hasMore`, optional `nextCursor`, `truncated`, and optional `truncationReason`;
+  - passing `cursor` returns the next page from the same short-lived ordered snapshot;
+  - cursors are query-bound and expire after bridge session inactivity;
+  - the bridge retains at most 20 active search snapshots.
 - Result ordering:
   1. grouped by `remType` priority (`document`/`concept` > `dailyDocument` > `portal` > `descriptor` > `text`)
   2. preserves SDK-provided intra-group ordering as relevance proxy
+- Initial search captures an ordered snapshot of up to 1000 SDK results, deduplicates by `remId`, then returns the
+  requested page size. Page content is rendered only for the current page.
+- If the snapshot reaches the 1000-result cap, `truncated` is `true` with `truncationReason:
+  "cursor_snapshot_limit"`.
 - Search may still return fewer results than requested due to SDK-side internal limits.
-- Bridge search oversamples SDK requests (2x requested limit), deduplicates by `remId`, then trims back to requested
-  `limit` to reduce underfilled unique result sets caused by duplicate SDK hits.
 
 ## Search-by-tag behavior contract
 
