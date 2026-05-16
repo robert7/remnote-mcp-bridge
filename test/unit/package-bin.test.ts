@@ -30,4 +30,12 @@ describe('package bin metadata', () => {
     expect(result.stderr).toBe('');
     expect(result.stdout.trim()).toBe(packageJson.version);
   });
+
+  it('runs quality scripts through local package binaries', () => {
+    for (const scriptName of ['lint', 'lint:fix', 'format', 'format:check'] as const) {
+      expect(packageJson.scripts[scriptName]).not.toContain('npx ');
+    }
+    expect(packageJson.scripts.lint).toMatch(/^eslint /);
+    expect(packageJson.scripts.format).toMatch(/^prettier /);
+  });
 });
