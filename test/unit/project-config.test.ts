@@ -9,4 +9,11 @@ describe('project config', () => {
 
     expect(tsconfig.include).toEqual(expect.arrayContaining(['src', 'test']));
   });
+
+  it('keeps widget entrypoints visible to coverage', async () => {
+    const { default: vitestConfig } = await import('../../vitest.config');
+    const config = vitestConfig as { test?: { coverage?: { exclude?: string[] } } };
+
+    expect(config.test?.coverage?.exclude).not.toContain('src/widgets/**/*.tsx');
+  });
 });

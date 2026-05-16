@@ -23,7 +23,6 @@ export default defineConfig({
         'test',
         'webpack.config.js',
         'public',
-        'src/widgets/**/*.tsx', // Widget UI files require RemNote environment
       ],
       thresholds: {
         lines: 80,
