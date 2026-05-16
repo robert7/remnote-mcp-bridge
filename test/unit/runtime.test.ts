@@ -184,11 +184,13 @@ describe('Bridge runtime', () => {
 
     const latestSnapshot = await plugin.storage.getSession(BRIDGE_UI_SNAPSHOT_STORAGE_KEY);
     expect(isSerializedBridgeRuntimeSnapshot(latestSnapshot)).toBe(true);
-    expect(latestSnapshot?.status).toBe('connected');
-    expect(latestSnapshot?.installMode).toBe('marketplace');
+    if (!isSerializedBridgeRuntimeSnapshot(latestSnapshot)) {
+      throw new Error('expected serialized bridge runtime snapshot');
+    }
+    expect(latestSnapshot.status).toBe('connected');
+    expect(latestSnapshot.installMode).toBe('marketplace');
     expect(
-      latestSnapshot?.logs.some((entry) => entry.message.includes('RemAdapter initialized')) ??
-        false
+      latestSnapshot.logs.some((entry) => entry.message.includes('RemAdapter initialized'))
     ).toBe(true);
   });
 

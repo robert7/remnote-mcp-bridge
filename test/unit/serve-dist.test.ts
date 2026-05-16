@@ -47,7 +47,7 @@ function createFixtureRoot() {
 }
 
 function listen(server: http.Server): Promise<number> {
-  return new Promise((resolve, reject) => {
+  return new Promise<number>((resolve, reject) => {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
@@ -61,7 +61,7 @@ function listen(server: http.Server): Promise<number> {
 }
 
 function close(server: http.Server): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     server.close((error) => {
       if (error) {
         reject(error);
@@ -79,7 +79,7 @@ async function request(
 ): Promise<ResponseSnapshot> {
   const port = await listen(server);
 
-  return new Promise((resolve, reject) => {
+  return new Promise<ResponseSnapshot>((resolve, reject) => {
     const req = http.request(
       {
         host: '127.0.0.1',

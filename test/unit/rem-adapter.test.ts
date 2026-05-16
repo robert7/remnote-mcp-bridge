@@ -12,7 +12,7 @@ describe('RemAdapter', () => {
 
   beforeEach(() => {
     plugin = new MockRemNotePlugin();
-    adapter = new RemAdapter(plugin as unknown as typeof plugin, {
+    adapter = new RemAdapter(plugin as never, {
       acceptWriteOperations: true,
       acceptReplaceOperation: false,
       autoTagEnabled: true,
@@ -726,10 +726,10 @@ describe('RemAdapter', () => {
 
       // Override search to return duplicates
       plugin.search.search.mockResolvedValueOnce([
-        await plugin.rem.findOne('rem_1'),
-        await plugin.rem.findOne('rem_2'),
+        (await plugin.rem.findOne('rem_1')) as MockRem,
+        (await plugin.rem.findOne('rem_2')) as MockRem,
         dup, // duplicate rem_1
-        await plugin.rem.findOne('rem_3'),
+        (await plugin.rem.findOne('rem_3')) as MockRem,
       ]);
 
       const result = await adapter.search({

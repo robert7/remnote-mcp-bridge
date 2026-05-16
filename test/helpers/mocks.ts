@@ -2,7 +2,7 @@
  * Mock implementations for testing
  */
 import { vi } from 'vitest';
-import type { ReactRNPlugin, RichTextInterface, PluginRem, SetRemType } from '@remnote/plugin-sdk';
+import type { RichTextInterface, PluginRem, SetRemType } from '@remnote/plugin-sdk';
 import { MessagingEvents, RemType } from '@remnote/plugin-sdk';
 import { BridgeRequest } from '../../src/bridge/websocket-client';
 
@@ -87,7 +87,7 @@ export class MockWebSocket {
 /**
  * Mock Rem implementation
  */
-export class MockRem implements Partial<PluginRem> {
+export class MockRem {
   _id: string;
   text: RichTextInterface;
   backText?: RichTextInterface;
@@ -251,7 +251,10 @@ export class MockRem implements Partial<PluginRem> {
     this.type = type as RemType;
   }
 
-  async setParent(parent: Rem | Rem | null, positionAmongstSiblings?: number): Promise<void> {
+  async setParent(
+    parent: PluginRem | MockRem | null,
+    positionAmongstSiblings?: number
+  ): Promise<void> {
     if (this.parent) {
       this.parent.children = this.parent.children.filter((child) => child !== this);
     }
@@ -302,7 +305,7 @@ export class MockRem implements Partial<PluginRem> {
 /**
  * Mock RemNote Plugin SDK
  */
-export class MockRemNotePlugin implements Partial<ReactRNPlugin> {
+export class MockRemNotePlugin {
   rootURL = 'https://example.test/plugin/';
   private rems = new Map<string, MockRem>();
   private remsByName = new Map<string, MockRem>();

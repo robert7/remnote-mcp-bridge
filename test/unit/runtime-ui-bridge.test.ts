@@ -33,6 +33,7 @@ describe('registerBridgeRuntimeUiBridge', () => {
       stats: { created: 1, updated: 2, journal: 3, searches: 4 },
       history: [
         {
+          id: 'history-1',
           timestamp: new Date('2026-03-17T17:31:00.000Z'),
           action: 'create',
           titles: ['Test note'],
@@ -72,11 +73,14 @@ describe('registerBridgeRuntimeUiBridge', () => {
 
     const persistedSnapshot = await plugin.storage.getSession(BRIDGE_UI_SNAPSHOT_STORAGE_KEY);
     expect(isSerializedBridgeRuntimeSnapshot(persistedSnapshot)).toBe(true);
-    expect(persistedSnapshot?.wsUrl).toBe('ws://127.0.0.1:3002');
-    expect(persistedSnapshot?.installMode).toBe('development');
-    expect(persistedSnapshot?.companion?.kind).toBe('cli');
-    expect(persistedSnapshot?.logs[0]?.timestamp).toBe(logTimestamp.getTime());
-    expect(persistedSnapshot?.retryPhase).toBe('standby');
+    if (!isSerializedBridgeRuntimeSnapshot(persistedSnapshot)) {
+      throw new Error('expected serialized bridge runtime snapshot');
+    }
+    expect(persistedSnapshot.wsUrl).toBe('ws://127.0.0.1:3002');
+    expect(persistedSnapshot.installMode).toBe('development');
+    expect(persistedSnapshot.companion?.kind).toBe('cli');
+    expect(persistedSnapshot.logs[0]?.timestamp).toBe(logTimestamp.getTime());
+    expect(persistedSnapshot.retryPhase).toBe('standby');
   });
 
   it('routes widget commands from storage to the runtime', async () => {

@@ -9,6 +9,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Include the TypeScript test suite in the project typecheck gate.
 - Link the README MCP Server path to advanced RemNote MCP use cases.
 - Add cursor paging metadata to `search_by_tag`, including `hasMore`, `nextCursor`, and explicit snapshot-cap
   truncation reporting.

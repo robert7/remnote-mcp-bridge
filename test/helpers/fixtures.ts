@@ -12,7 +12,7 @@ import type {
   ReplaceChildrenParams,
   UpdateTagsParams,
   SearchResultItem,
-  NoteChild,
+  StructuredContentNode,
 } from '../../src/api/rem-adapter';
 
 /**
@@ -38,7 +38,7 @@ export const appendJournalInput: AppendJournalParams = {
 export const searchInput: SearchParams = {
   query: 'test query',
   limit: 10,
-  includeContent: true,
+  includeContent: 'markdown',
 };
 
 export const readNoteInput: ReadNoteParams = {
@@ -85,29 +85,39 @@ export const sampleSearchResults: SearchResultItem[] = [
   {
     remId: 'rem_1',
     title: 'First Result',
+    headline: 'First Result',
+    remType: 'text',
     content: 'Child content 1\nChild content 2',
   },
   {
     remId: 'rem_2',
     title: 'Second Result',
+    headline: 'Second Result',
+    remType: 'text',
   },
 ];
 
-export const sampleNoteChildren: NoteChild[] = [
+export const sampleNoteChildren: StructuredContentNode[] = [
   {
     remId: 'rem_child_1',
-    text: 'Child 1',
+    title: 'Child 1',
+    headline: 'Child 1',
+    remType: 'text',
     children: [
       {
         remId: 'rem_grandchild_1',
-        text: 'Grandchild 1',
+        title: 'Grandchild 1',
+        headline: 'Grandchild 1',
+        remType: 'text',
         children: [],
       },
     ],
   },
   {
     remId: 'rem_child_2',
-    text: 'Child 2',
+    title: 'Child 2',
+    headline: 'Child 2',
+    remType: 'text',
     children: [],
   },
 ];
