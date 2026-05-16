@@ -38,4 +38,10 @@ describe('package bin metadata', () => {
     expect(packageJson.scripts.lint).toMatch(/^eslint /);
     expect(packageJson.scripts.format).toMatch(/^prettier /);
   });
+
+  it('runs release validation through the declared RemNote SDK binary', () => {
+    expect(packageJson.scripts.build).not.toContain('npx ');
+    expect(packageJson.scripts.build).toMatch(/^remnote-plugin validate && /);
+    expect(packageJson.dependencies['@remnote/plugin-sdk']).toBeDefined();
+  });
 });
