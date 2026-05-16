@@ -26,6 +26,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Run lint and format scripts through local package binaries instead of `npx`.
 - Run release build validation through the local RemNote plugin SDK binary instead of `npx`.
+- Run the production dist build helper through the local Webpack binary instead of `npx`.
 
 ## [0.15.0] - 2026-05-15
 

@@ -10,4 +10,4 @@ cd "${REPO_ROOT}"
 
 echo "Building production bundle to dist/ (no zip, no hot reload)..."
 rm -rf "${DIST_DIR}"
-NODE_ENV=production npx webpack --color --progress
+NODE_ENV=production webpack --color --progress
