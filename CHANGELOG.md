@@ -9,6 +9,7 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Link the README MCP Server path to advanced RemNote MCP use cases.
 - Add cursor paging metadata to `search_by_tag`, including `hasMore`, `nextCursor`, and explicit snapshot-cap
   truncation reporting.
 - Add cursor paging metadata to `search`, including `hasMore`, `nextCursor`, and explicit snapshot-cap truncation

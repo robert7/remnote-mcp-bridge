@@ -31,13 +31,13 @@ This project is a bridge layer with two consumer paths, both served by the `remn
    - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: companion server exposing MCP tools to AI
      assistants
    - **`remnote-mcp-stdio`**: optional stdio-to-HTTP proxy for MCP clients that cannot use Streamable HTTP directly
-   - Demo: **[View MCP Server Demo →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)**
+   - Demo: **[MCP Server Demo and Screenshots](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md)** · **[Advanced Use Cases](https://github.com/robert7/remnote-mcp-server/blob/main/docs/advanced-use-cases.md)**
 2. **CLI app path (e.g. for OpenClaw):**
    - This bridge plugin remains the RemNote endpoint
    - **[RemNote MCP Server](https://github.com/robert7/remnote-mcp-server)**: the single local server connected to the
      bridge
    - **`remnote-cli`**: command-line MCP client bundled in `remnote-mcp-server` for OpenClaw and other agentic workflows
-   - Demo: **[View RemNote CLI Demo →](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md#remnote-cli)**
+   - Demo: **[RemNote CLI Demo and Screenshots](https://github.com/robert7/remnote-mcp-server/blob/main/docs/demo.md#remnote-cli)**
 
 **For both paths the required server component is `remnote-mcp-server`; `remnote-mcp-stdio` and `remnote-cli` are
 optional proxy/client commands for that server.**
