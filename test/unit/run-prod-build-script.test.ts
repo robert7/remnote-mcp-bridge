@@ -15,8 +15,10 @@ describe('run-prod-build.sh', () => {
     const buildScriptContent = fs.readFileSync(buildScriptPath, 'utf8');
 
     expect(content).toContain('scripts/build-prod-dist.sh');
-    expect(buildScriptContent).toContain('NODE_ENV=production webpack');
+    expect(buildScriptContent).toContain('WEBPACK_BIN="${REPO_ROOT}/node_modules/.bin/webpack"');
+    expect(buildScriptContent).toContain('NODE_ENV=production "${WEBPACK_BIN}"');
     expect(buildScriptContent).not.toContain('npx webpack');
+    expect(buildScriptContent).toContain('Run npm install first.');
     expect(content).not.toContain('npm run build');
     expect(buildScriptContent).not.toContain('PluginZip.zip');
   });

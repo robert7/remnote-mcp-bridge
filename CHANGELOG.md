@@ -28,6 +28,10 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Run release build validation through the local RemNote plugin SDK binary instead of `npx`.
 - Run the production dist build helper through the local Webpack binary instead of `npx`.
 
+### Fixed
+
+- Fix `run-prod-build.sh` to resolve Webpack from `node_modules/.bin` when run outside npm script PATH setup.
+
 ## [0.15.0] - 2026-05-15
 
 ### Changed
