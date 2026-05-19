@@ -22,9 +22,9 @@ import { withScopedLogPrefix } from '../logging';
 // Build-time constant injected by webpack DefinePlugin
 declare const __PLUGIN_VERSION__: string;
 
-export type IncludeContentMode = 'none' | 'markdown' | 'structured';
-export type SearchIncludeContentMode = IncludeContentMode;
+export type ContentMode = 'none' | 'markdown' | 'structured';
 export type SearchByTagResultMode = 'context' | 'tagged';
+export type ResultView = 'compact' | 'standard' | 'full';
 
 export interface CreateNoteParams {
   title?: string;
@@ -43,10 +43,12 @@ export interface SearchParams {
   query: string;
   limit?: number;
   cursor?: string;
-  includeContent?: SearchIncludeContentMode;
+  contentMode?: ContentMode;
   depth?: number;
   childLimit?: number;
   maxContentLength?: number;
+  ancestorDepth?: number;
+  view?: ResultView;
 }
 
 export interface SearchByTagParams {
@@ -54,18 +56,22 @@ export interface SearchByTagParams {
   resultMode?: SearchByTagResultMode;
   limit?: number;
   cursor?: string;
-  includeContent?: SearchIncludeContentMode;
+  contentMode?: ContentMode;
   depth?: number;
   childLimit?: number;
   maxContentLength?: number;
+  ancestorDepth?: number;
+  view?: ResultView;
 }
 
 export interface ReadNoteParams {
   remId: string;
   depth?: number;
-  includeContent?: IncludeContentMode;
+  contentMode?: ContentMode;
   childLimit?: number;
   maxContentLength?: number;
+  ancestorDepth?: number;
+  view?: ResultView;
 }
 
 export interface UpdateNoteParams {
@@ -91,6 +97,24 @@ export interface UpdateTagsParams {
   remId: string;
   addTagRemIds?: string[];
   removeTagRemIds?: string[];
+}
+
+export interface ListChildrenParams {
+  parentRemId: string;
+  limit?: number;
+  cursor?: string;
+  ancestorDepth?: number;
+  view?: ResultView;
+}
+
+export interface MoveNoteParams {
+  remId: string;
+  newParentRemId: string;
+  position?: InsertChildrenPosition;
+  siblingRemId?: string;
+  dryRun?: boolean;
+  expectedOldParentRemId?: string;
+  ancestorDepth?: number;
 }
 
 export interface ReadTableParams {
@@ -141,6 +165,8 @@ export interface SearchResultItem {
   inlineRefs?: InlineReference[];
   parentRemId?: string;
   parentTitle?: string;
+  ancestors?: AncestorInfo[];
+  ancestorsTruncated?: boolean;
   aliases?: string[];
   tags?: TagInfo[];
   remType: RemClassification;
@@ -172,6 +198,8 @@ export interface MatchedRemMetadata {
   remType: RemClassification;
   parentRemId?: string;
   parentTitle?: string;
+  ancestors?: AncestorInfo[];
+  ancestorsTruncated?: boolean;
   tags?: TagInfo[];
 }
 
@@ -190,6 +218,45 @@ export interface StructuredContentNode {
 export interface TagInfo {
   tagRemId: string;
   name: string;
+}
+
+export interface AncestorInfo {
+  remId: string;
+  title: string;
+  remType?: RemClassification;
+}
+
+interface ParentContext {
+  parentRemId?: string;
+  parentTitle?: string;
+}
+
+interface AncestorContext {
+  ancestors?: AncestorInfo[];
+  ancestorsTruncated?: boolean;
+}
+
+export interface ListChildrenResult {
+  children: SearchResultItem[];
+  hasMore: boolean;
+  nextCursor?: string;
+  totalChildren: number;
+}
+
+export interface MoveNoteResult {
+  remId: string;
+  title: string;
+  dryRun: boolean;
+  oldParentRemId?: string;
+  oldParentTitle?: string;
+  newParentRemId: string;
+  newParentTitle: string;
+  position: InsertChildrenPosition;
+  siblingRemId?: string;
+  ancestorsBefore?: AncestorInfo[];
+  ancestorsBeforeTruncated?: boolean;
+  ancestorsAfter?: AncestorInfo[];
+  ancestorsAfterTruncated?: boolean;
 }
 
 export type RemClassification =
@@ -266,10 +333,12 @@ interface RenderResult {
 }
 
 interface SearchContentOptions {
-  includeContent: SearchIncludeContentMode;
+  contentMode: ContentMode;
   depth: number;
   childLimit: number;
   maxContentLength: number;
+  ancestorDepth: number;
+  view: ResultView;
 }
 
 interface SearchCursorSnapshot {
@@ -328,16 +397,8 @@ interface TitleDetailRenderResult {
   inlineRefs: InlineReference[];
 }
 
-const SEARCH_INCLUDE_CONTENT_MODES: readonly SearchIncludeContentMode[] = [
-  'none',
-  'markdown',
-  'structured',
-];
-const READ_INCLUDE_CONTENT_MODES: readonly IncludeContentMode[] = [
-  'none',
-  'markdown',
-  'structured',
-];
+const CONTENT_MODES: readonly ContentMode[] = ['none', 'markdown', 'structured'];
+const RESULT_VIEWS: readonly ResultView[] = ['compact', 'standard', 'full'];
 
 export class RemAdapter {
   private settings: AutomationBridgeSettings;
@@ -815,10 +876,7 @@ export class RemAdapter {
    * Resolve parent metadata for a Rem.
    * Returns empty object for top-level rems.
    */
-  private async getParentContext(rem: PluginRem): Promise<{
-    parentRemId?: string;
-    parentTitle?: string;
-  }> {
+  private async getParentContext(rem: PluginRem): Promise<ParentContext> {
     const parentRem = await this.getParentRem(rem);
     if (!parentRem) return {};
 
@@ -826,6 +884,28 @@ export class RemAdapter {
     return {
       parentRemId: parentRem._id,
       parentTitle,
+    };
+  }
+
+  private async getAncestors(rem: PluginRem, ancestorDepth: number): Promise<AncestorContext> {
+    if (ancestorDepth <= 0) return {};
+
+    const ancestors: AncestorInfo[] = [];
+    let parentRem = await this.getParentRem(rem);
+
+    while (parentRem && ancestors.length < ancestorDepth) {
+      const [{ title }, remType] = await Promise.all([
+        this.getTitleAndDetail(parentRem),
+        this.classifyRem(parentRem),
+      ]);
+      ancestors.push({ remId: parentRem._id, title, remType });
+      parentRem = await this.getParentRem(parentRem);
+    }
+
+    if (ancestors.length === 0) return {};
+    return {
+      ancestors,
+      ...(parentRem ? { ancestorsTruncated: true } : {}),
     };
   }
 
@@ -1015,17 +1095,17 @@ export class RemAdapter {
     return limitedChildren;
   }
 
-  private parseSearchIncludeContentMode(
-    includeContent: SearchParams['includeContent']
-  ): SearchIncludeContentMode {
-    const mode = includeContent ?? 'none';
-    if ((SEARCH_INCLUDE_CONTENT_MODES as readonly string[]).includes(mode)) {
+  private parseContentMode(
+    contentMode: ContentMode | undefined,
+    fieldName: string,
+    defaultMode: ContentMode
+  ): ContentMode {
+    const mode = contentMode ?? defaultMode;
+    if ((CONTENT_MODES as readonly string[]).includes(mode)) {
       return mode;
     }
     throw new Error(
-      `Invalid includeContent for search: ${String(
-        includeContent
-      )}. Expected one of: ${SEARCH_INCLUDE_CONTENT_MODES.join(', ')}`
+      `Invalid ${fieldName}: ${String(mode)}. Expected one of: ${CONTENT_MODES.join(', ')}`
     );
   }
 
@@ -1043,18 +1123,20 @@ export class RemAdapter {
     );
   }
 
-  private parseReadIncludeContentMode(
-    includeContent: ReadNoteParams['includeContent']
-  ): IncludeContentMode {
-    const mode = includeContent ?? 'markdown';
-    if ((READ_INCLUDE_CONTENT_MODES as readonly string[]).includes(mode)) {
-      return mode;
+  private parseResultView(view: ResultView | undefined): ResultView {
+    const resultView = view ?? 'standard';
+    if ((RESULT_VIEWS as readonly string[]).includes(resultView)) {
+      return resultView;
     }
-    throw new Error(
-      `Invalid includeContent for read_note: ${String(
-        includeContent
-      )}. Expected one of: ${READ_INCLUDE_CONTENT_MODES.join(', ')}`
-    );
+    throw new Error(`Invalid view: ${String(view)}. Expected one of: ${RESULT_VIEWS.join(', ')}`);
+  }
+
+  private getAncestorDepth(requestedDepth: number | undefined): number {
+    const depth = requestedDepth ?? 0;
+    if (!Number.isInteger(depth) || depth < 0 || depth > 20) {
+      throw new Error('ancestorDepth must be an integer between 0 and 20');
+    }
+    return depth;
   }
 
   private getSearchSdkFetchLimit(requestedLimit: number): number {
@@ -1067,6 +1149,36 @@ export class RemAdapter {
       throw new Error('Search limit must be a positive integer');
     }
     return limit;
+  }
+
+  private createListChildrenCursor(
+    parentRemId: string,
+    offset: number,
+    totalChildren: number
+  ): string | undefined {
+    if (offset >= totalChildren) {
+      return undefined;
+    }
+    return `list_children:v1:${parentRemId}:${offset}:${this.hashSearchQuery(parentRemId)}`;
+  }
+
+  private parseListChildrenCursor(parentRemId: string, cursor: string | undefined): number {
+    if (!cursor) return 0;
+    const parts = cursor.split(':');
+    if (parts.length !== 5 || parts[0] !== 'list_children' || parts[1] !== 'v1') {
+      throw new Error('Invalid list_children cursor');
+    }
+
+    const offset = Number(parts[3]);
+    if (!Number.isInteger(offset) || offset < 0) {
+      throw new Error('Invalid list_children cursor offset');
+    }
+
+    if (parts[2] !== parentRemId || parts[4] !== this.hashSearchQuery(parentRemId)) {
+      throw new Error('list_children cursor does not match parentRemId');
+    }
+
+    return offset;
   }
 
   private createSearchSnapshotId(): string {
@@ -1405,7 +1517,7 @@ export class RemAdapter {
         for (const matchedRemId of entry.matchedRemIds ?? []) {
           const matchedRem = await this.plugin.rem.findOne(matchedRemId);
           if (matchedRem) {
-            matchedRems.push(await this.buildMatchedRemMetadata(matchedRem, tagNameCache));
+            matchedRems.push(await this.buildMatchedRemMetadata(matchedRem, tagNameCache, options));
           }
         }
         results.push({ ...item, matchedRems });
@@ -1439,13 +1551,18 @@ export class RemAdapter {
   }
 
   private getSearchContentOptions(
-    params: Pick<SearchParams, 'includeContent' | 'depth' | 'childLimit' | 'maxContentLength'>
+    params: Pick<
+      SearchParams,
+      'contentMode' | 'depth' | 'childLimit' | 'maxContentLength' | 'ancestorDepth' | 'view'
+    >
   ): SearchContentOptions {
     return {
-      includeContent: this.parseSearchIncludeContentMode(params.includeContent),
+      contentMode: this.parseContentMode(params.contentMode, 'contentMode for search', 'none'),
       depth: params.depth ?? DEFAULT_SEARCH_DEPTH,
       childLimit: params.childLimit ?? DEFAULT_SEARCH_CHILD_LIMIT,
       maxContentLength: params.maxContentLength ?? DEFAULT_SEARCH_MAX_CONTENT_LENGTH,
+      ancestorDepth: this.getAncestorDepth(params.ancestorDepth),
+      view: this.parseResultView(params.view),
     };
   }
 
@@ -1455,17 +1572,25 @@ export class RemAdapter {
     options: SearchContentOptions,
     tagNameCache: TagNameCache
   ): Promise<SearchResultItem & { _sourceIndex: number }> {
-    const [{ title, detail, inlineRefs }, remType, cardDirection, aliases, tags, parentContext] =
-      await Promise.all([
-        this.getTitleAndDetail(rem),
-        this.classifyRem(rem),
-        rem.backText
-          ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
-          : Promise.resolve(undefined),
-        this.getAliases(rem),
-        this.getTags(rem, tagNameCache),
-        this.getParentContext(rem),
-      ]);
+    const [
+      { title, detail, inlineRefs },
+      remType,
+      cardDirection,
+      aliases,
+      tags,
+      parentContext,
+      ancestorContext,
+    ] = await Promise.all([
+      this.getTitleAndDetail(rem),
+      this.classifyRem(rem),
+      options.view !== 'compact' && rem.backText
+        ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+        : Promise.resolve(undefined),
+      options.view !== 'compact' ? this.getAliases(rem) : Promise.resolve([]),
+      options.view !== 'compact' ? this.getTags(rem, tagNameCache) : Promise.resolve([]),
+      this.getParentContext(rem),
+      this.getAncestors(rem, options.ancestorDepth),
+    ]);
 
     const headline = this.formatHeadline(title, detail, remType);
 
@@ -1473,7 +1598,7 @@ export class RemAdapter {
     let contentStructured: StructuredContentNode[] | undefined;
     let contentProperties: ContentProperties | undefined;
 
-    if (options.includeContent === 'markdown') {
+    if (options.contentMode === 'markdown') {
       const renderResult = await this.renderContentMarkdown(
         rem,
         options.depth,
@@ -1482,14 +1607,17 @@ export class RemAdapter {
       );
       if (renderResult.content) {
         content = renderResult.content;
-        contentProperties = await this.buildContentProperties(rem, renderResult, options.depth);
+        if (options.view !== 'compact') {
+          contentProperties = await this.buildContentProperties(rem, renderResult, options.depth);
+        }
       }
-    } else if (options.includeContent === 'structured') {
+    } else if (options.contentMode === 'structured') {
       const structuredChildren = await this.renderContentStructured(
         rem,
         options.depth,
         options.childLimit,
-        tagNameCache
+        tagNameCache,
+        options.view
       );
       if (structuredChildren.length > 0) {
         contentStructured = structuredChildren;
@@ -1500,12 +1628,13 @@ export class RemAdapter {
       remId: rem._id,
       title,
       headline,
-      ...(inlineRefs.length > 0 ? { inlineRefs } : {}),
+      ...(options.view !== 'compact' && inlineRefs.length > 0 ? { inlineRefs } : {}),
       ...parentContext,
-      ...(aliases.length > 0 ? { aliases } : {}),
-      ...(tags.length > 0 ? { tags } : {}),
+      ...ancestorContext,
+      ...(options.view !== 'compact' && aliases.length > 0 ? { aliases } : {}),
+      ...(options.view !== 'compact' && tags.length > 0 ? { tags } : {}),
       remType,
-      ...(cardDirection ? { cardDirection } : {}),
+      ...(options.view !== 'compact' && cardDirection ? { cardDirection } : {}),
       ...(content ? { content } : {}),
       ...(contentStructured ? { contentStructured } : {}),
       ...(contentProperties ? { contentProperties } : {}),
@@ -1515,14 +1644,17 @@ export class RemAdapter {
 
   private async buildMatchedRemMetadata(
     rem: PluginRem,
-    tagNameCache: TagNameCache
+    tagNameCache: TagNameCache,
+    options: SearchContentOptions
   ): Promise<MatchedRemMetadata> {
-    const [{ title, detail, inlineRefs }, remType, tags, parentContext] = await Promise.all([
-      this.getTitleAndDetail(rem),
-      this.classifyRem(rem),
-      this.getTags(rem, tagNameCache),
-      this.getParentContext(rem),
-    ]);
+    const [{ title, detail, inlineRefs }, remType, tags, parentContext, ancestorContext] =
+      await Promise.all([
+        this.getTitleAndDetail(rem),
+        this.classifyRem(rem),
+        options.view !== 'compact' ? this.getTags(rem, tagNameCache) : Promise.resolve([]),
+        this.getParentContext(rem),
+        this.getAncestors(rem, options.ancestorDepth),
+      ]);
 
     const headline = this.formatHeadline(title, detail, remType);
 
@@ -1530,10 +1662,11 @@ export class RemAdapter {
       remId: rem._id,
       title,
       headline,
-      ...(inlineRefs.length > 0 ? { inlineRefs } : {}),
+      ...(options.view !== 'compact' && inlineRefs.length > 0 ? { inlineRefs } : {}),
       remType,
       ...parentContext,
-      ...(tags.length > 0 ? { tags } : {}),
+      ...ancestorContext,
+      ...(options.view !== 'compact' && tags.length > 0 ? { tags } : {}),
     };
   }
 
@@ -1687,7 +1820,8 @@ export class RemAdapter {
     rem: PluginRem,
     depth: number,
     childLimit: number,
-    tagNameCache: TagNameCache
+    tagNameCache: TagNameCache,
+    view: ResultView
   ): Promise<StructuredContentNode[]> {
     if (depth <= 0) return [];
 
@@ -1700,29 +1834,30 @@ export class RemAdapter {
         await Promise.all([
           this.getTitleAndDetail(child),
           this.classifyRem(child),
-          child.backText
+          view !== 'compact' && child.backText
             ? child.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
             : Promise.resolve(undefined),
-          this.getAliases(child),
-          this.getTags(child, tagNameCache),
+          view !== 'compact' ? this.getAliases(child) : Promise.resolve([]),
+          view !== 'compact' ? this.getTags(child, tagNameCache) : Promise.resolve([]),
         ]);
 
       const children = await this.renderContentStructured(
         child,
         depth - 1,
         childLimit,
-        tagNameCache
+        tagNameCache,
+        view
       );
 
       results.push({
         remId: child._id,
         title,
         headline: this.formatHeadline(title, detail, remType),
-        ...(inlineRefs.length > 0 ? { inlineRefs } : {}),
+        ...(view !== 'compact' && inlineRefs.length > 0 ? { inlineRefs } : {}),
         remType,
-        ...(aliases.length > 0 ? { aliases } : {}),
-        ...(tags.length > 0 ? { tags } : {}),
-        ...(cardDirection ? { cardDirection } : {}),
+        ...(view !== 'compact' && aliases.length > 0 ? { aliases } : {}),
+        ...(view !== 'compact' && tags.length > 0 ? { tags } : {}),
+        ...(view !== 'compact' && cardDirection ? { cardDirection } : {}),
         ...(children.length > 0 ? { children } : {}),
       });
     }
@@ -1897,6 +2032,55 @@ export class RemAdapter {
     }
 
     return params.position === 'before' ? siblingIndex : siblingIndex + 1;
+  }
+
+  private async getMovePosition(
+    parent: PluginRem,
+    movingRemId: string,
+    position: InsertChildrenPosition,
+    siblingRemId?: string
+  ): Promise<number> {
+    if ((position === 'before' || position === 'after') && !siblingRemId) {
+      throw new Error(`siblingRemId is required when position is ${position}`);
+    }
+
+    if ((position === 'first' || position === 'last') && siblingRemId) {
+      throw new Error(`siblingRemId must not be provided when position is ${position}`);
+    }
+
+    const children = (await parent.getChildrenRem()).filter((child) => child._id !== movingRemId);
+
+    if (position === 'first') {
+      return 0;
+    }
+
+    if (position === 'last') {
+      return children.length;
+    }
+
+    const siblingIndex = children.findIndex((child) => child._id === siblingRemId);
+    if (siblingIndex === -1) {
+      throw new Error(`Sibling note not found under parent ${parent._id}: ${siblingRemId}`);
+    }
+
+    return position === 'before' ? siblingIndex : siblingIndex + 1;
+  }
+
+  private async assertNotMovingUnderDescendant(
+    rem: PluginRem,
+    newParent: PluginRem
+  ): Promise<void> {
+    if (rem._id === newParent._id) {
+      throw new Error('Cannot move a note under itself');
+    }
+
+    let current: PluginRem | undefined = newParent;
+    while (current) {
+      if (current._id === rem._id) {
+        throw new Error('Cannot move a note under one of its descendants');
+      }
+      current = await this.getParentRem(current);
+    }
   }
 
   /**
@@ -2143,6 +2327,8 @@ export class RemAdapter {
     inlineRefs?: InlineReference[];
     parentRemId?: string;
     parentTitle?: string;
+    ancestors?: AncestorInfo[];
+    ancestorsTruncated?: boolean;
     aliases?: string[];
     tags?: TagInfo[];
     remType: RemClassification;
@@ -2152,9 +2338,15 @@ export class RemAdapter {
     contentProperties?: ContentProperties;
   }> {
     const depth = params.depth ?? DEFAULT_DEPTH;
-    const includeContent = this.parseReadIncludeContentMode(params.includeContent);
+    const contentMode = this.parseContentMode(
+      params.contentMode,
+      'contentMode for read_note',
+      'markdown'
+    );
     const childLimit = params.childLimit ?? DEFAULT_CHILD_LIMIT;
     const maxContentLength = params.maxContentLength ?? DEFAULT_READ_MAX_CONTENT_LENGTH;
+    const ancestorDepth = this.getAncestorDepth(params.ancestorDepth);
+    const view = this.parseResultView(params.view);
 
     const rem = await this.plugin.rem.findOne(params.remId);
 
@@ -2163,17 +2355,25 @@ export class RemAdapter {
     }
 
     const tagNameCache: TagNameCache = new Map();
-    const [{ title, detail, inlineRefs }, remType, cardDirection, aliases, tags, parentContext] =
-      await Promise.all([
-        this.getTitleAndDetail(rem),
-        this.classifyRem(rem),
-        rem.backText
-          ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
-          : Promise.resolve(undefined),
-        this.getAliases(rem),
-        this.getTags(rem, tagNameCache),
-        this.getParentContext(rem),
-      ]);
+    const [
+      { title, detail, inlineRefs },
+      remType,
+      cardDirection,
+      aliases,
+      tags,
+      parentContext,
+      ancestorContext,
+    ] = await Promise.all([
+      this.getTitleAndDetail(rem),
+      this.classifyRem(rem),
+      view !== 'compact' && rem.backText
+        ? rem.getPracticeDirection().then((direction) => this.mapCardDirection(direction))
+        : Promise.resolve(undefined),
+      view !== 'compact' ? this.getAliases(rem) : Promise.resolve([]),
+      view !== 'compact' ? this.getTags(rem, tagNameCache) : Promise.resolve([]),
+      this.getParentContext(rem),
+      this.getAncestors(rem, ancestorDepth),
+    ]);
 
     const headline = this.formatHeadline(title, detail, remType);
 
@@ -2181,7 +2381,7 @@ export class RemAdapter {
     let contentStructured: StructuredContentNode[] | undefined;
     let contentProperties: ContentProperties | undefined;
 
-    if (includeContent === 'markdown') {
+    if (contentMode === 'markdown') {
       const renderResult = await this.renderContentMarkdown(
         rem,
         depth,
@@ -2190,13 +2390,16 @@ export class RemAdapter {
       );
       // Always include content for markdown mode (even if empty string)
       content = renderResult.content;
-      contentProperties = await this.buildContentProperties(rem, renderResult, depth);
-    } else if (includeContent === 'structured') {
+      if (view !== 'compact') {
+        contentProperties = await this.buildContentProperties(rem, renderResult, depth);
+      }
+    } else if (contentMode === 'structured') {
       const structuredChildren = await this.renderContentStructured(
         rem,
         depth,
         childLimit,
-        tagNameCache
+        tagNameCache,
+        view
       );
       if (structuredChildren.length > 0) {
         contentStructured = structuredChildren;
@@ -2207,15 +2410,155 @@ export class RemAdapter {
       remId: rem._id,
       title,
       headline,
-      ...(inlineRefs.length > 0 ? { inlineRefs } : {}),
+      ...(view !== 'compact' && inlineRefs.length > 0 ? { inlineRefs } : {}),
       ...parentContext,
-      ...(aliases.length > 0 ? { aliases } : {}),
-      ...(tags.length > 0 ? { tags } : {}),
+      ...ancestorContext,
+      ...(view !== 'compact' && aliases.length > 0 ? { aliases } : {}),
+      ...(view !== 'compact' && tags.length > 0 ? { tags } : {}),
       remType,
-      ...(cardDirection ? { cardDirection } : {}),
+      ...(view !== 'compact' && cardDirection ? { cardDirection } : {}),
       ...(content !== undefined ? { content } : {}),
       ...(contentStructured ? { contentStructured } : {}),
       ...(contentProperties ? { contentProperties } : {}),
+    };
+  }
+
+  async listChildren(params: ListChildrenParams): Promise<ListChildrenResult> {
+    const parentRemId = this.requireString(params.parentRemId, 'parentRemId');
+    const parent = await this.plugin.rem.findOne(parentRemId);
+
+    if (!parent) {
+      throw new Error(`Parent note not found: ${parentRemId}`);
+    }
+
+    const limit = this.getSearchLimit(params.limit);
+    const offset = this.parseListChildrenCursor(parentRemId, params.cursor);
+    const view = this.parseResultView(params.view ?? 'compact');
+    const ancestorDepth = this.getAncestorDepth(params.ancestorDepth);
+    const children = await parent.getChildrenRem();
+    const pageChildren = children.slice(offset, offset + limit);
+    const tagNameCache: TagNameCache = new Map();
+    const options: SearchContentOptions = {
+      contentMode: 'none',
+      depth: 0,
+      childLimit: 1,
+      maxContentLength: DEFAULT_SEARCH_MAX_CONTENT_LENGTH,
+      ancestorDepth,
+      view,
+    };
+    const results: SearchResultItem[] = [];
+
+    for (let i = 0; i < pageChildren.length; i++) {
+      results.push(
+        await this.buildSearchResultItem(pageChildren[i], offset + i, options, tagNameCache)
+      );
+    }
+
+    const nextOffset = offset + limit;
+    const nextCursor = this.createListChildrenCursor(parentRemId, nextOffset, children.length);
+
+    return {
+      children: results,
+      hasMore: nextCursor !== undefined,
+      nextCursor,
+      totalChildren: children.length,
+    };
+  }
+
+  async moveNote(params: MoveNoteParams): Promise<MoveNoteResult> {
+    if (!this.settings.acceptWriteOperations) {
+      throw new Error('Write operations are disabled in Automation Bridge settings');
+    }
+
+    const remId = this.requireString(params.remId, 'remId');
+    const newParentRemId = this.requireString(params.newParentRemId, 'newParentRemId');
+    const position = this.requireInsertPosition(params.position ?? 'last');
+    const siblingRemId =
+      params.siblingRemId === undefined || params.siblingRemId === null
+        ? undefined
+        : this.requireString(params.siblingRemId, 'siblingRemId');
+    const dryRun = params.dryRun !== false;
+    const ancestorDepth = this.getAncestorDepth(params.ancestorDepth);
+
+    const rem = await this.plugin.rem.findOne(remId);
+    if (!rem) {
+      throw new Error(`Note not found: ${remId}`);
+    }
+
+    const newParent = await this.plugin.rem.findOne(newParentRemId);
+    if (!newParent) {
+      throw new Error(`New parent note not found: ${newParentRemId}`);
+    }
+
+    await this.assertNotMovingUnderDescendant(rem, newParent);
+
+    const oldParent = await this.getParentRem(rem);
+    if (
+      params.expectedOldParentRemId !== undefined &&
+      oldParent?._id !== params.expectedOldParentRemId
+    ) {
+      throw new Error(
+        `Current parent does not match expectedOldParentRemId: expected ${params.expectedOldParentRemId}, got ${
+          oldParent?._id ?? 'top-level'
+        }`
+      );
+    }
+
+    const positionAmongstSiblings = await this.getMovePosition(
+      newParent,
+      remId,
+      position,
+      siblingRemId
+    );
+    const [{ title }, oldParentContext, newParentContext, ancestorsBefore] = await Promise.all([
+      this.getTitleAndDetail(rem),
+      oldParent ? this.getParentContext(rem) : Promise.resolve<ParentContext>({}),
+      this.getTitleAndDetail(newParent),
+      this.getAncestors(rem, ancestorDepth),
+    ]);
+
+    if (!dryRun) {
+      if ('setParent' in rem && typeof rem.setParent === 'function') {
+        await rem.setParent(newParent, positionAmongstSiblings);
+      } else {
+        throw new Error('RemNote SDK does not expose safe move support for this note');
+      }
+    }
+
+    const ancestorsAfter = dryRun
+      ? await this.getAncestors(newParent, Math.max(ancestorDepth - 1, 0))
+      : await this.getAncestors(rem, ancestorDepth);
+    const dryRunAncestorsAfter: AncestorContext =
+      dryRun && ancestorDepth > 0
+        ? {
+            ancestors: [
+              {
+                remId: newParent._id,
+                title: newParentContext.title,
+                remType: await this.classifyRem(newParent),
+              },
+              ...(ancestorsAfter.ancestors ?? []),
+            ].slice(0, ancestorDepth),
+            ancestorsTruncated:
+              (ancestorsAfter.ancestorsTruncated ?? false) ||
+              (ancestorsAfter.ancestors?.length ?? 0) >= ancestorDepth,
+          }
+        : ancestorsAfter;
+
+    return {
+      remId,
+      title,
+      dryRun,
+      ...(oldParentContext.parentRemId ? { oldParentRemId: oldParentContext.parentRemId } : {}),
+      ...(oldParentContext.parentTitle ? { oldParentTitle: oldParentContext.parentTitle } : {}),
+      newParentRemId,
+      newParentTitle: newParentContext.title,
+      position,
+      ...(siblingRemId ? { siblingRemId } : {}),
+      ...(ancestorsBefore.ancestors ? { ancestorsBefore: ancestorsBefore.ancestors } : {}),
+      ...(ancestorsBefore.ancestorsTruncated ? { ancestorsBeforeTruncated: true } : {}),
+      ...(dryRunAncestorsAfter.ancestors ? { ancestorsAfter: dryRunAncestorsAfter.ancestors } : {}),
+      ...(dryRunAncestorsAfter.ancestorsTruncated ? { ancestorsAfterTruncated: true } : {}),
     };
   }
 

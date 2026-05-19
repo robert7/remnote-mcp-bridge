@@ -567,6 +567,44 @@ describe('RemAdapter', () => {
       expect(result.results[0].parentTitle).toBe('Parent context note');
     });
 
+    it('should include parent-first ancestors in search results when requested', async () => {
+      plugin.clearTestData();
+      const root = plugin.addTestRem('search_ancestor_root', 'Root');
+      const parent = plugin.addTestRem('search_ancestor_parent', 'Parent');
+      const child = plugin.addTestRem('search_ancestor_child', 'Child');
+      await parent.setParent(root);
+      await child.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([child]);
+
+      const result = await adapter.search({
+        query: 'Child',
+        ancestorDepth: 1,
+      });
+
+      expect(result.results[0].ancestors).toEqual([
+        { remId: 'search_ancestor_parent', title: 'Parent', remType: 'text' },
+      ]);
+      expect(result.results[0].ancestorsTruncated).toBe(true);
+    });
+
+    it('should omit ancestors in search results when ancestorDepth is zero', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('search_no_ancestor_parent', 'Parent');
+      const child = plugin.addTestRem('search_no_ancestor_child', 'Child');
+      await child.setParent(parent);
+
+      plugin.search.search.mockResolvedValueOnce([child]);
+
+      const result = await adapter.search({
+        query: 'Child',
+        ancestorDepth: 0,
+      });
+
+      expect(result.results[0].ancestors).toBeUndefined();
+      expect(result.results[0].ancestorsTruncated).toBeUndefined();
+    });
+
     it('should omit parent context in search results for top-level rems', async () => {
       plugin.clearTestData();
       const rem = plugin.addTestRem('search_root_ctx', 'Top level');
@@ -580,14 +618,14 @@ describe('RemAdapter', () => {
       expect(result.results[0].parentTitle).toBeUndefined();
     });
 
-    it('should include content when includeContent is markdown', async () => {
+    it('should include content when contentMode is markdown', async () => {
       const parentRem = plugin.addTestRem('parent_search', 'Parent');
       const childRem = new MockRem('child_search', 'Child content');
       await childRem.setParent(parentRem);
 
       const result = await adapter.search({
         query: 'Parent',
-        includeContent: 'markdown',
+        contentMode: 'markdown',
       });
 
       const parentResult = result.results.find((r) => r.remId === 'parent_search');
@@ -598,7 +636,7 @@ describe('RemAdapter', () => {
       }
     });
 
-    it('should include structured child content when includeContent is structured', async () => {
+    it('should include structured child content when contentMode is structured', async () => {
       plugin.clearTestData();
       const parent = plugin.addTestRem('search_struct_parent', 'Parent');
       plugin.addTestRem('search_struct_ref_target', 'Linked Child Target');
@@ -615,7 +653,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.search({
         query: 'Parent',
-        includeContent: 'structured',
+        contentMode: 'structured',
         depth: 2,
       });
 
@@ -658,7 +696,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.search({
         query: 'Parent',
-        includeContent: 'structured',
+        contentMode: 'structured',
         depth: 1,
       });
 
@@ -684,7 +722,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.search({
         query: 'Parent',
-        includeContent: 'markdown',
+        contentMode: 'markdown',
       });
 
       const item = result.results[0];
@@ -692,10 +730,10 @@ describe('RemAdapter', () => {
       expect(item.content).not.toContain('Grandchild');
     });
 
-    it('should not include content when includeContent is none', async () => {
+    it('should not include content when contentMode is none', async () => {
       const result = await adapter.search({
         query: 'note',
-        includeContent: 'none',
+        contentMode: 'none',
       });
 
       expect(result.results[0].content).toBeUndefined();
@@ -703,7 +741,7 @@ describe('RemAdapter', () => {
       expect(result.results[0].contentProperties).toBeUndefined();
     });
 
-    it('should default includeContent to none for search', async () => {
+    it('should default contentMode to none for search', async () => {
       const result = await adapter.search({
         query: 'note',
       });
@@ -835,10 +873,10 @@ describe('RemAdapter', () => {
       expect(result.truncationReason).toBe('cursor_snapshot_limit');
     });
 
-    it('should reject unsupported search includeContent mode', async () => {
+    it('should reject unsupported search contentMode mode', async () => {
       await expect(
-        adapter.search({ query: 'note', includeContent: 'weird' as 'none' })
-      ).rejects.toThrow('Invalid includeContent for search');
+        adapter.search({ query: 'note', contentMode: 'weird' as 'none' })
+      ).rejects.toThrow('Invalid contentMode for search');
     });
 
     it('should sort results by remType priority', async () => {
@@ -973,7 +1011,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.search({
         query: 'Parent',
-        includeContent: 'structured',
+        contentMode: 'structured',
       });
 
       expect(result.results[0].contentStructured).toEqual([
@@ -1001,7 +1039,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.search({
         query: 'test',
-        includeContent: 'markdown',
+        contentMode: 'markdown',
         childLimit: 2,
       });
 
@@ -1026,7 +1064,7 @@ describe('RemAdapter', () => {
 
       const structured = await adapter.search({
         query: 'Parent',
-        includeContent: 'structured',
+        contentMode: 'structured',
       });
       expect(structured.results[0].contentStructured).toEqual([
         {
@@ -1039,7 +1077,7 @@ describe('RemAdapter', () => {
 
       const markdown = await adapter.search({
         query: 'Parent',
-        includeContent: 'markdown',
+        contentMode: 'markdown',
       });
       expect(markdown.results[0].content).toBe('- Visible child\n');
       expect(markdown.results[0].content).not.toContain('Status');
@@ -1057,7 +1095,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.search({
         query: 'Parent',
-        includeContent: 'markdown',
+        contentMode: 'markdown',
         depth: 1,
       });
 
@@ -1158,6 +1196,31 @@ describe('RemAdapter', () => {
           parentTitle: 'Shared Parent',
           tags: [{ tagRemId: 'tag_matches', name: 'matches' }],
         },
+      ]);
+    });
+
+    it('should include requested ancestors on search-by-tag context results and matched rems', async () => {
+      plugin.clearTestData();
+      const tag = plugin.addTestRem('tag_ancestors', 'ancestors', 'ancestors');
+      const root = plugin.addTestRem('tag_ancestor_root', 'Root');
+      const parent = plugin.addTestRem('tag_ancestor_parent', 'Parent');
+      const child = plugin.addTestRem('tag_ancestor_child', 'Tagged child');
+      await parent.setParent(root);
+      await child.setParent(parent);
+      child.setTagRemsMock([tag]);
+      tag.setTaggedRemsMock([child]);
+
+      const result = await adapter.searchByTag({
+        tagRemId: 'tag_ancestors',
+        ancestorDepth: 2,
+      });
+
+      expect(result.results[0].ancestors).toEqual([
+        { remId: 'tag_ancestor_root', title: 'Root', remType: 'text' },
+      ]);
+      expect(result.results[0].matchedRems?.[0].ancestors).toEqual([
+        { remId: 'tag_ancestor_parent', title: 'Parent', remType: 'text' },
+        { remId: 'tag_ancestor_root', title: 'Root', remType: 'text' },
       ]);
     });
 
@@ -1322,7 +1385,7 @@ describe('RemAdapter', () => {
 
       const markdown = await adapter.searchByTag({
         tagRemId: 'tag_mode',
-        includeContent: 'markdown',
+        contentMode: 'markdown',
       });
       expect(markdown.results[0].content).toBeDefined();
       expect(markdown.results[0].content).toContain('Mode Child');
@@ -1330,7 +1393,7 @@ describe('RemAdapter', () => {
 
       const structured = await adapter.searchByTag({
         tagRemId: 'tag_mode',
-        includeContent: 'structured',
+        contentMode: 'structured',
       });
       expect(structured.results[0].contentStructured).toEqual([
         {
@@ -1342,7 +1405,7 @@ describe('RemAdapter', () => {
       ]);
       expect(structured.results[0].content).toBeUndefined();
 
-      const none = await adapter.searchByTag({ tagRemId: 'tag_mode', includeContent: 'none' });
+      const none = await adapter.searchByTag({ tagRemId: 'tag_mode', contentMode: 'none' });
       expect(none.results[0].content).toBeUndefined();
       expect(none.results[0].contentStructured).toBeUndefined();
     });
@@ -1396,6 +1459,41 @@ describe('RemAdapter', () => {
       expect(result.parentTitle).toBe('Parent title');
     });
 
+    it('should include parent-first ancestors in read results when requested', async () => {
+      const root = plugin.addTestRem('read_ancestor_root', 'Root');
+      const parent = plugin.addTestRem('read_ancestor_parent', 'Parent');
+      const child = plugin.addTestRem('read_ancestor_child', 'Child');
+      await parent.setParent(root);
+      await child.setParent(parent);
+
+      const result = await adapter.readNote({
+        remId: 'read_ancestor_child',
+        ancestorDepth: 1,
+      });
+
+      expect(result.ancestors).toEqual([
+        { remId: 'read_ancestor_parent', title: 'Parent', remType: 'text' },
+      ]);
+      expect(result.ancestorsTruncated).toBe(true);
+    });
+
+    it('should omit verbose metadata in compact read view', async () => {
+      const tag = plugin.addTestRem('read_compact_tag', 'tag');
+      const rem = plugin.addTestRem('read_compact', 'Compact');
+      rem.setTagRemsMock([tag]);
+
+      const result = await adapter.readNote({
+        remId: 'read_compact',
+        contentMode: 'none',
+        view: 'compact',
+      });
+
+      expect(result.tags).toBeUndefined();
+      expect(result.aliases).toBeUndefined();
+      expect(result.content).toBeUndefined();
+      expect(result.contentProperties).toBeUndefined();
+    });
+
     it('should omit parent context in read results for top-level rems', async () => {
       plugin.addTestRem('read_root_ctx', 'Root title');
 
@@ -1413,7 +1511,7 @@ describe('RemAdapter', () => {
       );
     });
 
-    it('should default includeContent to markdown for readNote', async () => {
+    it('should default contentMode to markdown for readNote', async () => {
       const parent = plugin.addTestRem('read_default', 'Parent');
       const child = new MockRem('read_child', 'Child text');
       await child.setParent(parent);
@@ -1440,19 +1538,19 @@ describe('RemAdapter', () => {
       });
     });
 
-    it('should omit content when includeContent is none', async () => {
+    it('should omit content when contentMode is none', async () => {
       plugin.addTestRem('no_content', 'Note');
 
       const result = await adapter.readNote({
         remId: 'no_content',
-        includeContent: 'none',
+        contentMode: 'none',
       });
 
       expect(result.content).toBeUndefined();
       expect(result.contentProperties).toBeUndefined();
     });
 
-    it('should include structured child content when includeContent is structured', async () => {
+    it('should include structured child content when contentMode is structured', async () => {
       const parent = plugin.addTestRem('read_struct_parent', 'Parent');
       const child = new MockRem('read_struct_child', 'Child');
       const grandchild = new MockRem('read_struct_grandchild', 'Grandchild');
@@ -1461,7 +1559,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.readNote({
         remId: 'read_struct_parent',
-        includeContent: 'structured',
+        contentMode: 'structured',
         depth: 2,
       });
 
@@ -1485,12 +1583,12 @@ describe('RemAdapter', () => {
       ]);
     });
 
-    it('should reject unsupported read_note includeContent mode', async () => {
+    it('should reject unsupported read_note contentMode mode', async () => {
       plugin.addTestRem('bad_mode_note', 'Note');
 
       await expect(
-        adapter.readNote({ remId: 'bad_mode_note', includeContent: 'invalid-mode' as never })
-      ).rejects.toThrow('Invalid includeContent for read_note');
+        adapter.readNote({ remId: 'bad_mode_note', contentMode: 'invalid-mode' as never })
+      ).rejects.toThrow('Invalid contentMode for read_note');
     });
 
     it('should render children as indented markdown', async () => {
@@ -1584,7 +1682,7 @@ describe('RemAdapter', () => {
       const rem = plugin.addTestRem('tagged_read', 'Tagged Read Note');
       rem.setTagRemsMock([workTag, urgentTag]);
 
-      const result = await adapter.readNote({ remId: 'tagged_read', includeContent: 'none' });
+      const result = await adapter.readNote({ remId: 'tagged_read', contentMode: 'none' });
       expect(result.tags).toEqual([
         { tagRemId: 'read_tag_work', name: 'work' },
         { tagRemId: 'read_tag_urgent', name: 'urgent' },
@@ -1599,7 +1697,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.readNote({
         remId: 'tagged_read_rems',
-        includeContent: 'none',
+        contentMode: 'none',
       });
       expect(result.tags).toEqual([
         { tagRemId: 'read_tag_work_rems', name: 'work' },
@@ -1612,7 +1710,7 @@ describe('RemAdapter', () => {
       const rem = plugin.addTestRem('tagged_read_debug', 'Tagged Read Debug Note');
       rem.getTagRems = undefined as unknown as typeof rem.getTagRems;
 
-      await adapter.readNote({ remId: 'tagged_read_debug', includeContent: 'none' });
+      await adapter.readNote({ remId: 'tagged_read_debug', contentMode: 'none' });
 
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(
@@ -1639,7 +1737,7 @@ describe('RemAdapter', () => {
 
       const result = await adapter.readNote({
         remId: 'read_tags_struct_parent',
-        includeContent: 'structured',
+        contentMode: 'structured',
         depth: 1,
       });
 
@@ -1753,6 +1851,120 @@ describe('RemAdapter', () => {
           remId: 'update_missing_title_test',
         } as Parameters<typeof adapter.updateNote>[0])
       ).rejects.toThrow('title must be a string');
+    });
+  });
+
+  describe('listChildren', () => {
+    it('should list direct children only with paging', async () => {
+      const parent = plugin.addTestRem('list_parent', 'Parent');
+      const childA = plugin.addTestRem('list_child_a', 'Child A');
+      const childB = plugin.addTestRem('list_child_b', 'Child B');
+      const grandchild = plugin.addTestRem('list_grandchild', 'Grandchild');
+      await childA.setParent(parent);
+      await childB.setParent(parent);
+      await grandchild.setParent(childA);
+
+      const firstPage = await adapter.listChildren({ parentRemId: 'list_parent', limit: 1 });
+
+      expect(firstPage.children).toHaveLength(1);
+      expect(firstPage.children[0].remId).toBe('list_child_a');
+      expect(firstPage.children[0].contentStructured).toBeUndefined();
+      expect(firstPage.hasMore).toBe(true);
+      expect(firstPage.nextCursor).toBeDefined();
+      expect(firstPage.totalChildren).toBe(2);
+
+      const secondPage = await adapter.listChildren({
+        parentRemId: 'list_parent',
+        limit: 1,
+        cursor: firstPage.nextCursor,
+      });
+
+      expect(secondPage.children).toHaveLength(1);
+      expect(secondPage.children[0].remId).toBe('list_child_b');
+      expect(secondPage.hasMore).toBe(false);
+    });
+
+    it('should include child ancestors when requested', async () => {
+      const root = plugin.addTestRem('list_root', 'Root');
+      const parent = plugin.addTestRem('list_parent_anc', 'Parent');
+      const child = plugin.addTestRem('list_child_anc', 'Child');
+      await parent.setParent(root);
+      await child.setParent(parent);
+
+      const result = await adapter.listChildren({
+        parentRemId: 'list_parent_anc',
+        ancestorDepth: 2,
+      });
+
+      expect(result.children[0].ancestors).toEqual([
+        { remId: 'list_parent_anc', title: 'Parent', remType: 'text' },
+        { remId: 'list_root', title: 'Root', remType: 'text' },
+      ]);
+    });
+  });
+
+  describe('moveNote', () => {
+    it('should dry-run a move without changing parent', async () => {
+      const oldParent = plugin.addTestRem('move_old_parent', 'Old Parent');
+      plugin.addTestRem('move_new_parent', 'New Parent');
+      const child = plugin.addTestRem('move_child', 'Move Child');
+      await child.setParent(oldParent);
+
+      const result = await adapter.moveNote({
+        remId: 'move_child',
+        newParentRemId: 'move_new_parent',
+        ancestorDepth: 1,
+      });
+
+      expect(result.dryRun).toBe(true);
+      expect(result.oldParentRemId).toBe('move_old_parent');
+      expect(result.newParentRemId).toBe('move_new_parent');
+      expect((await child.getParentRem())?._id).toBe('move_old_parent');
+    });
+
+    it('should move a note and preserve its children', async () => {
+      const oldParent = plugin.addTestRem('move_apply_old_parent', 'Old Parent');
+      plugin.addTestRem('move_apply_new_parent', 'New Parent');
+      const child = plugin.addTestRem('move_apply_child', 'Move Child');
+      const grandchild = plugin.addTestRem('move_apply_grandchild', 'Grandchild');
+      await child.setParent(oldParent);
+      await grandchild.setParent(child);
+
+      const result = await adapter.moveNote({
+        remId: 'move_apply_child',
+        newParentRemId: 'move_apply_new_parent',
+        dryRun: false,
+        expectedOldParentRemId: 'move_apply_old_parent',
+      });
+
+      expect(result.dryRun).toBe(false);
+      expect((await child.getParentRem())?._id).toBe('move_apply_new_parent');
+      expect((await grandchild.getParentRem())?._id).toBe('move_apply_child');
+    });
+
+    it('should reject stale expected parent and descendant moves', async () => {
+      const oldParent = plugin.addTestRem('move_guard_old_parent', 'Old Parent');
+      const child = plugin.addTestRem('move_guard_child', 'Move Child');
+      const grandchild = plugin.addTestRem('move_guard_grandchild', 'Grandchild');
+      await child.setParent(oldParent);
+      await grandchild.setParent(child);
+
+      await expect(
+        adapter.moveNote({
+          remId: 'move_guard_child',
+          newParentRemId: 'move_guard_old_parent',
+          expectedOldParentRemId: 'different_parent',
+          dryRun: false,
+        })
+      ).rejects.toThrow('Current parent does not match expectedOldParentRemId');
+
+      await expect(
+        adapter.moveNote({
+          remId: 'move_guard_child',
+          newParentRemId: 'move_guard_grandchild',
+          dryRun: false,
+        })
+      ).rejects.toThrow('Cannot move a note under one of its descendants');
     });
   });
 

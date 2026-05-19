@@ -48,12 +48,12 @@ Run:
 ```js
 await runBridge('search', {
   query: 'AI assisted coding',
-  includeContent: 'markdown',
+  contentMode: 'markdown',
 });
 ```
 
 Expected result: `{ results: [...] }` with `remId`, `title`, and optional `content` (markdown) or
-`contentStructured` entries depending on `includeContent`.
+`contentStructured` entries depending on `contentMode`.
 
 ![Run search and inspect results](./images/execute-bridge-console-05-run-search-and-inspect-results.jpg)
 

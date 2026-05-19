@@ -332,10 +332,12 @@ class BridgeRuntimeController implements BridgeRuntime {
           query: payload.query as string,
           limit: payload.limit as number | undefined,
           cursor: payload.cursor as string | undefined,
-          includeContent: payload.includeContent as 'none' | 'markdown' | 'structured' | undefined,
+          contentMode: payload.contentMode as 'none' | 'markdown' | 'structured' | undefined,
           depth: payload.depth as number | undefined,
           childLimit: payload.childLimit as number | undefined,
           maxContentLength: payload.maxContentLength as number | undefined,
+          ancestorDepth: payload.ancestorDepth as number | undefined,
+          view: payload.view as 'compact' | 'standard' | 'full' | undefined,
         });
         this.stats = { ...this.stats, searches: this.stats.searches + 1 };
         this.addHistoryEntry('search', [`Search: "${payload.query}"`]);
@@ -349,10 +351,12 @@ class BridgeRuntimeController implements BridgeRuntime {
           resultMode: payload.resultMode as 'context' | 'tagged' | undefined,
           limit: payload.limit as number | undefined,
           cursor: payload.cursor as string | undefined,
-          includeContent: payload.includeContent as 'none' | 'markdown' | 'structured' | undefined,
+          contentMode: payload.contentMode as 'none' | 'markdown' | 'structured' | undefined,
           depth: payload.depth as number | undefined,
           childLimit: payload.childLimit as number | undefined,
           maxContentLength: payload.maxContentLength as number | undefined,
+          ancestorDepth: payload.ancestorDepth as number | undefined,
+          view: payload.view as 'compact' | 'standard' | 'full' | undefined,
         });
         this.stats = { ...this.stats, searches: this.stats.searches + 1 };
         this.addHistoryEntry('search', [`Search by tag Rem ID: "${payload.tagRemId}"`]);
@@ -364,11 +368,25 @@ class BridgeRuntimeController implements BridgeRuntime {
         const result = await this.adapter.readNote({
           remId: payload.remId as string,
           depth: payload.depth as number | undefined,
-          includeContent: payload.includeContent as 'none' | 'markdown' | 'structured' | undefined,
+          contentMode: payload.contentMode as 'none' | 'markdown' | 'structured' | undefined,
           childLimit: payload.childLimit as number | undefined,
           maxContentLength: payload.maxContentLength as number | undefined,
+          ancestorDepth: payload.ancestorDepth as number | undefined,
+          view: payload.view as 'compact' | 'standard' | 'full' | undefined,
         });
         this.addHistoryEntry('read', [result.title], [result.remId]);
+        return result;
+      }
+
+      case 'list_children': {
+        const result = await this.adapter.listChildren({
+          parentRemId: payload.parentRemId as string,
+          limit: payload.limit as number | undefined,
+          cursor: payload.cursor as string | undefined,
+          ancestorDepth: payload.ancestorDepth as number | undefined,
+          view: payload.view as 'compact' | 'standard' | 'full' | undefined,
+        });
+        this.addHistoryEntry('read', [`Children of ${payload.parentRemId}`]);
         return result;
       }
 
@@ -405,6 +423,24 @@ class BridgeRuntimeController implements BridgeRuntime {
         this.stats = { ...this.stats, updated: this.stats.updated + 1 };
         this.addHistoryEntry('create', result.titles || ['Children inserted'], result.remIds);
         this.emit();
+        return result;
+      }
+
+      case 'move_note': {
+        const result = await this.adapter.moveNote({
+          remId: payload.remId as string,
+          newParentRemId: payload.newParentRemId as string,
+          position: payload.position as 'first' | 'last' | 'before' | 'after' | undefined,
+          siblingRemId: payload.siblingRemId as string | undefined,
+          dryRun: payload.dryRun as boolean | undefined,
+          expectedOldParentRemId: payload.expectedOldParentRemId as string | undefined,
+          ancestorDepth: payload.ancestorDepth as number | undefined,
+        });
+        if (!result.dryRun) {
+          this.stats = { ...this.stats, updated: this.stats.updated + 1 };
+          this.addHistoryEntry('update', [`Moved ${result.title}`], [result.remId]);
+          this.emit();
+        }
         return result;
       }
 

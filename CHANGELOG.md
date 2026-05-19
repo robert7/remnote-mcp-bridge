@@ -9,6 +9,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add discovery-oriented hierarchy APIs: parent-first `ancestors` via `ancestorDepth`, compact `view` output control,
+  direct-child listing, and dry-run-first note moving.
 - Include the TypeScript test suite in the project typecheck gate.
 - Include widget TSX entrypoints in coverage accounting.
 - Link the README MCP Server path to advanced RemNote MCP use cases.

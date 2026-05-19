@@ -38,7 +38,7 @@ export const appendJournalInput: AppendJournalParams = {
 export const searchInput: SearchParams = {
   query: 'test query',
   limit: 10,
-  includeContent: 'markdown',
+  contentMode: 'markdown',
 };
 
 export const readNoteInput: ReadNoteParams = {

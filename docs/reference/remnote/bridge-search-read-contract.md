@@ -54,6 +54,19 @@ contract keeps iterations safe and predictable.
 - Omitted for top-level Rems.
 - `parentTitle` is a single-hop parent label, not a full ancestry path.
 
+### `ancestors` (optional)
+
+- `ancestors` is a parent-first chain of nearby parent Rems.
+- It is present only when the caller requests hierarchy context with `ancestorDepth > 0`.
+- The current Rem is not included. The first item is the direct parent, the second item is the grandparent, and so on.
+- Each item has at least `remId` and `title`; it may include `remType`.
+- In `search_by_tag`, requested ancestors are available on both top-level results and `matchedRems`.
+
+### `ancestorsTruncated` (optional)
+
+- Present when the parent chain is deeper than the requested `ancestorDepth`.
+- Use this as a signal to increase `ancestorDepth` or follow `parentRemId` manually when full hierarchy context matters.
+
 ### `aliases` (optional)
 
 - `aliases` is an array of alternate names for the Rem, surfaced from `rem.getAliases()`.
@@ -93,7 +106,7 @@ contract keeps iterations safe and predictable.
 ### `content` (optional)
 
 - Rendered markdown representation of the Rem's child subtree.
-- Controlled by `includeContent` parameter:
+- Controlled by `contentMode` parameter:
   - `"none"` — omits `content` field entirely.
   - `"markdown"` — renders children as indented markdown with bullet prefixes and type-aware delimiters.
 - Default: `"markdown"` for `readNote`, `"none"` for `search`.
@@ -103,7 +116,7 @@ contract keeps iterations safe and predictable.
 ### `contentStructured` (optional)
 
 - Structured child subtree for `remnote_search` and `remnote_read_note` results.
-- Present when `includeContent` is `"structured"`.
+- Present when `contentMode` is `"structured"`.
 - Value is an array of child nodes (not the root note itself), each with:
   - `remId`
   - `title`
@@ -121,7 +134,7 @@ contract keeps iterations safe and predictable.
 
 ### `contentProperties` (optional)
 
-- Present when `content` is rendered (i.e. `includeContent` is `"markdown"`).
+- Present when `content` is rendered (i.e. `contentMode` is `"markdown"`).
 - Fields:
   - `childrenRendered` — number of children included in the rendered content.
   - `childrenTotal` — total children in the subtree (capped at 2000 to avoid expensive counting).
@@ -141,8 +154,10 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 ## Search behavior contract
 
 - Default search limit in bridge is 50 unless caller provides `limit`.
-- Default `includeContent` for search is `"none"`.
-- Search `includeContent` modes: `"none" | "markdown" | "structured"`.
+- Default `contentMode` for search is `"none"`.
+- Search `contentMode` modes: `"none" | "markdown" | "structured"`.
+- Search supports `view: "compact" | "standard" | "full"` for metadata detail and `ancestorDepth` for parent-first
+  ancestors.
 - Default `depth` for search content rendering is 1.
 - Default `childLimit` for search content rendering is 20.
 - Default `maxContentLength` for search is 3000.
@@ -167,7 +182,9 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
   - `resultMode` (`"context" | "tagged"`, default: `"context"`)
   - `limit` (default: 50)
   - `cursor` (optional)
-  - `includeContent` (`"none" | "markdown" | "structured"`, default: `"none"`)
+  - `contentMode` (`"none" | "markdown" | "structured"`, default: `"none"`)
+  - `view` (`"compact" | "standard" | "full"`, default: `"standard"`)
+  - `ancestorDepth` (default: `0`)
   - `depth` (default: 1)
   - `childLimit` (default: 20)
   - `maxContentLength` (default: 3000; markdown mode only)
@@ -200,8 +217,10 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 ## Read behavior contract
 
-- Default `includeContent` for read is `"markdown"`.
-- Read `includeContent` modes: `"none" | "markdown" | "structured"`.
+- Default `contentMode` for read is `"markdown"`.
+- Read `contentMode` modes: `"none" | "markdown" | "structured"`.
+- Read supports `view: "compact" | "standard" | "full"` for metadata detail and `ancestorDepth` for parent-first
+  ancestors.
 - Default `depth` for read is 5.
 - Default `childLimit` for read is 100.
 - Default `maxContentLength` for read is 100000.
@@ -210,7 +229,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 ## Breaking changes (from pre-0.6.0)
 
-- `includeContent` changed from `boolean` to string enum (`search` and `read`: `'none' | 'markdown' | 'structured'`).
+- `contentMode` changed from `boolean` to string enum (`search` and `read`: `'none' | 'markdown' | 'structured'`).
 - `children` array removed from `readNote` response.
 - `content` in `readNote` changed from echoing `title` to rendered markdown of child subtree.
 - Default `depth` for `readNote` changed from 3 to 5.
@@ -224,6 +243,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - MCP server should advertise these response fields in tool `outputSchema` so AI clients can plan tool usage correctly.
 - MCP server should advertise `parentRemId` and `parentTitle` in search/read `outputSchema`.
+- MCP server should advertise `ancestors` and `ancestorsTruncated` in search/read/tag-search `outputSchema`.
 - MCP server should advertise `tags` as `{ tagRemId, name }` objects in search/read root items and structured child
   items.
 - MCP server should keep `remnote_search_by_tag` output schema aligned with `remnote_search`.
