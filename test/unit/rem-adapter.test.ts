@@ -1922,6 +1922,27 @@ describe('RemAdapter', () => {
       expect((await child.getParentRem())?._id).toBe('move_old_parent');
     });
 
+    it('should mark dry-run ancestors after as truncated when new parent has hidden ancestors', async () => {
+      const oldParent = plugin.addTestRem('move_truncated_old_parent', 'Old Parent');
+      const root = plugin.addTestRem('move_truncated_root', 'Root');
+      const newParent = plugin.addTestRem('move_truncated_new_parent', 'New Parent');
+      const child = plugin.addTestRem('move_truncated_child', 'Move Child');
+      await newParent.setParent(root);
+      await child.setParent(oldParent);
+
+      const result = await adapter.moveNote({
+        remId: 'move_truncated_child',
+        newParentRemId: 'move_truncated_new_parent',
+        ancestorDepth: 1,
+      });
+
+      expect(result.ancestorsAfter).toEqual([
+        { remId: 'move_truncated_new_parent', title: 'New Parent', remType: 'text' },
+      ]);
+      expect(result.ancestorsAfterTruncated).toBe(true);
+      expect((await child.getParentRem())?._id).toBe('move_truncated_old_parent');
+    });
+
     it('should move a note and preserve its children', async () => {
       const oldParent = plugin.addTestRem('move_apply_old_parent', 'Old Parent');
       plugin.addTestRem('move_apply_new_parent', 'New Parent');

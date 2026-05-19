@@ -2526,7 +2526,7 @@ export class RemAdapter {
     }
 
     const ancestorsAfter = dryRun
-      ? await this.getAncestors(newParent, Math.max(ancestorDepth - 1, 0))
+      ? await this.getAncestors(newParent, ancestorDepth)
       : await this.getAncestors(rem, ancestorDepth);
     const dryRunAncestorsAfter: AncestorContext =
       dryRun && ancestorDepth > 0

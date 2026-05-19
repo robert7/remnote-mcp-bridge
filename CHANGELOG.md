@@ -32,6 +32,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Fix dry-run `move_note` previews so `ancestorsAfterTruncated` is reported when the proposed new parent has hidden
+  ancestors at the requested depth.
 - Fix `run-prod-build.sh` to resolve Webpack from `node_modules/.bin` when run outside npm script PATH setup.
 
 ## [0.15.0] - 2026-05-15
