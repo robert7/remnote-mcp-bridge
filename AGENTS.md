@@ -30,8 +30,14 @@ discontinued; maintained CLI code lives in `remnote-mcp-server/src/remnote-cli/`
 - `search`
 - `search_by_tag`
 - `read_note`
+- `list_children`
+- `move_note`
 - `update_note`
+- `insert_children`
+- `replace_children`
+- `update_tags`
 - `append_journal`
+- `read_table`
 - `get_status`
 
 ### Compatibility and Version Signaling
