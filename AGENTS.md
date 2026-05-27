@@ -108,8 +108,17 @@ Use `./run-prod-build.sh` for production-style local verification (no hot reload
 - Keep AGENTS/docs map-level: rationale, constraints, contracts, and navigation.
   - Avoid restating implementation details obvious from code.
 - When changing bridge action contracts or response semantics that are visible through MCP/CLI consumers:
+  - Treat the change as a cross-repo public surface change. Work normally starts in this bridge repo, so decide the
+    server/CLI/agent-facing parity plan before implementing the bridge behavior.
   - Check sibling `../remnote-mcp-server` schemas, tool definitions, integration tests, `remnote_get_playbook`, and
     `docs/agent-validation-prompts/mcp-tool-smoke-test.md`.
+  - Check whether bundled `remnote-cli` parity is expected. If yes, update the command parser, bridge-action-to-tool
+    mapping, text/JSON output expectations, CLI command reference, and CLI integration coverage in
+    `../remnote-mcp-server`.
+  - Check whether `../remnote-mcp-server/skills/remnote/SKILL.md` needs updates for command names, flags, write
+    safety, traversal defaults, or recovery guidance.
+  - Do not leave a behavior MCP-only when an equivalent CLI workflow is expected. If CLI parity is intentionally
+    rejected, record the rationale in docs/changelog and call it out to Robert before finishing.
   - Update bridge/server contract docs and changelogs together when behavior spans both repos.
 
 ## Release and Publishing Map

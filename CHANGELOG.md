@@ -31,6 +31,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Classify Rems that are both documents and concepts as `document` in bridge search/read outputs while keeping card
   metadata such as `cardDirection` separate.
+- Strengthen the bridge agent guide with an explicit cross-repo public-surface parity gate for MCP, CLI, playbook, and
+  skill updates.
 - Update `AGENTS.md` bridge action map for the current discovery and split-write action surface.
 - Run lint and format scripts through local package binaries instead of `npx`.
 - Run release build validation through the local RemNote plugin SDK binary instead of `npx`.
