@@ -308,6 +308,7 @@ class BridgeRuntimeController implements BridgeRuntime {
           content: payload.content as string | undefined,
           parentId: payload.parentId as string | undefined,
           tagRemIds: payload.tagRemIds as string[] | undefined,
+          asDocument: payload.asDocument as boolean | undefined,
         });
         this.stats = { ...this.stats, created: this.stats.created + 1 };
         this.addHistoryEntry('create', result.titles || ['Note'], result.remIds);
@@ -410,6 +411,32 @@ class BridgeRuntimeController implements BridgeRuntime {
         this.stats = { ...this.stats, updated: this.stats.updated + 1 };
         this.addHistoryEntry('update', result.titles || ['Note updated'], result.remIds);
         this.emit();
+        return result;
+      }
+
+      case 'set_document_status': {
+        const result = await this.adapter.setDocumentStatus({
+          remId: payload.remId as string,
+          isDocument: payload.isDocument as boolean,
+          dryRun: payload.dryRun as boolean | undefined,
+          expectedOldRemType: payload.expectedOldRemType as
+            | 'document'
+            | 'dailyDocument'
+            | 'concept'
+            | 'descriptor'
+            | 'portal'
+            | 'text'
+            | undefined,
+        });
+        if (result.changed) {
+          this.stats = { ...this.stats, updated: this.stats.updated + 1 };
+          this.addHistoryEntry(
+            'update',
+            [`Document status updated: ${result.title}`],
+            [result.remId]
+          );
+          this.emit();
+        }
         return result;
       }
 

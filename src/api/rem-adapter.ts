@@ -31,6 +31,7 @@ export interface CreateNoteParams {
   content?: string;
   parentId?: string;
   tagRemIds?: string[];
+  asDocument?: boolean;
 }
 
 export interface AppendJournalParams {
@@ -77,6 +78,13 @@ export interface ReadNoteParams {
 export interface UpdateNoteParams {
   remId: string;
   title?: string;
+}
+
+export interface SetDocumentStatusParams {
+  remId: string;
+  isDocument: boolean;
+  dryRun?: boolean;
+  expectedOldRemType?: RemClassification;
 }
 
 export type InsertChildrenPosition = 'first' | 'last' | 'before' | 'after';
@@ -257,6 +265,23 @@ export interface MoveNoteResult {
   ancestorsBeforeTruncated?: boolean;
   ancestorsAfter?: AncestorInfo[];
   ancestorsAfterTruncated?: boolean;
+}
+
+export interface SetDocumentStatusResult {
+  remId: string;
+  title: string;
+  oldRemType: RemClassification;
+  newRemType: RemClassification;
+  oldIsDocument: boolean;
+  newIsDocument: boolean;
+  requestedIsDocument: boolean;
+  dryRun: boolean;
+  changed: boolean;
+  wouldChange: boolean;
+  sdkSupportsDocumentStatus: boolean;
+  warnings?: string[];
+  cardDirectionBefore?: CardDirection;
+  cardDirectionAfter?: CardDirection;
 }
 
 export type RemClassification =
@@ -604,12 +629,16 @@ export class RemAdapter {
   /**
    * Classify a Rem into a semantic type using SDK metadata.
    */
-  private async classifyRem(rem: PluginRem): Promise<RemClassification> {
+  private async classifyRem(
+    rem: PluginRem,
+    documentStatusOverride?: boolean
+  ): Promise<RemClassification> {
     if (await rem.hasPowerup(BuiltInPowerupCodes.DailyDocument)) return 'dailyDocument';
+    const isDocument = documentStatusOverride ?? (await rem.isDocument());
+    if (isDocument) return 'document';
     if (rem.type === RemType.CONCEPT) return 'concept';
     if (rem.type === RemType.DESCRIPTOR) return 'descriptor';
     if (rem.type === RemType.PORTAL) return 'portal';
-    if (await rem.isDocument()) return 'document';
     return 'text';
   }
 
@@ -630,6 +659,11 @@ export class RemAdapter {
       default:
         return undefined;
     }
+  }
+
+  private async getCardDirection(rem: PluginRem): Promise<CardDirection | undefined> {
+    if (!rem.backText) return undefined;
+    return this.mapCardDirection(await rem.getPracticeDirection());
   }
 
   private getCardDelimiterIndex(richText: RichTextInterface | undefined): number {
@@ -1879,6 +1913,37 @@ export class RemAdapter {
     return value;
   }
 
+  private requireBoolean(value: unknown, fieldName: string): boolean {
+    if (typeof value !== 'boolean') {
+      throw new Error(`${fieldName} must be a boolean`);
+    }
+    return value;
+  }
+
+  private optionalRemClassification(
+    value: unknown,
+    fieldName: string
+  ): RemClassification | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    if (
+      value === 'document' ||
+      value === 'dailyDocument' ||
+      value === 'concept' ||
+      value === 'descriptor' ||
+      value === 'portal' ||
+      value === 'text'
+    ) {
+      return value;
+    }
+
+    throw new Error(
+      `${fieldName} must be one of document, dailyDocument, concept, descriptor, portal, text`
+    );
+  }
+
   private optionalStringArray(value: unknown, fieldName: string): string[] {
     if (value === undefined) {
       return [];
@@ -1903,6 +1968,22 @@ export class RemAdapter {
     for (const tagRemId of tagRemIds) {
       await rem.addTag(tagRemId);
     }
+  }
+
+  private sdkSupportsDocumentStatus(rem: PluginRem): boolean {
+    return (
+      typeof rem.isDocument === 'function' &&
+      'setIsDocument' in rem &&
+      typeof rem.setIsDocument === 'function'
+    );
+  }
+
+  private async setRemDocumentStatus(rem: PluginRem, isDocument: boolean): Promise<void> {
+    if (!this.sdkSupportsDocumentStatus(rem)) {
+      throw new Error('Document status updates are unsupported by the current RemNote SDK');
+    }
+
+    await rem.setIsDocument(isDocument);
   }
 
   private async addTagRemIdsToTopLevelRems(
@@ -2126,6 +2207,10 @@ export class RemAdapter {
       params.parentId === undefined || params.parentId === null
         ? this.settings.defaultParentId
         : this.requireString(params.parentId, 'parentId');
+    const asDocument =
+      params.asDocument === undefined || params.asDocument === null
+        ? false
+        : this.requireBoolean(params.asDocument, 'asDocument');
 
     const tagRemIds = [...this.optionalStringArray(params.tagRemIds, 'tagRemIds')];
     if (this.settings.autoTagEnabled && this.settings.autoTagRemId) {
@@ -2138,10 +2223,18 @@ export class RemAdapter {
     const titles: string[] = [];
     const hasContent = content !== undefined;
 
+    if (asDocument && !title) {
+      throw new Error('asDocument requires title so the document root is unambiguous');
+    }
+
     // Scenario 1: title provided
     if (title) {
       const titleRem = await this.plugin.rem.createSingleRemWithMarkdown(title, parentId);
       if (!titleRem) throw new Error('Failed to create Rem');
+
+      if (asDocument) {
+        await this.setRemDocumentStatus(titleRem, true);
+      }
 
       await this.addTagRemIdsToRem(titleRem, tagRemIds);
 
@@ -2589,6 +2682,112 @@ export class RemAdapter {
     remIds.push(remId);
 
     return { titles, remIds };
+  }
+
+  async setDocumentStatus(params: SetDocumentStatusParams): Promise<SetDocumentStatusResult> {
+    if (!this.settings.acceptWriteOperations) {
+      throw new Error('Write operations are disabled in Automation Bridge settings');
+    }
+
+    const remId = this.requireString(params.remId, 'remId');
+    const requestedIsDocument = this.requireBoolean(params.isDocument, 'isDocument');
+    const dryRun = params.dryRun !== false;
+    const expectedOldRemType = this.optionalRemClassification(
+      params.expectedOldRemType,
+      'expectedOldRemType'
+    );
+
+    const rem = await this.plugin.rem.findOne(remId);
+    if (!rem) {
+      throw new Error(`Note not found: ${remId}`);
+    }
+
+    const sdkSupportsDocumentStatus = this.sdkSupportsDocumentStatus(rem);
+    const [{ title }, oldRemType, oldIsDocument, cardDirectionBefore] = await Promise.all([
+      this.getTitleAndDetail(rem),
+      this.classifyRem(rem),
+      rem.isDocument(),
+      this.getCardDirection(rem),
+    ]);
+
+    if (expectedOldRemType !== undefined && expectedOldRemType !== oldRemType) {
+      throw new Error(
+        `Expected old remType ${expectedOldRemType}, but current remType is ${oldRemType}`
+      );
+    }
+
+    const wouldChange = oldIsDocument !== requestedIsDocument;
+    const warnings: string[] = [];
+    if (rem.type === RemType.CONCEPT) {
+      warnings.push(
+        'Document status is independent of concept/card status; existing card metadata is preserved.'
+      );
+    }
+    if (!sdkSupportsDocumentStatus) {
+      warnings.push('Current RemNote SDK does not expose setIsDocument for this Rem.');
+    }
+
+    if (dryRun) {
+      const previewRemType = await this.classifyRem(rem, requestedIsDocument);
+      return {
+        remId,
+        title,
+        oldRemType,
+        newRemType: previewRemType,
+        oldIsDocument,
+        newIsDocument: requestedIsDocument,
+        requestedIsDocument,
+        dryRun: true,
+        changed: false,
+        wouldChange,
+        sdkSupportsDocumentStatus,
+        ...(warnings.length > 0 ? { warnings } : {}),
+        ...(cardDirectionBefore ? { cardDirectionBefore } : {}),
+        ...(cardDirectionBefore ? { cardDirectionAfter: cardDirectionBefore } : {}),
+      };
+    }
+
+    if (!sdkSupportsDocumentStatus) {
+      throw new Error('Document status updates are unsupported by the current RemNote SDK');
+    }
+
+    if (wouldChange) {
+      await this.setRemDocumentStatus(rem, requestedIsDocument);
+    }
+
+    const updatedRem = await this.plugin.rem.findOne(remId);
+    if (!updatedRem) {
+      throw new Error(`Note not found after document status update: ${remId}`);
+    }
+
+    const [newRemType, newIsDocument, cardDirectionAfter] = await Promise.all([
+      this.classifyRem(updatedRem),
+      updatedRem.isDocument(),
+      this.getCardDirection(updatedRem),
+    ]);
+
+    if (newIsDocument !== requestedIsDocument) {
+      throw new Error(
+        `Document status update verification failed for ${remId}: expected isDocument=${requestedIsDocument}, got ${newIsDocument}`
+      );
+    }
+
+    return {
+      remId,
+      title,
+      oldRemType,
+      newRemType,
+      oldIsDocument,
+      newIsDocument,
+      requestedIsDocument,
+      dryRun: false,
+      changed: wouldChange,
+      wouldChange,
+      sdkSupportsDocumentStatus,
+      ...(warnings.length > 0 ? { warnings } : {}),
+      ...(cardDirectionBefore ? { cardDirectionBefore } : {}),
+      ...(cardDirectionAfter ? { cardDirectionAfter } : {}),
+    };
   }
 
   async insertChildren(

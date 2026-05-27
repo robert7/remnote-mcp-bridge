@@ -69,6 +69,34 @@ describe('RemAdapter', () => {
       expect(plugin.rem.createSingleRemWithMarkdown).toHaveBeenCalled();
     });
 
+    it('should create the title Rem as a document when asDocument is true', async () => {
+      const result = await adapter.createNote({
+        title: 'Document Root',
+        content: 'Child line',
+        asDocument: true,
+      });
+
+      const root = await plugin.rem.findOne(result.remIds[0]);
+      expect(root).toBeDefined();
+      expect(await root!.isDocument()).toBe(true);
+
+      const readResult = await adapter.readNote({ remId: result.remIds[0] });
+      expect(readResult.remType).toBe('document');
+
+      const children = await root!.getChildrenRem();
+      expect(children).toHaveLength(1);
+      expect(await children[0].isDocument()).toBe(false);
+    });
+
+    it('should reject asDocument for content-only creation', async () => {
+      await expect(
+        adapter.createNote({
+          content: 'Document Root\n  Child',
+          asDocument: true,
+        })
+      ).rejects.toThrow('asDocument requires title so the document root is unambiguous');
+    });
+
     it('should create a note with title and markdown content', async () => {
       const result = await adapter.createNote({
         title: 'Test Note',
@@ -1854,6 +1882,140 @@ describe('RemAdapter', () => {
     });
   });
 
+  describe('setDocumentStatus', () => {
+    it('should preview marking a concept Rem as a document without changing it', async () => {
+      const rem = plugin.addTestRem('doc_status_preview', 'Preview concept');
+      rem.type = RemType.CONCEPT;
+      rem.backText = ['Preview detail'];
+      rem.setPracticeDirectionMock('forward');
+
+      const result = await adapter.setDocumentStatus({
+        remId: 'doc_status_preview',
+        isDocument: true,
+      });
+
+      expect(result).toMatchObject({
+        remId: 'doc_status_preview',
+        title: 'Preview concept',
+        oldRemType: 'concept',
+        newRemType: 'document',
+        oldIsDocument: false,
+        newIsDocument: true,
+        requestedIsDocument: true,
+        dryRun: true,
+        changed: false,
+        wouldChange: true,
+        sdkSupportsDocumentStatus: true,
+        cardDirectionBefore: 'forward',
+      });
+      expect(result.warnings?.[0]).toContain('concept/card status');
+      expect(await rem.isDocument()).toBe(false);
+    });
+
+    it('should mark a concept Rem as a document and preserve card metadata', async () => {
+      const rem = plugin.addTestRem('doc_status_apply', 'Apply concept');
+      rem.type = RemType.CONCEPT;
+      rem.backText = ['Apply detail'];
+      rem.setPracticeDirectionMock('forward');
+
+      const result = await adapter.setDocumentStatus({
+        remId: 'doc_status_apply',
+        isDocument: true,
+        dryRun: false,
+        expectedOldRemType: 'concept',
+      });
+
+      expect(result).toMatchObject({
+        remId: 'doc_status_apply',
+        oldRemType: 'concept',
+        newRemType: 'document',
+        oldIsDocument: false,
+        newIsDocument: true,
+        dryRun: false,
+        changed: true,
+        wouldChange: true,
+        cardDirectionBefore: 'forward',
+        cardDirectionAfter: 'forward',
+      });
+      expect(rem.type).toBe(RemType.CONCEPT);
+      expect(rem.backText).toEqual(['Apply detail']);
+      expect(await rem.isDocument()).toBe(true);
+
+      const readResult = await adapter.readNote({ remId: 'doc_status_apply' });
+      expect(readResult.remType).toBe('document');
+      expect(readResult.cardDirection).toBe('forward');
+    });
+
+    it('should unmark a document concept and reveal its concept classification', async () => {
+      const rem = plugin.addTestRem('doc_status_unset', 'Unset concept');
+      rem.type = RemType.CONCEPT;
+      rem.setIsDocumentMock(true);
+
+      const result = await adapter.setDocumentStatus({
+        remId: 'doc_status_unset',
+        isDocument: false,
+        dryRun: false,
+        expectedOldRemType: 'document',
+      });
+
+      expect(result.oldRemType).toBe('document');
+      expect(result.newRemType).toBe('concept');
+      expect(result.changed).toBe(true);
+      expect(await rem.isDocument()).toBe(false);
+      expect(rem.type).toBe(RemType.CONCEPT);
+    });
+
+    it('should not mutate when production request already matches document status', async () => {
+      const rem = plugin.addTestRem('doc_status_noop', 'Already document');
+      rem.setIsDocumentMock(true);
+      const setIsDocumentSpy = vi.spyOn(rem, 'setIsDocument');
+
+      const result = await adapter.setDocumentStatus({
+        remId: 'doc_status_noop',
+        isDocument: true,
+        dryRun: false,
+        expectedOldRemType: 'document',
+      });
+
+      expect(result).toMatchObject({
+        oldRemType: 'document',
+        newRemType: 'document',
+        oldIsDocument: true,
+        newIsDocument: true,
+        dryRun: false,
+        changed: false,
+        wouldChange: false,
+      });
+      expect(setIsDocumentSpy).not.toHaveBeenCalled();
+    });
+
+    it('should reject stale expectedOldRemType', async () => {
+      const rem = plugin.addTestRem('doc_status_stale', 'Stale concept');
+      rem.type = RemType.CONCEPT;
+
+      await expect(
+        adapter.setDocumentStatus({
+          remId: 'doc_status_stale',
+          isDocument: true,
+          dryRun: false,
+          expectedOldRemType: 'document',
+        })
+      ).rejects.toThrow('Expected old remType document, but current remType is concept');
+    });
+
+    it('should reject document status updates when write operations are disabled', async () => {
+      plugin.addTestRem('doc_status_blocked', 'Blocked');
+      adapter.updateSettings({ acceptWriteOperations: false });
+
+      await expect(
+        adapter.setDocumentStatus({
+          remId: 'doc_status_blocked',
+          isDocument: true,
+        })
+      ).rejects.toThrow('Write operations are disabled in Automation Bridge settings');
+    });
+  });
+
   describe('listChildren', () => {
     it('should list direct children only with paging', async () => {
       const parent = plugin.addTestRem('list_parent', 'Parent');
@@ -2559,6 +2721,15 @@ describe('RemAdapter', () => {
       rem.setIsDocumentMock(true);
 
       const result = await adapter.readNote({ remId: 'doc_type' });
+      expect(result.remType).toBe('document');
+    });
+
+    it('should prioritize document status over concept type', async () => {
+      const rem = plugin.addTestRem('doc_concept_type', 'A Document Concept');
+      rem.type = RemType.CONCEPT;
+      rem.setIsDocumentMock(true);
+
+      const result = await adapter.readNote({ remId: 'doc_concept_type' });
       expect(result.remType).toBe('document');
     });
 

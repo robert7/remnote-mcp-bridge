@@ -25,10 +25,15 @@ Practical bridge implication:
 "Document", "Folder", and "Top-level Rem" are not one simple type enum in everyday usage. A Rem can be top-level and
 also behave as a document/folder depending on settings and context.
 
+A Rem can also be both a concept/card and a document. Document status is an additional role, not a destructive
+replacement for concept/card behavior.
+
 Practical bridge implication:
 
 - Avoid assuming a single rigid type model in response formatting.
 - Preserve structural context, because users think in outlines/documents, not only isolated nodes.
+- When a single `remType` value is needed for agents, prefer document status over concept status while preserving
+  separate card metadata such as `cardDirection`.
 
 ## Rem vs Flashcard
 

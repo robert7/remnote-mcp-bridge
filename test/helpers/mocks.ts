@@ -179,6 +179,10 @@ export class MockRem {
     return this._isDocument;
   }
 
+  async setIsDocument(isDocument: boolean): Promise<void> {
+    this._isDocument = isDocument;
+  }
+
   async hasPowerup(code: string): Promise<boolean> {
     return this._powerups.includes(code);
   }

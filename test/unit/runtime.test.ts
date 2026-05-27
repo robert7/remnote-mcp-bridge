@@ -1,4 +1,4 @@
-import { FocusEvents, SidebarEvents, WindowEvents } from '@remnote/plugin-sdk';
+import { FocusEvents, RemType, SidebarEvents, WindowEvents } from '@remnote/plugin-sdk';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   initializeBridgeRuntime,
@@ -167,6 +167,49 @@ describe('Bridge runtime', () => {
     expect(result.action).toBe('read_table');
     expect(snapshot.history[0]?.action).toBe('read');
     expect(snapshot.history[0]?.titles).toContain('TestTable');
+  });
+
+  it('handles set_document_status action via devtools request', async () => {
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+    const rem = plugin.addTestRem('runtime_doc_status', 'Runtime concept');
+    rem.type = RemType.CONCEPT;
+
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await wait(10);
+
+    const resultPromise = new Promise<DevToolsResultDetail>((resolve) => {
+      window.addEventListener(
+        DEVTOOLS_RESULT_EVENT,
+        (event) => resolve((event as CustomEvent<DevToolsResultDetail>).detail),
+        { once: true }
+      );
+    });
+
+    window.dispatchEvent(
+      new CustomEvent(DEVTOOLS_EXECUTE_EVENT, {
+        detail: {
+          id: 'devtools-set-document-status',
+          action: 'set_document_status',
+          payload: {
+            remId: 'runtime_doc_status',
+            isDocument: true,
+            dryRun: false,
+            expectedOldRemType: 'concept',
+          },
+        },
+      })
+    );
+
+    const result = await resultPromise;
+    const snapshot = runtime.getSnapshot();
+
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe('set_document_status');
+    expect(result.result).toMatchObject({ remId: 'runtime_doc_status', newRemType: 'document' });
+    expect(await rem.isDocument()).toBe(true);
+    expect(snapshot.stats.updated).toBe(1);
+    expect(snapshot.history[0]?.action).toBe('update');
+    expect(snapshot.history[0]?.titles).toContain('Document status updated: Runtime concept');
   });
 
   it('publishes runtime snapshots over the UI bridge while no widget is mounted', async () => {

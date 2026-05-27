@@ -26,13 +26,14 @@ discontinued; maintained CLI code lives in `remnote-mcp-server/src/remnote-cli/`
 
 ### External Bridge Action Surface
 
-- `create_note` (simple note creation, hierarchical markdown import, markdown flashcards)
+- `create_note` (simple note creation, optional root document status, hierarchical markdown import, markdown flashcards)
 - `search`
 - `search_by_tag`
 - `read_note`
 - `list_children`
 - `move_note`
 - `update_note`
+- `set_document_status`
 - `insert_children`
 - `replace_children`
 - `update_tags`

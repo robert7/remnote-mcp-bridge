@@ -19,6 +19,7 @@ Purpose: give developers and AI agents a concise, reliable concept map of RemNot
 - `remnote_list_children`: direct-child hierarchy traversal without rendering a whole subtree.
 - `remnote_create_note`: should preserve Rem hierarchy and text semantics; tag assignment uses exact tag Rem IDs.
 - `remnote_update_note`: metadata-only update action for safe title changes.
+- `remnote_set_document_status`: dry-run-first document status update that preserves concept/card status.
 - `remnote_move_note`: safe reparenting that preserves the moved Rem ID and subtree; use dry-run before mutation.
 - `remnote_insert_children`: ordered child creation action; use this for tag description nodes and other hierarchy
   maintenance that must preserve existing child Rem IDs.

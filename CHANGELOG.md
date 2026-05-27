@@ -9,6 +9,9 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Add document-status support for Rems: `set_document_status` previews or applies document status while preserving Rem
+  IDs, children, tags, parents, and concept/card metadata; `create_note` can mark the created title/root Rem as a
+  document with `asDocument`.
 - Add discovery-oriented hierarchy APIs: parent-first `ancestors` via `ancestorDepth`, compact `view` output control,
   direct-child listing, and dry-run-first note moving.
 - Include the TypeScript test suite in the project typecheck gate.
@@ -26,6 +29,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Classify Rems that are both documents and concepts as `document` in bridge search/read outputs while keeping card
+  metadata such as `cardDirection` separate.
 - Update `AGENTS.md` bridge action map for the current discovery and split-write action surface.
 - Run lint and format scripts through local package binaries instead of `npx`.
 - Run release build validation through the local RemNote plugin SDK binary instead of `npx`.
