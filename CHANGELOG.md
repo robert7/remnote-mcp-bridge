@@ -7,6 +7,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-06-05
+
 ### Added
 
 - Add document-status support for Rems: `set_document_status` previews or applies document status while preserving Rem
@@ -14,29 +16,18 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   document with `asDocument`.
 - Add discovery-oriented hierarchy APIs: parent-first `ancestors` via `ancestorDepth`, compact `view` output control,
   direct-child listing, and dry-run-first note moving.
-- Include the TypeScript test suite in the project typecheck gate.
-- Include widget TSX entrypoints in coverage accounting.
-- Link the README MCP Server path to advanced RemNote MCP use cases.
-- Add cursor paging metadata to `search_by_tag`, including `hasMore`, `nextCursor`, and explicit snapshot-cap
-  truncation reporting.
-- Add cursor paging metadata to `search`, including `hasMore`, `nextCursor`, and explicit snapshot-cap truncation
-  reporting.
+- Add cursor paging metadata to `search` and `search_by_tag`, including `hasMore`, `nextCursor`, and explicit
+  snapshot-cap truncation reporting.
 - Preserve inline Rem references in `search`, `search_by_tag`, and `read_note` output by rendering resolvable
   references as `[[Target Title]]` and exposing `inlineRefs` metadata with exact target Rem IDs.
 - Add `search_by_tag.resultMode` with direct tagged Rem results and `matchedRems` metadata for context results.
-- Document the cross-repo MCP contract-change checklist for keeping server schemas, integration tests, playbook
-  guidance, and smoke prompts aligned.
 
 ### Changed
 
 - Classify Rems that are both documents and concepts as `document` in bridge search/read outputs while keeping card
   metadata such as `cardDirection` separate.
-- Strengthen the bridge agent guide with an explicit cross-repo public-surface parity gate for MCP, CLI, playbook, and
-  skill updates.
-- Update `AGENTS.md` bridge action map for the current discovery and split-write action surface.
-- Run lint and format scripts through local package binaries instead of `npx`.
-- Run release build validation through the local RemNote plugin SDK binary instead of `npx`.
-- Run the production dist build helper through the local Webpack binary instead of `npx`.
+- Run lint, format, release build validation, and production dist build helpers through local package binaries instead
+  of `npx`.
 
 ### Fixed
 
