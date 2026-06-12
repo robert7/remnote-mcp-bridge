@@ -331,6 +331,7 @@ class BridgeRuntimeController implements BridgeRuntime {
       case 'search': {
         const result = await this.adapter.search({
           query: payload.query as string,
+          parentRemId: payload.parentRemId as string | undefined,
           limit: payload.limit as number | undefined,
           cursor: payload.cursor as string | undefined,
           contentMode: payload.contentMode as 'none' | 'markdown' | 'structured' | undefined,
