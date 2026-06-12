@@ -1179,11 +1179,11 @@ describe('RemAdapter', () => {
       const cache = new Map<string, boolean>();
 
       // Check descendant of parentX (should be false)
-      const isDescendantX = await adapter['isDescendant'](child as any, 'parent_x', cache);
+      const isDescendantX = await adapter['isDescendant'](child as never, parentX._id, cache);
       expect(isDescendantX).toBe(false);
 
       // Check descendant of parentY (should be true)
-      const isDescendantY = await adapter['isDescendant'](child as any, 'parent_y', cache);
+      const isDescendantY = await adapter['isDescendant'](child as never, parentY._id, cache);
       expect(isDescendantY).toBe(true);
     });
 
