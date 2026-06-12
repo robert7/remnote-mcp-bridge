@@ -8,6 +8,7 @@ import {
   getBridgeInstallMode,
 } from '../../src/bridge/runtime';
 import { MockRem, MockRemNotePlugin, MockWebSocket } from '../helpers/mocks';
+import { RemAdapter } from '../../src/api/rem-adapter';
 import {
   DEVTOOLS_EXECUTE_EVENT,
   DEVTOOLS_RESULT_EVENT,
@@ -445,5 +446,39 @@ describe('Bridge runtime', () => {
 
     // Verify ordering: newest first
     expect(snapshot.history[0].titles[0]).toBe(`Note ${count - 1}`);
+  });
+
+  it('sanitizes null/invalid parentRemId and cursor values to undefined for search', async () => {
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await wait(10);
+
+    const searchSpy = vi.spyOn(RemAdapter.prototype, 'search');
+
+    window.dispatchEvent(
+      new CustomEvent(DEVTOOLS_EXECUTE_EVENT, {
+        detail: {
+          id: 'devtools-search-sanitize',
+          action: 'search',
+          payload: {
+            query: 'test query',
+            parentRemId: null,
+            cursor: null,
+          },
+        },
+      })
+    );
+
+    await wait(10);
+
+    expect(searchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: 'test query',
+        parentRemId: undefined,
+        cursor: undefined,
+      })
+    );
+
+    searchSpy.mockRestore();
   });
 });

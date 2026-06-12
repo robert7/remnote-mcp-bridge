@@ -331,9 +331,9 @@ class BridgeRuntimeController implements BridgeRuntime {
       case 'search': {
         const result = await this.adapter.search({
           query: payload.query as string,
-          parentRemId: payload.parentRemId as string | undefined,
+          parentRemId: typeof payload.parentRemId === 'string' ? payload.parentRemId : undefined,
           limit: payload.limit as number | undefined,
-          cursor: payload.cursor as string | undefined,
+          cursor: typeof payload.cursor === 'string' ? payload.cursor : undefined,
           contentMode: payload.contentMode as 'none' | 'markdown' | 'structured' | undefined,
           depth: payload.depth as number | undefined,
           childLimit: payload.childLimit as number | undefined,
@@ -352,7 +352,7 @@ class BridgeRuntimeController implements BridgeRuntime {
           tagRemId: payload.tagRemId as string,
           resultMode: payload.resultMode as 'context' | 'tagged' | undefined,
           limit: payload.limit as number | undefined,
-          cursor: payload.cursor as string | undefined,
+          cursor: typeof payload.cursor === 'string' ? payload.cursor : undefined,
           contentMode: payload.contentMode as 'none' | 'markdown' | 'structured' | undefined,
           depth: payload.depth as number | undefined,
           childLimit: payload.childLimit as number | undefined,
@@ -384,7 +384,7 @@ class BridgeRuntimeController implements BridgeRuntime {
         const result = await this.adapter.listChildren({
           parentRemId: payload.parentRemId as string,
           limit: payload.limit as number | undefined,
-          cursor: payload.cursor as string | undefined,
+          cursor: typeof payload.cursor === 'string' ? payload.cursor : undefined,
           ancestorDepth: payload.ancestorDepth as number | undefined,
           view: payload.view as 'compact' | 'standard' | 'full' | undefined,
         });
