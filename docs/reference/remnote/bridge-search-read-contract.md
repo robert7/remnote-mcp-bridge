@@ -160,6 +160,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 
 - Default search limit in bridge is 50 unless caller provides `limit`.
 - Default `contentMode` for search is `"none"`.
+- Search supports optional `parentRemId` to scope the search within a specific Rem's subtree (excluding the context Rem itself from results).
 - Search `contentMode` modes: `"none" | "markdown" | "structured"`.
 - Search supports `view: "compact" | "standard" | "full"` for metadata detail and `ancestorDepth` for parent-first
   ancestors.
@@ -169,7 +170,7 @@ The adapter-level renderer should preserve meaning over exact visual fidelity:
 - Cursor paging:
   - responses include `hasMore`, optional `nextCursor`, `truncated`, and optional `truncationReason`;
   - passing `cursor` returns the next page from the same short-lived ordered snapshot;
-  - cursors are query-bound and expire after bridge session inactivity;
+  - cursors are query-bound and `parentRemId`-bound, and expire after bridge session inactivity;
   - the bridge retains at most 20 active search snapshots.
 - Result ordering:
   1. grouped by `remType` priority (`document`/`concept` > `dailyDocument` > `portal` > `descriptor` > `text`)
