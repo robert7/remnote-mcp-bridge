@@ -1130,6 +1130,65 @@ describe('RemAdapter', () => {
       expect(result.results[0].content).toBe('- Visible child\n');
       expect(result.results[0].content).not.toContain('- \n');
     });
+
+    it('should pass parentRemId to SDK search method', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('parent_rem_id', 'Parent Rem');
+      const child = plugin.addTestRem('scoped_child', 'Scoped Note');
+      await child.setParent(parent);
+      plugin.search.search.mockResolvedValueOnce([child]);
+
+      await adapter.search({
+        query: 'Scoped',
+        parentRemId: 'parent_rem_id',
+      });
+
+      expect(plugin.search.search).toHaveBeenCalledWith(
+        expect.anything(),
+        'parent_rem_id',
+        expect.anything()
+      );
+    });
+
+    it('should validate cursor when parentRemId changes', async () => {
+      plugin.clearTestData();
+      const parent = plugin.addTestRem('parent_rem_id', 'Parent Rem');
+      const child1 = plugin.addTestRem('scoped_child_cursor1', 'Scoped Note 1');
+      const child2 = plugin.addTestRem('scoped_child_cursor2', 'Scoped Note 2');
+      await child1.setParent(parent);
+      await child2.setParent(parent);
+      plugin.search.search.mockResolvedValueOnce([child1, child2]);
+
+      const firstPage = await adapter.search({
+        query: 'Scoped',
+        parentRemId: 'parent_rem_id',
+        limit: 1,
+      });
+
+      expect(firstPage.nextCursor).toBeDefined();
+
+      // Rerun with same context should work and not call SDK search again
+      plugin.search.search.mockClear();
+      const sameContextPage = await adapter.search({
+        query: 'Scoped',
+        parentRemId: 'parent_rem_id',
+        limit: 1,
+        cursor: firstPage.nextCursor,
+      });
+      expect(plugin.search.search).not.toHaveBeenCalled();
+      expect(sameContextPage.results).toHaveLength(1);
+      expect(sameContextPage.results[0].remId).toBe('scoped_child_cursor2');
+
+      // Rerun with different context should throw validation error
+      await expect(
+        adapter.search({
+          query: 'Scoped',
+          parentRemId: 'different_parent_rem_id',
+          limit: 1,
+          cursor: firstPage.nextCursor,
+        })
+      ).rejects.toThrow('Search cursor does not match query or parent rem id');
+    });
   });
 
   describe('searchByTag', () => {
