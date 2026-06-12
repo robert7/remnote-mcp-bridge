@@ -1166,7 +1166,25 @@ describe('RemAdapter', () => {
           query: 'Level 100',
           parentRemId: 'ancestor',
         })
-      ).rejects.toThrow('Subtree hierarchy validation exceeded maximum depth check of 1000 levels');
+      ).rejects.toThrow('Subtree hierarchy validation exceeded maximum depth check of 100 levels');
+    });
+
+    it('should correctly scope relationCache by ancestorId to prevent cross-ancestor cache collision', async () => {
+      plugin.clearTestData();
+      const parentX = plugin.addTestRem('parent_x', 'Parent X');
+      const parentY = plugin.addTestRem('parent_y', 'Parent Y');
+      const child = plugin.addTestRem('child', 'Child');
+      await child.setParent(parentY);
+
+      const cache = new Map<string, boolean>();
+
+      // Check descendant of parentX (should be false)
+      const isDescendantX = await adapter['isDescendant'](child as any, 'parent_x', cache);
+      expect(isDescendantX).toBe(false);
+
+      // Check descendant of parentY (should be true)
+      const isDescendantY = await adapter['isDescendant'](child as any, 'parent_y', cache);
+      expect(isDescendantY).toBe(true);
     });
 
     it('should validate cursor when parentRemId changes', async () => {

@@ -1065,8 +1065,9 @@ export class RemAdapter {
           `Subtree hierarchy validation exceeded maximum depth check of ${MAX_DESCENDANT_DEPTH_CHECK} levels. Traversal stopped to prevent infinite loops (e.g., circular portal references).`
         );
       }
-      if (cache?.has(current._id)) {
-        isMatch = cache.get(current._id)!;
+      const cacheKey = `${ancestorId}:${current._id}`;
+      if (cache?.has(cacheKey)) {
+        isMatch = cache.get(cacheKey)!;
         break;
       }
       if (current._id === ancestorId) {
@@ -1080,7 +1081,8 @@ export class RemAdapter {
 
     if (cache) {
       for (const id of path) {
-        cache.set(id, isMatch);
+        const cacheKey = `${ancestorId}:${id}`;
+        cache.set(cacheKey, isMatch);
       }
     }
     return isMatch;
