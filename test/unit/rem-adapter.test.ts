@@ -1150,6 +1150,25 @@ describe('RemAdapter', () => {
       );
     });
 
+    it('should throw an error when descendant traversal exceeds max depth check of 1000', async () => {
+      plugin.clearTestData();
+      const ancestor = plugin.addTestRem('ancestor', 'Ancestor');
+      let current = ancestor;
+      for (let i = 0; i < 101; i++) {
+        const nextRem = plugin.addTestRem(`rem_${i}`, `Level ${i}`);
+        await nextRem.setParent(current);
+        current = nextRem;
+      }
+      plugin.search.search.mockResolvedValueOnce([current]);
+
+      await expect(
+        adapter.search({
+          query: 'Level 100',
+          parentRemId: 'ancestor',
+        })
+      ).rejects.toThrow('Subtree hierarchy validation exceeded maximum depth check of 1000 levels');
+    });
+
     it('should validate cursor when parentRemId changes', async () => {
       plugin.clearTestData();
       const parent = plugin.addTestRem('parent_rem_id', 'Parent Rem');

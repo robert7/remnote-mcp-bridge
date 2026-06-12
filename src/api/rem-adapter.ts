@@ -320,6 +320,9 @@ const DEFAULT_CHILD_LIMIT = 100;
 /** Absolute cap for childrenTotal counting to prevent expensive full-tree traversal. */
 const CHILDREN_TOTAL_CAP = 2000;
 
+/** Maximum parent traversal depth when checking for descendant relationship. */
+const MAX_DESCENDANT_DEPTH_CHECK = 100;
+
 /** Default max content length for search markdown rendering. */
 const DEFAULT_SEARCH_MAX_CONTENT_LENGTH = 3000;
 
@@ -1054,10 +1057,14 @@ export class RemAdapter {
     let current: PluginRem | undefined = rem;
     const path: string[] = [];
     let isMatch = false;
-    const maxDepth = 50;
     let depth = 0;
 
-    while (current && depth < maxDepth) {
+    while (current) {
+      if (depth >= MAX_DESCENDANT_DEPTH_CHECK) {
+        throw new Error(
+          `Subtree hierarchy validation exceeded maximum depth check of ${MAX_DESCENDANT_DEPTH_CHECK} levels. Traversal stopped to prevent infinite loops (e.g., circular portal references).`
+        );
+      }
       if (cache?.has(current._id)) {
         isMatch = cache.get(current._id)!;
         break;
