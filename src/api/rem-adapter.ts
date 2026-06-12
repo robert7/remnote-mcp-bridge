@@ -42,6 +42,7 @@ export interface AppendJournalParams {
 
 export interface SearchParams {
   query: string;
+  parentRemId?: string;
   limit?: number;
   cursor?: string;
   contentMode?: ContentMode;
@@ -370,6 +371,7 @@ interface SearchCursorSnapshot {
   id: string;
   query: string;
   queryHash: string;
+  parentRemId?: string;
   remIds: string[];
   createdAt: number;
   lastAccessedAt: number;
@@ -1038,6 +1040,46 @@ export class RemAdapter {
   }
 
   /**
+   * Check if a Rem is a descendant of a specific ancestor Rem ID.
+   * Uses a cache Map to avoid redundant parent traversal API calls.
+   */
+  private async isDescendant(
+    rem: PluginRem,
+    ancestorId: string,
+    cache?: Map<string, boolean>
+  ): Promise<boolean> {
+    if (rem._id === ancestorId) {
+      return false;
+    }
+    let current: PluginRem | undefined = rem;
+    const path: string[] = [];
+    let isMatch = false;
+    const maxDepth = 50;
+    let depth = 0;
+
+    while (current && depth < maxDepth) {
+      if (cache?.has(current._id)) {
+        isMatch = cache.get(current._id)!;
+        break;
+      }
+      if (current._id === ancestorId) {
+        isMatch = true;
+        break;
+      }
+      path.push(current._id);
+      current = await this.getParentRem(current);
+      depth++;
+    }
+
+    if (cache) {
+      for (const id of path) {
+        cache.set(id, isMatch);
+      }
+    }
+    return isMatch;
+  }
+
+  /**
    * Count total children in a Rem's subtree, capped at CHILDREN_TOTAL_CAP.
    */
   private async countChildren(rem: PluginRem, depth: number): Promise<number> {
@@ -1324,7 +1366,8 @@ export class RemAdapter {
 
   private getSearchSnapshotFromCursor(
     query: string,
-    cursor: string
+    cursor: string,
+    parentRemId?: string
   ): {
     snapshot: SearchCursorSnapshot;
     offset: number;
@@ -1337,8 +1380,12 @@ export class RemAdapter {
       throw new Error('Search cursor expired or not found; rerun search');
     }
 
-    if (snapshot.query !== query || snapshot.queryHash !== parsed.queryHash) {
-      throw new Error('Search cursor does not match query');
+    if (
+      snapshot.query !== query ||
+      snapshot.queryHash !== parsed.queryHash ||
+      snapshot.parentRemId !== parentRemId
+    ) {
+      throw new Error('Search cursor does not match query or parent rem id');
     }
 
     snapshot.lastAccessedAt = Date.now();
@@ -1375,19 +1422,31 @@ export class RemAdapter {
     return { snapshot, offset: parsed.offset };
   }
 
-  private async createSearchSnapshot(query: string): Promise<SearchCursorSnapshot> {
+  private async createSearchSnapshot(
+    query: string,
+    parentRemId?: string
+  ): Promise<SearchCursorSnapshot> {
     this.pruneExpiredSearchSnapshots();
-    const searchResults = await this.plugin.search.search(this.textToRichText(query), undefined, {
-      numResults: SEARCH_CURSOR_SNAPSHOT_LIMIT,
-    });
-
+    const searchResults = await this.plugin.search.search(
+      this.textToRichText(query),
+      parentRemId || undefined,
+      {
+        numResults: SEARCH_CURSOR_SNAPSHOT_LIMIT,
+      }
+    );
     const collected: Array<{ remId: string; remType: RemClassification; sourceIndex: number }> = [];
     const seen = new Set<string>();
+    const relationCache = new Map<string, boolean>();
     let sourceIndex = 0;
 
     for (const rem of searchResults) {
       if (seen.has(rem._id)) continue;
       seen.add(rem._id);
+
+      if (parentRemId) {
+        const isChild = await this.isDescendant(rem, parentRemId, relationCache);
+        if (!isChild) continue;
+      }
 
       collected.push({
         remId: rem._id,
@@ -1407,7 +1466,8 @@ export class RemAdapter {
     const snapshot: SearchCursorSnapshot = {
       id: this.createSearchSnapshotId(),
       query,
-      queryHash: this.hashSearchQuery(query),
+      queryHash: this.hashSearchQuery(query + '\0' + (parentRemId || '')),
+      parentRemId,
       remIds: collected.map((item) => item.remId),
       createdAt: now,
       lastAccessedAt: now,
@@ -2376,8 +2436,11 @@ export class RemAdapter {
     const options = this.getSearchContentOptions(params);
     const tagNameCache: TagNameCache = new Map();
     const { snapshot, offset } = params.cursor
-      ? this.getSearchSnapshotFromCursor(params.query, params.cursor)
-      : { snapshot: await this.createSearchSnapshot(params.query), offset: 0 };
+      ? this.getSearchSnapshotFromCursor(params.query, params.cursor, params.parentRemId)
+      : {
+          snapshot: await this.createSearchSnapshot(params.query, params.parentRemId),
+          offset: 0,
+        };
 
     return this.renderSearchPage(snapshot, offset, limit, options, tagNameCache);
   }
