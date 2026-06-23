@@ -9,8 +9,12 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- Add support for scoped search in `search` action via `parentRemId`, enabling queries limited to a specific Rem's subtree.
+- Add support for scoped search in `search` action via `parentRemId`, enabling queries limited to a specific Rem's subtree. Contributed by Twb06.
 - Incorporate `parentRemId` into search cursor snapshots and hashing to enforce scope safety and readability during cursor pagination.
+
+### Fixed
+
+- Stop scoped search subtree validation early when a cyclic parent chain is encountered.
 
 ## [0.16.0] - 2026-06-05
 

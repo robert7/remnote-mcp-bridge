@@ -1150,7 +1150,7 @@ describe('RemAdapter', () => {
       );
     });
 
-    it('should throw an error when descendant traversal exceeds max depth check of 1000', async () => {
+    it('should throw an error when descendant traversal exceeds max depth check of 100', async () => {
       plugin.clearTestData();
       const ancestor = plugin.addTestRem('ancestor', 'Ancestor');
       let current = ancestor;
@@ -1167,6 +1167,22 @@ describe('RemAdapter', () => {
           parentRemId: 'ancestor',
         })
       ).rejects.toThrow('Subtree hierarchy validation exceeded maximum depth check of 100 levels');
+    });
+
+    it('should stop descendant traversal when a cyclic parent chain is encountered', async () => {
+      plugin.clearTestData();
+      const remA = plugin.addTestRem('cycle_a', 'Cycle A');
+      const remB = plugin.addTestRem('cycle_b', 'Cycle B');
+      await remA.setParent(remB);
+      await remB.setParent(remA);
+      plugin.search.search.mockResolvedValueOnce([remA]);
+
+      const result = await adapter.search({
+        query: 'Cycle',
+        parentRemId: 'unrelated_parent',
+      });
+
+      expect(result.results).toEqual([]);
     });
 
     it('should correctly scope relationCache by ancestorId to prevent cross-ancestor cache collision', async () => {

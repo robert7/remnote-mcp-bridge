@@ -1056,6 +1056,7 @@ export class RemAdapter {
     }
     let current: PluginRem | undefined = rem;
     const path: string[] = [];
+    const visited = new Set<string>();
     let isMatch = false;
     let depth = 0;
 
@@ -1065,6 +1066,11 @@ export class RemAdapter {
           `Subtree hierarchy validation exceeded maximum depth check of ${MAX_DESCENDANT_DEPTH_CHECK} levels. Traversal stopped to prevent infinite loops (e.g., circular portal references).`
         );
       }
+      if (visited.has(current._id)) {
+        break;
+      }
+      visited.add(current._id);
+
       const cacheKey = `${ancestorId}:${current._id}`;
       if (cache?.has(cacheKey)) {
         isMatch = cache.get(cacheKey)!;
