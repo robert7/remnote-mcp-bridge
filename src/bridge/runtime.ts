@@ -495,6 +495,22 @@ class BridgeRuntimeController implements BridgeRuntime {
         return result;
       }
 
+      case 'set_property': {
+        const result = await this.adapter.setProperty({
+          remId: payload.remId as string,
+          tagRemId: payload.tagRemId as string,
+          propertyRemId: payload.propertyRemId as string,
+          value: payload.value as
+            | { kind: 'text'; text: string }
+            | { kind: 'rem_reference'; remId: string }
+            | { kind: 'clear' },
+        });
+        this.stats = { ...this.stats, updated: this.stats.updated + 1 };
+        this.addHistoryEntry('update', ['Property updated'], [result.remId]);
+        this.emit();
+        return result;
+      }
+
       case 'get_status':
         return await this.adapter.getStatus();
 

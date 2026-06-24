@@ -37,6 +37,7 @@ discontinued; maintained CLI code lives in `remnote-mcp-server/src/remnote-cli/`
 - `insert_children`
 - `replace_children`
 - `update_tags`
+- `set_property`
 - `append_journal`
 - `read_table`
 - `get_status`

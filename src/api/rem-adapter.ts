@@ -108,6 +108,25 @@ export interface UpdateTagsParams {
   removeTagRemIds?: string[];
 }
 
+export type SetPropertyValue =
+  | { kind: 'text'; text: string }
+  | { kind: 'rem_reference'; remId: string }
+  | { kind: 'clear' };
+
+export interface SetPropertyParams {
+  remId: string;
+  tagRemId: string;
+  propertyRemId: string;
+  value: SetPropertyValue;
+}
+
+export interface SetPropertyResult {
+  remId: string;
+  tagRemId: string;
+  propertyRemId: string;
+  valueKind: SetPropertyValue['kind'];
+}
+
 export interface ListChildrenParams {
   parentRemId: string;
   limit?: number;
@@ -1988,6 +2007,14 @@ export class RemAdapter {
     return value;
   }
 
+  private requireNonEmptyString(value: unknown, fieldName: string): string {
+    const stringValue = this.requireString(value, fieldName);
+    if (stringValue.length === 0) {
+      throw new Error(`${fieldName} must be a non-empty string`);
+    }
+    return stringValue;
+  }
+
   private requireBoolean(value: unknown, fieldName: string): boolean {
     if (typeof value !== 'boolean') {
       throw new Error(`${fieldName} must be a boolean`);
@@ -2042,6 +2069,56 @@ export class RemAdapter {
   private async addTagRemIdsToRem(rem: PluginRem, tagRemIds: string[]): Promise<void> {
     for (const tagRemId of tagRemIds) {
       await rem.addTag(tagRemId);
+    }
+  }
+
+  private async requirePropertyChild(tagRem: PluginRem, propertyRemId: string): Promise<PluginRem> {
+    const propertyChildren = await this.getTablePropertyChildren(tagRem);
+    const propertyRem = propertyChildren.find((property) => property._id === propertyRemId);
+
+    if (!propertyRem) {
+      throw new Error(`Property ${propertyRemId} is not a property child of tag ${tagRem._id}`);
+    }
+
+    return propertyRem;
+  }
+
+  private async normalizeSetPropertyValue(
+    value: unknown
+  ): Promise<{ kind: SetPropertyValue['kind']; richText: RichTextInterface | undefined }> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('value must be an object with kind');
+    }
+
+    const valueRecord = value as Record<string, unknown>;
+
+    switch (valueRecord.kind) {
+      case 'text': {
+        return {
+          kind: 'text',
+          richText: await this.plugin.richText.parseFromMarkdown(
+            this.requireString(valueRecord.text, 'value.text')
+          ),
+        };
+      }
+
+      case 'rem_reference': {
+        const targetRemId = this.requireNonEmptyString(valueRecord.remId, 'value.remId');
+        const targetRem = await this.plugin.rem.findOne(targetRemId);
+        if (!targetRem) {
+          throw new Error(`Reference note not found: ${targetRemId}`);
+        }
+        return {
+          kind: 'rem_reference',
+          richText: [{ i: 'q', _id: targetRemId } as RichTextInterface[number]],
+        };
+      }
+
+      case 'clear':
+        return { kind: 'clear', richText: undefined };
+
+      default:
+        throw new Error('value.kind must be one of text, rem_reference, clear');
     }
   }
 
@@ -2966,6 +3043,42 @@ export class RemAdapter {
     }
 
     return { titles: [], remIds: [remId] };
+  }
+
+  async setProperty(params: SetPropertyParams): Promise<SetPropertyResult> {
+    if (!this.settings.acceptWriteOperations) {
+      throw new Error('Write operations are disabled in Automation Bridge settings');
+    }
+
+    const remId = this.requireNonEmptyString(params.remId, 'remId');
+    const tagRemId = this.requireNonEmptyString(params.tagRemId, 'tagRemId');
+    const propertyRemId = this.requireNonEmptyString(params.propertyRemId, 'propertyRemId');
+
+    const [rem, tagRem] = await Promise.all([
+      this.plugin.rem.findOne(remId),
+      this.plugin.rem.findOne(tagRemId),
+    ]);
+
+    if (!rem) {
+      throw new Error(`Note not found: ${remId}`);
+    }
+
+    if (!tagRem) {
+      throw new Error(`Tag not found: ${tagRemId}`);
+    }
+
+    await this.requirePropertyChild(tagRem, propertyRemId);
+    const normalizedValue = await this.normalizeSetPropertyValue(params.value);
+
+    await rem.addTag(tagRemId);
+    await rem.setTagPropertyValue(propertyRemId, normalizedValue.richText);
+
+    return {
+      remId,
+      tagRemId,
+      propertyRemId,
+      valueKind: normalizedValue.kind,
+    };
   }
 
   /**

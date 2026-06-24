@@ -40,6 +40,8 @@ summarization misses.
 Implication for agents:
 
 - Search/read output should avoid flattening property-bearing content into unstructured text whenever possible.
+- Property writes should use exact Rem IDs for the target Rem, owning tag/table Rem, and property Rem. Select/dropdown
+  values are Rem references to option Rem IDs, not name strings.
 
 ## Sources
 

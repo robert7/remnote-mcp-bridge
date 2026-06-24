@@ -27,6 +27,7 @@ Purpose: give developers and AI agents a concise, reliable concept map of RemNot
   intentionally approved because existing child Rem IDs will be removed.
 - `remnote_update_tags`: exact-ID tag mutation action; production tagging workflows should pass tag Rem IDs rather than
   names.
+- `remnote_set_property`: exact-ID tag/table property write action; use property Rem IDs under the owning tag/table Rem.
 - `remnote_append_journal`: maps to daily document behavior; optional tag assignment uses exact tag Rem IDs.
 
 ## Source index (official docs)

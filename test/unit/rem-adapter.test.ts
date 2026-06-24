@@ -2533,6 +2533,135 @@ describe('RemAdapter', () => {
     });
   });
 
+  describe('setProperty', () => {
+    function addTagWithProperty(tagId = 'property_tag_id', propertyId = 'property_id') {
+      const tagRem = plugin.addTestRem(tagId, 'Property Tag');
+      const propertyRem = new MockRem(propertyId, 'Property');
+      propertyRem.setIsPropertyMock(true);
+      propertyRem.setPropertyTypeMock('text');
+      return { tagRem, propertyRem };
+    }
+
+    it('should set a text property value by exact tag and property Rem IDs', async () => {
+      const note = plugin.addTestRem('property_note_id', 'Tagged note');
+      const { tagRem, propertyRem } = addTagWithProperty();
+      await propertyRem.setParent(tagRem as never);
+      const setPropertySpy = vi.spyOn(note, 'setTagPropertyValue');
+
+      const result = await adapter.setProperty({
+        remId: 'property_note_id',
+        tagRemId: 'property_tag_id',
+        propertyRemId: 'property_id',
+        value: { kind: 'text', text: 'People' },
+      });
+
+      expect(result).toEqual({
+        remId: 'property_note_id',
+        tagRemId: 'property_tag_id',
+        propertyRemId: 'property_id',
+        valueKind: 'text',
+      });
+      expect(note.getTags()).toContain('property_tag_id');
+      expect(setPropertySpy).toHaveBeenCalledWith('property_id', ['People']);
+      expect(await note.getTagPropertyValue('property_id')).toEqual(['People']);
+    });
+
+    it('should set a Rem reference property value', async () => {
+      const note = plugin.addTestRem('reference_property_note_id', 'Tagged note');
+      const { tagRem, propertyRem } = addTagWithProperty(
+        'reference_property_tag_id',
+        'reference_property_id'
+      );
+      propertyRem.setPropertyTypeMock('single_select');
+      await propertyRem.setParent(tagRem as never);
+      plugin.addTestRem('property_value_rem_id', 'People');
+
+      const result = await adapter.setProperty({
+        remId: 'reference_property_note_id',
+        tagRemId: 'reference_property_tag_id',
+        propertyRemId: 'reference_property_id',
+        value: { kind: 'rem_reference', remId: 'property_value_rem_id' },
+      });
+
+      expect(result.valueKind).toBe('rem_reference');
+      expect(await note.getTagPropertyValue('reference_property_id')).toEqual([
+        { i: 'q', _id: 'property_value_rem_id' },
+      ]);
+    });
+
+    it('should clear a property value', async () => {
+      const note = plugin.addTestRem('clear_property_note_id', 'Tagged note');
+      const { tagRem, propertyRem } = addTagWithProperty(
+        'clear_property_tag_id',
+        'clear_property_id'
+      );
+      await propertyRem.setParent(tagRem as never);
+      note.setTagPropertyValueMock('clear_property_id', ['Existing']);
+
+      const result = await adapter.setProperty({
+        remId: 'clear_property_note_id',
+        tagRemId: 'clear_property_tag_id',
+        propertyRemId: 'clear_property_id',
+        value: { kind: 'clear' },
+      });
+
+      expect(result.valueKind).toBe('clear');
+      expect(await note.getTagPropertyValue('clear_property_id')).toEqual([]);
+    });
+
+    it('should reject property IDs that are not property children of the tag', async () => {
+      plugin.addTestRem('mismatch_property_note_id', 'Tagged note');
+      const tagRem = plugin.addTestRem('mismatch_property_tag_id', 'Property Tag');
+      const otherProperty = new MockRem('mismatch_property_id', 'Property');
+      otherProperty.setIsPropertyMock(true);
+      await otherProperty.setParent(new MockRem('other_tag_id', 'Other Tag') as never);
+      tagRem.setTaggedRemsMock([]);
+
+      await expect(
+        adapter.setProperty({
+          remId: 'mismatch_property_note_id',
+          tagRemId: 'mismatch_property_tag_id',
+          propertyRemId: 'mismatch_property_id',
+          value: { kind: 'text', text: 'People' },
+        })
+      ).rejects.toThrow(
+        'Property mismatch_property_id is not a property child of tag mismatch_property_tag_id'
+      );
+    });
+
+    it('should reject missing referenced Rem values', async () => {
+      plugin.addTestRem('missing_reference_property_note_id', 'Tagged note');
+      const { tagRem, propertyRem } = addTagWithProperty(
+        'missing_reference_property_tag_id',
+        'missing_reference_property_id'
+      );
+      await propertyRem.setParent(tagRem as never);
+
+      await expect(
+        adapter.setProperty({
+          remId: 'missing_reference_property_note_id',
+          tagRemId: 'missing_reference_property_tag_id',
+          propertyRemId: 'missing_reference_property_id',
+          value: { kind: 'rem_reference', remId: 'missing_value_rem_id' },
+        })
+      ).rejects.toThrow('Reference note not found: missing_value_rem_id');
+    });
+
+    it('should reject property writes when write operations are disabled', async () => {
+      plugin.addTestRem('property_write_disabled_note_id', 'Tagged note');
+      adapter.updateSettings({ acceptWriteOperations: false });
+
+      await expect(
+        adapter.setProperty({
+          remId: 'property_write_disabled_note_id',
+          tagRemId: 'property_write_disabled_tag_id',
+          propertyRemId: 'property_write_disabled_property_id',
+          value: { kind: 'text', text: 'People' },
+        })
+      ).rejects.toThrow('Write operations are disabled in Automation Bridge settings');
+    });
+  });
+
   describe('getStatus', () => {
     it('should return status information', async () => {
       adapter.updateSettings({ acceptWriteOperations: false, acceptReplaceOperation: true });

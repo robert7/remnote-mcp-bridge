@@ -66,10 +66,12 @@ Use a known Rem ID (for example `testRemId` from `create_note`).
 - [`development-execute-bridge-commands-04-insert-children.js`](./js/development-execute-bridge-commands-04-insert-children.js)
 - [`development-execute-bridge-commands-04-replace-children.js`](./js/development-execute-bridge-commands-04-replace-children.js)
 - [`development-execute-bridge-commands-04-update-tags.js`](./js/development-execute-bridge-commands-04-update-tags.js)
+- [`development-execute-bridge-commands-04-set-property.js`](./js/development-execute-bridge-commands-04-set-property.js)
 
 Use `insert_children` for ordered additions that preserve existing child Rem IDs. Use `replace_children` only for
 explicitly approved destructive direct-child replacement. Use `update_tags` with exact tag Rem IDs for production
-tagging workflows.
+tagging workflows. Use `set_property` with exact target/tag/property Rem IDs when setting values on property-bearing
+tags or Advanced Tables.
 
 ### 6) `search`
 

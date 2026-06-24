@@ -234,6 +234,18 @@ export class MockRem {
     return this._tagPropertyValues.get(propertyId) ?? [];
   }
 
+  async setTagPropertyValue(
+    propertyId: string,
+    value: RichTextInterface | undefined
+  ): Promise<void> {
+    if (value === undefined) {
+      this._tagPropertyValues.delete(propertyId);
+      return;
+    }
+
+    this._tagPropertyValues.set(propertyId, value);
+  }
+
   /** Configure mock to behave as a table */
   setIsTableMock(val: boolean): void {
     this._isTable = val;

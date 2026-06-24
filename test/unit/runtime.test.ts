@@ -170,6 +170,60 @@ describe('Bridge runtime', () => {
     expect(snapshot.history[0]?.titles).toContain('TestTable');
   });
 
+  it('handles set_property action via devtools request', async () => {
+    plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
+
+    const note = plugin.addTestRem('runtime_property_note', 'Tagged note');
+    const tagRem = plugin.addTestRem('runtime_property_tag', 'Runtime Tag');
+    const propertyRem = new MockRem('runtime_property_id', 'Use Context');
+    propertyRem.setIsPropertyMock(true);
+    propertyRem.setPropertyTypeMock('text');
+    await propertyRem.setParent(tagRem as never);
+
+    runtime = await initializeBridgeRuntime(plugin as unknown as never);
+    await wait(10);
+
+    const resultPromise = new Promise<DevToolsResultDetail>((resolve) => {
+      window.addEventListener(
+        DEVTOOLS_RESULT_EVENT,
+        (event) => resolve((event as CustomEvent<DevToolsResultDetail>).detail),
+        { once: true }
+      );
+    });
+
+    window.dispatchEvent(
+      new CustomEvent(DEVTOOLS_EXECUTE_EVENT, {
+        detail: {
+          id: 'devtools-set-property',
+          action: 'set_property',
+          payload: {
+            remId: 'runtime_property_note',
+            tagRemId: 'runtime_property_tag',
+            propertyRemId: 'runtime_property_id',
+            value: { kind: 'text', text: 'People' },
+          },
+        },
+      })
+    );
+
+    const result = await resultPromise;
+    const snapshot = runtime.getSnapshot();
+
+    expect(result.ok).toBe(true);
+    expect(result.action).toBe('set_property');
+    expect(result.result).toMatchObject({
+      remId: 'runtime_property_note',
+      tagRemId: 'runtime_property_tag',
+      propertyRemId: 'runtime_property_id',
+      valueKind: 'text',
+    });
+    expect(note.getTags()).toContain('runtime_property_tag');
+    expect(await note.getTagPropertyValue('runtime_property_id')).toEqual(['People']);
+    expect(snapshot.stats.updated).toBe(1);
+    expect(snapshot.history[0]?.action).toBe('update');
+    expect(snapshot.history[0]?.titles).toContain('Property updated');
+  });
+
   it('handles set_document_status action via devtools request', async () => {
     plugin.setTestSetting(SETTING_WS_URL, 'ws://127.0.0.1:3002');
     const rem = plugin.addTestRem('runtime_doc_status', 'Runtime concept');
