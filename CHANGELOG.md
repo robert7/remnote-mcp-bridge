@@ -23,6 +23,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 
 - Stop scoped search subtree validation early when a cyclic parent chain is encountered.
+- Fix `insert_children` transaction handling so live RemNote writes return plain result data instead of SDK Rem objects,
+  preventing transaction completion timeouts.
 
 ## [0.16.0] - 2026-06-05
 

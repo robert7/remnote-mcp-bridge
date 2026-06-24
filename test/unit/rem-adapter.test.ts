@@ -2431,23 +2431,42 @@ describe('RemAdapter', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const parent = plugin.addTestRem('insert_debug_parent', 'Parent');
 
-      await adapter.insertChildren({
+      const result = await adapter.insertChildren({
         parentRemId: 'insert_debug_parent',
         content: 'Inserted',
         position: 'last',
       });
 
       const messages = logSpy.mock.calls.map((call) => String(call[0]));
+      const extractResultsStartIndex = messages.findIndex((message) =>
+        message.includes('extract_results:start')
+      );
+      const extractResultsDoneIndex = messages.findIndex((message) =>
+        message.includes('extract_results:done')
+      );
+      const callbackDoneIndex = messages.findIndex((message) =>
+        message.includes('transaction:callback_done')
+      );
+      const transactionDoneIndex = messages.findIndex((message) =>
+        message.includes('transaction:done')
+      );
+
       expect(messages.some((message) => message.includes('insert_children'))).toBe(true);
       expect(messages.some((message) => message.includes('create_tree_with_markdown:start'))).toBe(
         true
       );
       expect(messages.some((message) => message.includes('child_reparent:start'))).toBe(true);
       expect(messages.some((message) => message.includes('dummy_remove:done'))).toBe(true);
-      expect(messages.some((message) => message.includes('transaction:done'))).toBe(true);
+      expect(extractResultsStartIndex).toBeGreaterThan(-1);
+      expect(extractResultsDoneIndex).toBeGreaterThan(extractResultsStartIndex);
+      expect(callbackDoneIndex).toBeGreaterThan(extractResultsDoneIndex);
+      expect(transactionDoneIndex).toBeGreaterThan(callbackDoneIndex);
 
       const children = await parent.getChildrenRem();
+      expect(result.titles).toEqual(['Inserted']);
       expect(children.map((child) => child.text?.[0])).toEqual(['Inserted']);
+
+      logSpy.mockRestore();
     });
 
     it('should reject before and after without siblingRemId', async () => {

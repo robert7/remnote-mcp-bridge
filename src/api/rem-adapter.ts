@@ -3278,28 +3278,50 @@ export class RemAdapter {
       });
 
       this.logDiagnosticTrace(trace, 'transaction:start');
-      const createdRems = await this.runInTransaction(async () => {
+      const result = await this.runInTransaction(async () => {
         this.logDiagnosticTrace(trace, 'transaction:entered');
-        const result = await this.createRemsFromPreparedMarkdown(
+        const createdRems = await this.createRemsFromPreparedMarkdown(
           preparedContent,
           safeParams.parentRemId,
           positionAmongstSiblings,
           trace
         );
-        this.logDiagnosticTrace(trace, 'transaction:callback_done', {
-          createdRemCount: result.length,
+        this.logDiagnosticTrace(trace, 'transaction:created_rems', {
+          createdRemCount: createdRems.length,
         });
-        return result;
-      });
-      this.logDiagnosticTrace(trace, 'transaction:done', { createdRemCount: createdRems.length });
 
-      if (createdRems.length === 0) {
+        if (createdRems.length === 0) {
+          this.logDiagnosticTrace(trace, 'transaction:callback_done', {
+            createdRemCount: createdRems.length,
+            resultRemCount: 0,
+          });
+          return { titles: [], remIds: [] };
+        }
+
+        this.logDiagnosticTrace(trace, 'extract_results:start', {
+          createdRemCount: createdRems.length,
+        });
+        const extractedResult = await this.extractRemResults(createdRems);
+        this.logDiagnosticTrace(trace, 'extract_results:done', {
+          remIds: extractedResult.remIds,
+          titleCount: extractedResult.titles.length,
+        });
+        this.logDiagnosticTrace(trace, 'transaction:callback_done', {
+          createdRemCount: createdRems.length,
+          resultRemCount: extractedResult.remIds.length,
+        });
+        return extractedResult;
+      });
+      this.logDiagnosticTrace(trace, 'transaction:done', {
+        remIds: result.remIds,
+        titleCount: result.titles.length,
+      });
+
+      if (result.remIds.length === 0) {
         this.logDiagnosticTrace(trace, 'done:no_created_rems');
         return { titles: [], remIds: [] };
       }
 
-      this.logDiagnosticTrace(trace, 'extract_results:start');
-      const result = await this.extractRemResults(createdRems);
       this.logDiagnosticTrace(trace, 'done', {
         remIds: result.remIds,
         titleCount: result.titles.length,
