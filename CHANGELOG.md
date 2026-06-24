@@ -13,6 +13,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 - Incorporate `parentRemId` into search cursor snapshots and hashing to enforce scope safety and readability during cursor pagination.
 - Add `set_property` bridge action for exact-ID tag/table property writes, including text, Rem-reference/select-option,
   and clear value payloads.
+- Add a repo-local Codex skill for running live integration tests through the canonical `remnote-mcp-server` agent
+  wrapper.
 
 ### Fixed
 

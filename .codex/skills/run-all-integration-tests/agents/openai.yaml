@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run All Integration Tests"
+  short_description: "Run the RemNote live integration suite"
+  default_prompt: "The RemNote bridge has been started. Run all integration tests for this repository."
