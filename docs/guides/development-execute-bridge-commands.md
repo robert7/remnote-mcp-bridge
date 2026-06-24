@@ -42,6 +42,8 @@ All commands below call the same bridge action names supported in `handleRequest
 The `read_note` and `search` snippets are full-parameter examples so you can quickly toggle values while debugging.
 For `search`, `contentMode` supports `"none"` (default), `"markdown"`, and `"structured"`.
 The default content-preview depth is `1` for both `"markdown"` and `"structured"` search content modes.
+Markdown-capable write fields support exact Rem references with `[[id:<remId>]]`; the bridge validates the ID and writes
+a real Rem reference instead of letting RemNote resolve `[[...]]` by name.
 
 ### 1) `get_status`
 

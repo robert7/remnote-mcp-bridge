@@ -15,6 +15,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   and clear value payloads.
 - Add a repo-local Codex skill for running live integration tests through the canonical `remnote-mcp-server` agent
   wrapper.
+- Add exact Rem reference tokens via `[[id:<remId>]]` in markdown-capable write fields, avoiding name-lookup stubs when
+  linking to existing Rems by ID.
 
 ### Fixed
 

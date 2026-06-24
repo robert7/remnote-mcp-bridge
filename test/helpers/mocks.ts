@@ -418,6 +418,14 @@ export class MockRemNotePlugin {
   };
 
   richText = {
+    rem: vi.fn((rem: string | MockRem) => ({
+      value: vi.fn(
+        async (): Promise<RichTextInterface> => [
+          { i: 'q', _id: typeof rem === 'string' ? rem : rem._id } as RichTextInterface[number],
+        ]
+      ),
+    })),
+
     parseFromMarkdown: vi.fn(async (markdown: string): Promise<RichTextInterface> => {
       // Basic mock parsing for links: [text](url)
       const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/;
@@ -433,6 +441,58 @@ export class MockRemNotePlugin {
       }
       return [markdown];
     }),
+
+    replaceAllRichText: vi.fn(
+      async (
+        richText: RichTextInterface,
+        findText: RichTextInterface,
+        replacementText: RichTextInterface
+      ): Promise<RichTextInterface> => {
+        const placeholder = findText[0];
+        if (typeof placeholder !== 'string' || placeholder.length === 0) {
+          return richText;
+        }
+
+        const replaceInText = (
+          text: string,
+          buildTextElement: (part: string) => RichTextInterface[number]
+        ): RichTextInterface => {
+          const parts = text.split(placeholder);
+          if (parts.length === 1) {
+            return [buildTextElement(text)];
+          }
+
+          const result: RichTextInterface = [];
+          for (const [index, part] of parts.entries()) {
+            if (part) {
+              result.push(buildTextElement(part));
+            }
+            if (index < parts.length - 1) {
+              result.push(...replacementText);
+            }
+          }
+          return result;
+        };
+
+        return richText.flatMap((element) => {
+          if (typeof element === 'string') {
+            return replaceInText(element, (part) => part);
+          }
+
+          if (
+            element &&
+            typeof element === 'object' &&
+            'i' in element &&
+            element.i === 'm' &&
+            typeof element.text === 'string'
+          ) {
+            return replaceInText(element.text, (part) => ({ ...element, text: part }));
+          }
+
+          return [element];
+        }) as RichTextInterface;
+      }
+    ),
   };
 
   search = {
@@ -531,6 +591,10 @@ export class MockRemNotePlugin {
 
     registerCommand: vi.fn(async (): Promise<void> => {
       // Mock implementation
+    }),
+
+    transaction: vi.fn(async <T>(fn: () => T | Promise<T>): Promise<Awaited<T>> => {
+      return await fn();
     }),
   };
 

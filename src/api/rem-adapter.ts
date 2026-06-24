@@ -446,8 +446,20 @@ interface TitleDetailRenderResult {
   inlineRefs: InlineReference[];
 }
 
+interface IdReferenceToken {
+  placeholder: string;
+  remId: string;
+}
+
+interface PreparedMarkdown {
+  markdown: string;
+  idReferenceTokens: IdReferenceToken[];
+}
+
 const CONTENT_MODES: readonly ContentMode[] = ['none', 'markdown', 'structured'];
 const RESULT_VIEWS: readonly ResultView[] = ['compact', 'standard', 'full'];
+const ID_REFERENCE_TOKEN_PATTERN = /\[\[id:([^\]\n]*)\]\]/g;
+const ID_REFERENCE_PLACEHOLDER_PREFIX = 'rnbridgeidrefplaceholder';
 
 export class RemAdapter {
   private settings: AutomationBridgeSettings;
@@ -2000,6 +2012,135 @@ export class RemAdapter {
     return [text];
   }
 
+  private createIdReferencePlaceholder(
+    index: number,
+    markdown: string,
+    usedPlaceholders: Set<string>
+  ): string {
+    let attempt = 0;
+    while (true) {
+      const suffix = attempt === 0 ? '' : `x${attempt}`;
+      const placeholder = `${ID_REFERENCE_PLACEHOLDER_PREFIX}${index}${suffix}`;
+      if (!markdown.includes(placeholder) && !usedPlaceholders.has(placeholder)) {
+        usedPlaceholders.add(placeholder);
+        return placeholder;
+      }
+      attempt += 1;
+    }
+  }
+
+  private async createRemReferenceRichText(remId: string): Promise<RichTextInterface> {
+    return await this.plugin.richText.rem(remId).value();
+  }
+
+  private async runInTransaction<T>(fn: () => Promise<T>): Promise<T> {
+    return await this.plugin.app.transaction(fn);
+  }
+
+  private async prepareMarkdownIdReferenceTokens(markdown: string): Promise<PreparedMarkdown> {
+    const matches = Array.from(markdown.matchAll(ID_REFERENCE_TOKEN_PATTERN)).map((match) => ({
+      token: match[0],
+      remId: match[1].trim(),
+    }));
+
+    if (matches.length === 0) {
+      return { markdown, idReferenceTokens: [] };
+    }
+
+    const uniqueRemIds = new Set<string>();
+    for (const match of matches) {
+      if (!match.remId) {
+        throw new Error('Reference token must include a Rem ID: [[id:<remId>]]');
+      }
+      uniqueRemIds.add(match.remId);
+    }
+
+    for (const remId of uniqueRemIds) {
+      const rem = await this.plugin.rem.findOne(remId);
+      if (!rem) {
+        throw new Error(`Reference note not found: ${remId}`);
+      }
+    }
+
+    let preparedMarkdown = markdown;
+    const usedPlaceholders = new Set<string>();
+    const idReferenceTokens: IdReferenceToken[] = [];
+
+    for (const [index, match] of matches.entries()) {
+      const placeholder = this.createIdReferencePlaceholder(
+        index,
+        preparedMarkdown,
+        usedPlaceholders
+      );
+      preparedMarkdown = preparedMarkdown.replace(match.token, placeholder);
+      idReferenceTokens.push({ placeholder, remId: match.remId });
+    }
+
+    return { markdown: preparedMarkdown, idReferenceTokens };
+  }
+
+  private async replaceIdReferenceTokensInRichText(
+    richText: RichTextInterface,
+    idReferenceTokens: IdReferenceToken[]
+  ): Promise<RichTextInterface> {
+    let nextRichText = richText;
+    for (const token of idReferenceTokens) {
+      const replacement = await this.createRemReferenceRichText(token.remId);
+      nextRichText = await this.plugin.richText.replaceAllRichText(
+        nextRichText,
+        [token.placeholder],
+        replacement
+      );
+    }
+    return nextRichText;
+  }
+
+  private async applyIdReferenceTokensToRem(
+    rem: PluginRem,
+    preparedMarkdown: PreparedMarkdown
+  ): Promise<void> {
+    if (preparedMarkdown.idReferenceTokens.length === 0) {
+      return;
+    }
+
+    if (rem.text) {
+      await rem.setText(
+        await this.replaceIdReferenceTokensInRichText(rem.text, preparedMarkdown.idReferenceTokens)
+      );
+    }
+
+    if (rem.backText) {
+      await rem.setBackText(
+        await this.replaceIdReferenceTokensInRichText(
+          rem.backText,
+          preparedMarkdown.idReferenceTokens
+        )
+      );
+    }
+  }
+
+  private async parseMarkdownWithIdReferenceTokens(markdown: string): Promise<RichTextInterface> {
+    const preparedMarkdown = await this.prepareMarkdownIdReferenceTokens(markdown);
+    const richText = await this.plugin.richText.parseFromMarkdown(preparedMarkdown.markdown);
+    return await this.replaceIdReferenceTokensInRichText(
+      richText,
+      preparedMarkdown.idReferenceTokens
+    );
+  }
+
+  private async createSingleRemWithPreparedMarkdown(
+    preparedMarkdown: PreparedMarkdown,
+    parentId?: string
+  ): Promise<PluginRem> {
+    const rem = await this.plugin.rem.createSingleRemWithMarkdown(
+      preparedMarkdown.markdown,
+      parentId
+    );
+    if (!rem) throw new Error('Failed to create Rem');
+    await this.applyIdReferenceTokensToRem(rem, preparedMarkdown);
+    return rem;
+  }
+
   private requireString(value: unknown, fieldName: string): string {
     if (typeof value !== 'string') {
       throw new Error(`${fieldName} must be a string`);
@@ -2096,7 +2237,7 @@ export class RemAdapter {
       case 'text': {
         return {
           kind: 'text',
-          richText: await this.plugin.richText.parseFromMarkdown(
+          richText: await this.parseMarkdownWithIdReferenceTokens(
             this.requireString(valueRecord.text, 'value.text')
           ),
         };
@@ -2110,7 +2251,7 @@ export class RemAdapter {
         }
         return {
           kind: 'rem_reference',
-          richText: [{ i: 'q', _id: targetRemId } as RichTextInterface[number]],
+          richText: await this.createRemReferenceRichText(targetRemId),
         };
       }
 
@@ -2188,8 +2329,25 @@ export class RemAdapter {
       return [];
     }
 
+    const preparedMarkdown = await this.prepareMarkdownIdReferenceTokens(markdown);
+    return await this.createRemsFromPreparedMarkdown(
+      preparedMarkdown,
+      parentId,
+      positionAmongstSiblings
+    );
+  }
+
+  private async createRemsFromPreparedMarkdown(
+    preparedMarkdown: PreparedMarkdown,
+    parentId: string,
+    positionAmongstSiblings?: number
+  ): Promise<PluginRem[]> {
+    if (!preparedMarkdown.markdown.trim()) {
+      return [];
+    }
+
     //
-    const indentedMarkdown = markdown
+    const indentedMarkdown = preparedMarkdown.markdown
       .split('\n')
       .map((line) => '  ' + line)
       .join('\n');
@@ -2230,7 +2388,12 @@ export class RemAdapter {
     await dummyRoot.remove();
 
     // Return all created Rems (all descendants in the tree except the dummy root).
-    return tree.slice(1);
+    const createdRems = tree.slice(1);
+    for (const rem of createdRems) {
+      await this.applyIdReferenceTokensToRem(rem, preparedMarkdown);
+    }
+
+    return createdRems;
   }
 
   private async getInsertPosition(params: InsertChildrenParams): Promise<number> {
@@ -2379,34 +2542,46 @@ export class RemAdapter {
       throw new Error('asDocument requires title so the document root is unambiguous');
     }
 
+    const preparedTitle = title ? await this.prepareMarkdownIdReferenceTokens(title) : undefined;
+
     // Scenario 1: title provided
     if (title) {
-      const titleRem = await this.plugin.rem.createSingleRemWithMarkdown(title, parentId);
-      if (!titleRem) throw new Error('Failed to create Rem');
-
-      if (asDocument) {
-        await this.setRemDocumentStatus(titleRem, true);
-      }
-
-      await this.addTagRemIdsToRem(titleRem, tagRemIds);
-
-      remIds.push(titleRem._id);
-      titles.push(title);
-
+      let preparedContent: PreparedMarkdown | undefined;
       if (hasContent) {
-        // Normalize content to collapse consecutive blank lines
         const normalizedContent = this.normalizeContent(content);
         if (normalizedContent) {
-          const createdRems = await this.createRemsFromMarkdown(normalizedContent, titleRem._id);
-          if (createdRems.length > 0) {
-            const results = await this.extractRemResults(createdRems);
-            remIds.push(...results.remIds);
-            titles.push(...results.titles);
-          }
+          preparedContent = await this.prepareMarkdownIdReferenceTokens(normalizedContent);
         }
       }
 
-      return { remIds, titles };
+      return await this.runInTransaction(async () => {
+        const titleRem = await this.createSingleRemWithPreparedMarkdown(preparedTitle!, parentId);
+
+        if (asDocument) {
+          await this.setRemDocumentStatus(titleRem, true);
+        }
+
+        await this.addTagRemIdsToRem(titleRem, tagRemIds);
+
+        remIds.push(titleRem._id);
+        titles.push(title);
+
+        if (hasContent) {
+          if (preparedContent) {
+            const createdRems = await this.createRemsFromPreparedMarkdown(
+              preparedContent,
+              titleRem._id
+            );
+            if (createdRems.length > 0) {
+              const results = await this.extractRemResults(createdRems);
+              remIds.push(...results.remIds);
+              titles.push(...results.titles);
+            }
+          }
+        }
+
+        return { remIds, titles };
+      });
     } else if (hasContent) {
       // Scenario 2: content only
       // Normalize content to collapse consecutive blank lines
@@ -2415,19 +2590,22 @@ export class RemAdapter {
         throw new Error('Content is empty');
       }
 
-      const createdRems = await this.createRemsFromMarkdown(normalizedContent, parentId);
+      const preparedContent = await this.prepareMarkdownIdReferenceTokens(normalizedContent);
+      return await this.runInTransaction(async () => {
+        const createdRems = await this.createRemsFromPreparedMarkdown(preparedContent, parentId);
 
-      if (!createdRems || createdRems.length === 0) {
-        throw new Error('No Rems created from markdown content');
-      }
+        if (!createdRems || createdRems.length === 0) {
+          throw new Error('No Rems created from markdown content');
+        }
 
-      await this.addTagRemIdsToTopLevelRems(createdRems, parentId, tagRemIds);
+        await this.addTagRemIdsToTopLevelRems(createdRems, parentId, tagRemIds);
 
-      const results = await this.extractRemResults(createdRems);
-      remIds.push(...results.remIds);
-      titles.push(...results.titles);
+        const results = await this.extractRemResults(createdRems);
+        remIds.push(...results.remIds);
+        titles.push(...results.titles);
 
-      return { remIds, titles };
+        return { remIds, titles };
+      });
     } else {
       throw new Error('create_note requires either title or content');
     }
@@ -2447,16 +2625,6 @@ export class RemAdapter {
     const tagRemIds = this.optionalStringArray(params.tagRemIds, 'tagRemIds');
 
     const today = new Date();
-    const dailyDoc = await this.plugin.date.getDailyDoc(today);
-
-    if (!dailyDoc) {
-      throw new Error('Failed to access daily document');
-    }
-
-    const remIds: string[] = [];
-    const titles: string[] = [];
-    let parentRemId: string = dailyDoc._id;
-    let journalRootRem: PluginRem | undefined;
     // Build the content with optional timestamp
     const useTimestamp = params.timestamp ?? this.settings.journalTimestamp;
     const prefix = this.settings.journalPrefix;
@@ -2474,9 +2642,30 @@ export class RemAdapter {
     if (!normalizedContent) {
       throw new Error('Journal content is empty');
     }
-    // If content is > 2 lines of markdown, add all content under a rem with prefix
-    if (prefixToCreate !== '') {
-      if (normalizedContent.split('\n').length > 2) {
+
+    const shouldCreateJournalRoot =
+      prefixToCreate !== '' && normalizedContent.split('\n').length > 2;
+    if (prefixToCreate !== '' && !shouldCreateJournalRoot) {
+      // If content is only one line, add prefix to the content and add to daily doc directly
+      normalizedContent = prefixToCreate + content;
+    }
+
+    const preparedContent = await this.prepareMarkdownIdReferenceTokens(normalizedContent);
+
+    const dailyDoc = await this.plugin.date.getDailyDoc(today);
+
+    if (!dailyDoc) {
+      throw new Error('Failed to access daily document');
+    }
+
+    const remIds: string[] = [];
+    const titles: string[] = [];
+    let parentRemId: string = dailyDoc._id;
+    let journalRootRem: PluginRem | undefined;
+
+    return await this.runInTransaction(async () => {
+      // If content is > 2 lines of markdown, add all content under a rem with prefix
+      if (shouldCreateJournalRoot) {
         const titleRem = await this.plugin.rem.createRem();
         if (titleRem) {
           await titleRem.setText(this.textToRichText(prefixToCreate));
@@ -2487,27 +2676,23 @@ export class RemAdapter {
           titles.push(await this.extractText(titleRem.text));
           parentRemId = titleRem._id;
         }
-      } else {
-        // If content is only one line, add prefix to the content and add to daily doc directly
-        normalizedContent = prefixToCreate + content;
-        parentRemId = dailyDoc._id;
       }
-    }
 
-    // Create the tree under daily document or the prefix Rem
-    const createdRems = await this.createRemsFromMarkdown(normalizedContent, parentRemId);
-    if (tagRemIds.length) {
-      if (journalRootRem) {
-        await this.addTagRemIdsToRem(journalRootRem, tagRemIds);
-      } else {
-        await this.addTagRemIdsToTopLevelRems(createdRems, dailyDoc._id, tagRemIds);
+      // Create the tree under daily document or the prefix Rem
+      const createdRems = await this.createRemsFromPreparedMarkdown(preparedContent, parentRemId);
+      if (tagRemIds.length) {
+        if (journalRootRem) {
+          await this.addTagRemIdsToRem(journalRootRem, tagRemIds);
+        } else {
+          await this.addTagRemIdsToTopLevelRems(createdRems, dailyDoc._id, tagRemIds);
+        }
       }
-    }
-    const results = await this.extractRemResults(createdRems);
-    remIds.push(...results.remIds);
-    titles.push(...results.titles);
+      const results = await this.extractRemResults(createdRems);
+      remIds.push(...results.remIds);
+      titles.push(...results.titles);
 
-    return { remIds, titles };
+      return { remIds, titles };
+    });
   }
 
   /**
@@ -2831,8 +3016,10 @@ export class RemAdapter {
     const titles: string[] = [];
 
     // Update title if provided
-    const richText = await this.plugin.richText.parseFromMarkdown(title);
-    await rem.setText(richText);
+    const richText = await this.parseMarkdownWithIdReferenceTokens(title);
+    await this.runInTransaction(async () => {
+      await rem.setText(richText);
+    });
     titles.push(title);
     remIds.push(remId);
 
@@ -2969,10 +3156,14 @@ export class RemAdapter {
       return { titles: [], remIds: [] };
     }
 
-    const createdRems = await this.createRemsFromMarkdown(
-      normalizedContent,
-      safeParams.parentRemId,
-      positionAmongstSiblings
+    const preparedContent = await this.prepareMarkdownIdReferenceTokens(normalizedContent);
+    const createdRems = await this.runInTransaction(
+      async () =>
+        await this.createRemsFromPreparedMarkdown(
+          preparedContent,
+          safeParams.parentRemId,
+          positionAmongstSiblings
+        )
     );
 
     if (createdRems.length === 0) {
@@ -3003,16 +3194,22 @@ export class RemAdapter {
       throw new Error(`Parent note not found: ${parentRemId}`);
     }
 
-    await this.clearDirectChildren(rem);
-    if (normalizedContent) {
-      const createdRems = await this.createRemsFromMarkdown(normalizedContent, rem._id);
+    const preparedContent = normalizedContent
+      ? await this.prepareMarkdownIdReferenceTokens(normalizedContent)
+      : undefined;
 
-      if (createdRems.length > 0) {
-        return await this.extractRemResults(createdRems);
+    return await this.runInTransaction(async () => {
+      await this.clearDirectChildren(rem);
+      if (preparedContent) {
+        const createdRems = await this.createRemsFromPreparedMarkdown(preparedContent, rem._id);
+
+        if (createdRems.length > 0) {
+          return await this.extractRemResults(createdRems);
+        }
       }
-    }
 
-    return { titles: [], remIds: [] };
+      return { titles: [], remIds: [] };
+    });
   }
 
   async updateTags(params: UpdateTagsParams): Promise<{ titles: string[]; remIds: string[] }> {
@@ -3070,8 +3267,10 @@ export class RemAdapter {
     await this.requirePropertyChild(tagRem, propertyRemId);
     const normalizedValue = await this.normalizeSetPropertyValue(params.value);
 
-    await rem.addTag(tagRemId);
-    await rem.setTagPropertyValue(propertyRemId, normalizedValue.richText);
+    await this.runInTransaction(async () => {
+      await rem.addTag(tagRemId);
+      await rem.setTagPropertyValue(propertyRemId, normalizedValue.richText);
+    });
 
     return {
       remId,

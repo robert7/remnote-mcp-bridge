@@ -262,6 +262,51 @@ describe('RemAdapter', () => {
       );
     });
 
+    it('should create exact Rem references from id tokens in title and content', async () => {
+      plugin.addTestRem('ref_token_target', 'Referenced Target');
+
+      const result = await adapter.createNote({
+        title: 'Links to [[id:ref_token_target]]',
+        content: 'Child links to [[id:ref_token_target]]',
+      });
+
+      const rootRem = await plugin.rem.findOne(result.remIds[0]);
+      expect(rootRem!.text).toEqual(['Links to ', { i: 'q', _id: 'ref_token_target' }]);
+
+      const children = await rootRem!.getChildrenRem();
+      expect(children[0].text).toEqual(['Child links to ', { i: 'q', _id: 'ref_token_target' }]);
+      expect(plugin.rem.createTreeWithMarkdown).toHaveBeenCalledWith(
+        'dummy\n  Child links to rnbridgeidrefplaceholder0',
+        result.remIds[0]
+      );
+    });
+
+    it('should reject missing id-token references before creating title Rems', async () => {
+      await expect(
+        adapter.createNote({
+          title: 'Should not be created',
+          content: 'Missing [[id:missing_ref_token_target]]',
+        })
+      ).rejects.toThrow('Reference note not found: missing_ref_token_target');
+
+      expect(plugin.rem.createSingleRemWithMarkdown).not.toHaveBeenCalled();
+      expect(plugin.rem.createTreeWithMarkdown).not.toHaveBeenCalled();
+    });
+
+    it('should patch id-token references in created back text', async () => {
+      plugin.addTestRem('back_ref_target', 'Back Target');
+      const dummyRoot = plugin.addTestRem('back_dummy', 'dummy');
+      const child = plugin.addTestRem('back_child', 'Front');
+      child.backText = ['Answer ', 'rnbridgeidrefplaceholder0'];
+      plugin.rem.createTreeWithMarkdown.mockResolvedValueOnce([dummyRoot, child]);
+
+      await adapter.createNote({
+        content: 'Front >> Answer [[id:back_ref_target]]',
+      });
+
+      expect(child.backText).toEqual(['Answer ', { i: 'q', _id: 'back_ref_target' }]);
+    });
+
     it('should use createSingleRemWithMarkdown for single-line content', async () => {
       const result = await adapter.createNote({
         title: 'Title',
@@ -459,6 +504,28 @@ describe('RemAdapter', () => {
 
       expect(result.titles[0]).toContain('[AI]');
       expect(result.titles[0]).not.toMatch(/^ /);
+    });
+
+    it('should append journal entries with exact Rem references from id tokens', async () => {
+      plugin.addTestRem('journal_ref_target', 'Journal Target');
+
+      const result = await adapter.appendJournal({
+        content: 'Journal [[id:journal_ref_target]]',
+        timestamp: false,
+      });
+
+      const rem = await plugin.rem.findOne(result.remIds[0]);
+      expect(rem!.text).toEqual(['Journal ', { i: 'q', _id: 'journal_ref_target' }]);
+    });
+
+    it('should reject missing journal id-token references before daily document lookup', async () => {
+      await expect(
+        adapter.appendJournal({
+          content: 'Journal [[id:missing_journal_ref_target]]',
+        })
+      ).rejects.toThrow('Reference note not found: missing_journal_ref_target');
+
+      expect(plugin.date.getDailyDoc).not.toHaveBeenCalled();
     });
 
     it('should tag top-level journal Rems by exact Rem ID', async () => {
@@ -1974,6 +2041,19 @@ describe('RemAdapter', () => {
       expect(rem!.text).toEqual(['New [Link](url)']);
     });
 
+    it('should update note title with exact Rem references from id tokens', async () => {
+      plugin.addTestRem('update_ref_note', 'Original title');
+      plugin.addTestRem('update_ref_target', 'Target');
+
+      await adapter.updateNote({
+        remId: 'update_ref_note',
+        title: 'New [[id:update_ref_target]]',
+      });
+
+      const rem = await plugin.rem.findOne('update_ref_note');
+      expect(rem!.text).toEqual(['New ', { i: 'q', _id: 'update_ref_target' }]);
+    });
+
     it('should throw error for non-existent note', async () => {
       await expect(
         adapter.updateNote({
@@ -2333,6 +2413,20 @@ describe('RemAdapter', () => {
       expect(children.map((c) => c.text?.[0])).toEqual(['First', 'Inserted', 'Second']);
     });
 
+    it('should insert children with exact Rem references from id tokens', async () => {
+      const parent = plugin.addTestRem('insert_ref_parent', 'Parent');
+      plugin.addTestRem('insert_ref_target', 'Target');
+
+      await adapter.insertChildren({
+        parentRemId: 'insert_ref_parent',
+        content: 'Inserted [[id:insert_ref_target]]',
+        position: 'last',
+      });
+
+      const children = await parent.getChildrenRem();
+      expect(children[0].text).toEqual(['Inserted ', { i: 'q', _id: 'insert_ref_target' }]);
+    });
+
     it('should reject before and after without siblingRemId', async () => {
       plugin.addTestRem('insert_missing_sibling_test', 'Parent');
 
@@ -2442,6 +2536,24 @@ describe('RemAdapter', () => {
       const children = await testRem.getChildrenRem();
       expect(children).toHaveLength(1);
       expect(children[0]._id).toBe('old_child_malformed_content');
+    });
+
+    it('should reject missing id-token references without clearing children', async () => {
+      const testRem = plugin.addTestRem('replace_missing_ref_test', 'Parent');
+      const oldChild = new MockRem('old_child_missing_ref', 'Old line');
+      await oldChild.setParent(testRem);
+      adapter.updateSettings({ acceptReplaceOperation: true });
+
+      await expect(
+        adapter.replaceChildren({
+          parentRemId: 'replace_missing_ref_test',
+          content: 'Missing [[id:missing_replace_ref_target]]',
+        })
+      ).rejects.toThrow('Reference note not found: missing_replace_ref_target');
+
+      const children = await testRem.getChildrenRem();
+      expect(children).toHaveLength(1);
+      expect(children[0]._id).toBe('old_child_missing_ref');
     });
 
     it('should reject replace when replace operation is disabled', async () => {
@@ -2564,6 +2676,28 @@ describe('RemAdapter', () => {
       expect(note.getTags()).toContain('property_tag_id');
       expect(setPropertySpy).toHaveBeenCalledWith('property_id', ['People']);
       expect(await note.getTagPropertyValue('property_id')).toEqual(['People']);
+    });
+
+    it('should set text property values with exact Rem references from id tokens', async () => {
+      const note = plugin.addTestRem('property_text_ref_note_id', 'Tagged note');
+      const { tagRem, propertyRem } = addTagWithProperty(
+        'property_text_ref_tag_id',
+        'property_text_ref_property_id'
+      );
+      await propertyRem.setParent(tagRem as never);
+      plugin.addTestRem('property_text_ref_target_id', 'Target');
+
+      await adapter.setProperty({
+        remId: 'property_text_ref_note_id',
+        tagRemId: 'property_text_ref_tag_id',
+        propertyRemId: 'property_text_ref_property_id',
+        value: { kind: 'text', text: 'See [[id:property_text_ref_target_id]]' },
+      });
+
+      expect(await note.getTagPropertyValue('property_text_ref_property_id')).toEqual([
+        'See ',
+        { i: 'q', _id: 'property_text_ref_target_id' },
+      ]);
     });
 
     it('should set a Rem reference property value', async () => {
