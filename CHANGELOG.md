@@ -17,6 +17,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
   wrapper.
 - Add exact Rem reference tokens via `[[id:<remId>]]` in markdown-capable write fields, avoiding name-lookup stubs when
   linking to existing Rems by ID.
+- Add scoped bridge diagnostics for `insert_children` writes so live RemNote hangs can be isolated to the exact SDK
+  checkpoint.
 
 ### Fixed
 

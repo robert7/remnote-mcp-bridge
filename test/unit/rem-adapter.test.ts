@@ -2427,6 +2427,29 @@ describe('RemAdapter', () => {
       expect(children[0].text).toEqual(['Inserted ', { i: 'q', _id: 'insert_ref_target' }]);
     });
 
+    it('should log diagnostic checkpoints for insert children operations', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const parent = plugin.addTestRem('insert_debug_parent', 'Parent');
+
+      await adapter.insertChildren({
+        parentRemId: 'insert_debug_parent',
+        content: 'Inserted',
+        position: 'last',
+      });
+
+      const messages = logSpy.mock.calls.map((call) => String(call[0]));
+      expect(messages.some((message) => message.includes('insert_children'))).toBe(true);
+      expect(messages.some((message) => message.includes('create_tree_with_markdown:start'))).toBe(
+        true
+      );
+      expect(messages.some((message) => message.includes('child_reparent:start'))).toBe(true);
+      expect(messages.some((message) => message.includes('dummy_remove:done'))).toBe(true);
+      expect(messages.some((message) => message.includes('transaction:done'))).toBe(true);
+
+      const children = await parent.getChildrenRem();
+      expect(children.map((child) => child.text?.[0])).toEqual(['Inserted']);
+    });
+
     it('should reject before and after without siblingRemId', async () => {
       plugin.addTestRem('insert_missing_sibling_test', 'Parent');
 

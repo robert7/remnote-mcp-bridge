@@ -456,6 +456,12 @@ interface PreparedMarkdown {
   idReferenceTokens: IdReferenceToken[];
 }
 
+interface DiagnosticTrace {
+  action: string;
+  operationId: string;
+  startedAtMs: number;
+}
+
 const CONTENT_MODES: readonly ContentMode[] = ['none', 'markdown', 'structured'];
 const RESULT_VIEWS: readonly ResultView[] = ['compact', 'standard', 'full'];
 const ID_REFERENCE_TOKEN_PATTERN = /\[\[id:([^\]\n]*)\]\]/g;
@@ -466,6 +472,7 @@ export class RemAdapter {
   private readonly emittedTagDebugKeys = new Set<string>();
   private readonly searchCursorSnapshots = new Map<string, SearchCursorSnapshot>();
   private readonly searchByTagCursorSnapshots = new Map<string, SearchByTagCursorSnapshot>();
+  private nextDiagnosticSequence = 1;
 
   constructor(
     private plugin: ReactRNPlugin,
@@ -922,6 +929,34 @@ export class RemAdapter {
     }
 
     console.warn(withScopedLogPrefix('adapter', message), details);
+  }
+
+  private startDiagnosticTrace(action: string, details?: Record<string, unknown>): DiagnosticTrace {
+    const trace: DiagnosticTrace = {
+      action,
+      operationId: `${action}-${Date.now().toString(36)}-${this.nextDiagnosticSequence++}`,
+      startedAtMs: Date.now(),
+    };
+    this.logDiagnosticTrace(trace, 'start', details);
+    return trace;
+  }
+
+  private logDiagnosticTrace(
+    trace: DiagnosticTrace | undefined,
+    step: string,
+    details?: Record<string, unknown>
+  ): void {
+    if (!trace) return;
+
+    const elapsedMs = Date.now() - trace.startedAtMs;
+    const message = `${trace.action} ${trace.operationId} ${step} +${elapsedMs}ms`;
+
+    if (details === undefined) {
+      console.log(withScopedLogPrefix('adapter', message));
+      return;
+    }
+
+    console.log(withScopedLogPrefix('adapter', message), details);
   }
 
   /**
@@ -2340,13 +2375,22 @@ export class RemAdapter {
   private async createRemsFromPreparedMarkdown(
     preparedMarkdown: PreparedMarkdown,
     parentId: string,
-    positionAmongstSiblings?: number
+    positionAmongstSiblings?: number,
+    diagnosticTrace?: DiagnosticTrace
   ): Promise<PluginRem[]> {
     if (!preparedMarkdown.markdown.trim()) {
+      this.logDiagnosticTrace(diagnosticTrace, 'markdown_tree:empty');
       return [];
     }
 
-    //
+    this.logDiagnosticTrace(diagnosticTrace, 'markdown_tree:start', {
+      parentId,
+      positionAmongstSiblings,
+      markdownLength: preparedMarkdown.markdown.length,
+      lineCount: preparedMarkdown.markdown.split('\n').length,
+      idReferenceTokenCount: preparedMarkdown.idReferenceTokens.length,
+    });
+
     const indentedMarkdown = preparedMarkdown.markdown
       .split('\n')
       .map((line) => '  ' + line)
@@ -2355,44 +2399,92 @@ export class RemAdapter {
 
     // Create the tree with the dummy root.
     // Use the same parentId so the dummy root is created where the content should eventually be.
+    this.logDiagnosticTrace(diagnosticTrace, 'create_tree_with_markdown:start', {
+      parentId,
+      dummyMarkdownLength: dummyMarkdown.length,
+    });
     const tree = (await this.plugin.rem.createTreeWithMarkdown(dummyMarkdown, parentId)) || [];
+    this.logDiagnosticTrace(diagnosticTrace, 'create_tree_with_markdown:done', {
+      treeLength: tree.length,
+      dummyRootId: tree[0]?._id,
+    });
 
     if (tree.length === 0) {
+      this.logDiagnosticTrace(diagnosticTrace, 'markdown_tree:no_tree');
       return [];
     }
 
     // The first element is our dummy root.
     const dummyRoot = tree[0];
+    this.logDiagnosticTrace(diagnosticTrace, 'dummy_children:start', {
+      dummyRootId: dummyRoot._id,
+    });
     const directChildren = await dummyRoot.getChildrenRem();
+    this.logDiagnosticTrace(diagnosticTrace, 'dummy_children:done', {
+      dummyRootId: dummyRoot._id,
+      directChildCount: directChildren.length,
+      directChildIds: directChildren.map((child) => child._id),
+    });
 
     // Move all direct children to the same parent as the dummy root when a concrete
     // target parent exists. When the dummy root lives at the top level, the SDK should
     // leave promoted children top-level after the dummy root is removed.
+    this.logDiagnosticTrace(diagnosticTrace, 'target_parent_lookup:start', { parentId });
     const targetParent = await this.plugin.rem.findOne(parentId);
+    this.logDiagnosticTrace(diagnosticTrace, 'target_parent_lookup:done', {
+      parentId,
+      found: Boolean(targetParent),
+    });
+    this.logDiagnosticTrace(diagnosticTrace, 'base_position:start', {
+      hasTargetParent: Boolean(targetParent),
+      requestedPosition: positionAmongstSiblings,
+    });
     const basePosition =
       targetParent && positionAmongstSiblings === undefined
         ? (await targetParent.getChildrenRem()).filter((child) => child._id !== dummyRoot._id)
             .length
         : positionAmongstSiblings;
+    this.logDiagnosticTrace(diagnosticTrace, 'base_position:done', { basePosition });
 
     for (const [index, child] of directChildren.entries()) {
       if (targetParent) {
-        await child.setParent(
-          targetParent,
-          basePosition === undefined ? undefined : basePosition + index
-        );
+        const targetPosition = basePosition === undefined ? undefined : basePosition + index;
+        this.logDiagnosticTrace(diagnosticTrace, 'child_reparent:start', {
+          childId: child._id,
+          targetParentId: targetParent._id,
+          targetPosition,
+        });
+        await child.setParent(targetParent, targetPosition);
+        this.logDiagnosticTrace(diagnosticTrace, 'child_reparent:done', {
+          childId: child._id,
+          targetParentId: targetParent._id,
+          targetPosition,
+        });
       }
     }
 
     // Important: remove the dummy root.
+    this.logDiagnosticTrace(diagnosticTrace, 'dummy_remove:start', { dummyRootId: dummyRoot._id });
     await dummyRoot.remove();
+    this.logDiagnosticTrace(diagnosticTrace, 'dummy_remove:done', { dummyRootId: dummyRoot._id });
 
     // Return all created Rems (all descendants in the tree except the dummy root).
     const createdRems = tree.slice(1);
     for (const rem of createdRems) {
+      this.logDiagnosticTrace(diagnosticTrace, 'id_reference_patch:start', {
+        remId: rem._id,
+        idReferenceTokenCount: preparedMarkdown.idReferenceTokens.length,
+      });
       await this.applyIdReferenceTokensToRem(rem, preparedMarkdown);
+      this.logDiagnosticTrace(diagnosticTrace, 'id_reference_patch:done', {
+        remId: rem._id,
+      });
     }
 
+    this.logDiagnosticTrace(diagnosticTrace, 'markdown_tree:done', {
+      createdRemCount: createdRems.length,
+      createdRemIds: createdRems.map((rem) => rem._id),
+    });
     return createdRems;
   }
 
@@ -3139,38 +3231,84 @@ export class RemAdapter {
       throw new Error('Write operations are disabled in Automation Bridge settings');
     }
 
-    const safeParams: InsertChildrenParams = {
-      parentRemId: this.requireString(params.parentRemId, 'parentRemId'),
-      content: this.requireString(params.content, 'content'),
-      position: this.requireInsertPosition(params.position),
-      siblingRemId:
-        params.siblingRemId === undefined || params.siblingRemId === null
-          ? undefined
-          : this.requireString(params.siblingRemId, 'siblingRemId'),
-    };
+    const trace = this.startDiagnosticTrace('insert_children', {
+      parentRemId: params.parentRemId,
+      position: params.position,
+      siblingRemId: params.siblingRemId,
+      contentLength: typeof params.content === 'string' ? params.content.length : undefined,
+    });
 
-    const positionAmongstSiblings = await this.getInsertPosition(safeParams);
-    const normalizedContent = this.normalizeContent(safeParams.content);
+    try {
+      this.logDiagnosticTrace(trace, 'validate:start');
+      const safeParams: InsertChildrenParams = {
+        parentRemId: this.requireString(params.parentRemId, 'parentRemId'),
+        content: this.requireString(params.content, 'content'),
+        position: this.requireInsertPosition(params.position),
+        siblingRemId:
+          params.siblingRemId === undefined || params.siblingRemId === null
+            ? undefined
+            : this.requireString(params.siblingRemId, 'siblingRemId'),
+      };
+      this.logDiagnosticTrace(trace, 'validate:done');
 
-    if (!normalizedContent) {
-      return { titles: [], remIds: [] };
-    }
+      this.logDiagnosticTrace(trace, 'get_insert_position:start', {
+        parentRemId: safeParams.parentRemId,
+        position: safeParams.position,
+        siblingRemId: safeParams.siblingRemId,
+      });
+      const positionAmongstSiblings = await this.getInsertPosition(safeParams);
+      this.logDiagnosticTrace(trace, 'get_insert_position:done', { positionAmongstSiblings });
 
-    const preparedContent = await this.prepareMarkdownIdReferenceTokens(normalizedContent);
-    const createdRems = await this.runInTransaction(
-      async () =>
-        await this.createRemsFromPreparedMarkdown(
+      const normalizedContent = this.normalizeContent(safeParams.content);
+      this.logDiagnosticTrace(trace, 'normalize:done', {
+        normalizedLength: normalizedContent.length,
+        normalizedLineCount: normalizedContent ? normalizedContent.split('\n').length : 0,
+      });
+
+      if (!normalizedContent) {
+        this.logDiagnosticTrace(trace, 'done:empty_content');
+        return { titles: [], remIds: [] };
+      }
+
+      this.logDiagnosticTrace(trace, 'prepare_id_references:start');
+      const preparedContent = await this.prepareMarkdownIdReferenceTokens(normalizedContent);
+      this.logDiagnosticTrace(trace, 'prepare_id_references:done', {
+        idReferenceTokenCount: preparedContent.idReferenceTokens.length,
+        preparedLength: preparedContent.markdown.length,
+      });
+
+      this.logDiagnosticTrace(trace, 'transaction:start');
+      const createdRems = await this.runInTransaction(async () => {
+        this.logDiagnosticTrace(trace, 'transaction:entered');
+        const result = await this.createRemsFromPreparedMarkdown(
           preparedContent,
           safeParams.parentRemId,
-          positionAmongstSiblings
-        )
-    );
+          positionAmongstSiblings,
+          trace
+        );
+        this.logDiagnosticTrace(trace, 'transaction:callback_done', {
+          createdRemCount: result.length,
+        });
+        return result;
+      });
+      this.logDiagnosticTrace(trace, 'transaction:done', { createdRemCount: createdRems.length });
 
-    if (createdRems.length === 0) {
-      return { titles: [], remIds: [] };
+      if (createdRems.length === 0) {
+        this.logDiagnosticTrace(trace, 'done:no_created_rems');
+        return { titles: [], remIds: [] };
+      }
+
+      this.logDiagnosticTrace(trace, 'extract_results:start');
+      const result = await this.extractRemResults(createdRems);
+      this.logDiagnosticTrace(trace, 'done', {
+        remIds: result.remIds,
+        titleCount: result.titles.length,
+      });
+      return result;
+    } catch (error) {
+      this.logDiagnosticTrace(trace, 'error', this.describeError(error));
+      throw error;
     }
-
-    return await this.extractRemResults(createdRems);
   }
 
   async replaceChildren(
