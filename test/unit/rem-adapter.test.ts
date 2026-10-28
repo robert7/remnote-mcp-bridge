@@ -2681,6 +2681,21 @@ describe('RemAdapter', () => {
   });
 
   describe('insertChildren', () => {
+    it('should turn "> " lines into quote Rems with the prefix stripped', async () => {
+      const parent = plugin.addTestRem('insert_quote_test', 'Parent');
+
+      await adapter.insertChildren({
+        parentRemId: 'insert_quote_test',
+        content: 'Plain line\n> Quoted line (12)',
+        position: 'last',
+      });
+
+      const children = await parent.getChildrenRem();
+      expect(children.map((c) => c.text?.[0])).toEqual(['Plain line', 'Quoted line (12)']);
+      expect(await children[0].isQuote()).toBe(false);
+      expect(await children[1].isQuote()).toBe(true);
+    });
+
     it('should insert children as first children without recreating existing children', async () => {
       const parent = plugin.addTestRem('insert_first_test', 'Parent');
       const oldChild = plugin.addTestRem('old_child_first', 'Old line');

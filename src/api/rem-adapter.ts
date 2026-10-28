@@ -2330,6 +2330,28 @@ export class RemAdapter {
     }
   }
 
+  /**
+   * The SDK markdown parser keeps a leading "> " as literal text. Turn such a line
+   * into a RemNote quote block: strip the prefix and set the quote flag.
+   */
+  private async applyQuotePrefixToRem(rem: PluginRem): Promise<void> {
+    const first = rem.text?.[0];
+    if (typeof first !== 'string' || !first.startsWith('> ')) {
+      return;
+    }
+
+    // Re-read: applyIdReferenceTokensToRem may have rewritten the text after this snapshot.
+    const current = (await this.plugin.rem.findOne(rem._id)) ?? rem;
+    const text = current.text ?? [];
+    if (typeof text[0] !== 'string' || !text[0].startsWith('> ')) {
+      return;
+    }
+
+    const stripped = text[0].slice(2);
+    await current.setText(stripped ? [stripped, ...text.slice(1)] : text.slice(1));
+    await current.setIsQuote(true);
+  }
+
   private async parseMarkdownWithIdReferenceTokens(markdown: string): Promise<RichTextInterface> {
     const preparedMarkdown = await this.prepareMarkdownIdReferenceTokens(markdown);
     const richText = await this.plugin.richText.parseFromMarkdown(preparedMarkdown.markdown);
@@ -2732,6 +2754,7 @@ export class RemAdapter {
       this.logDiagnosticTrace(diagnosticTrace, 'id_reference_patch:done', {
         remId: rem._id,
       });
+      await this.applyQuotePrefixToRem(rem);
     }
 
     this.logDiagnosticTrace(diagnosticTrace, 'markdown_tree:done', {

@@ -11,6 +11,8 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Add real RemNote alias writes to `create_note` and `update_note`, with whitespace normalization, exact additive and
   removal operations, idempotency, Unicode preservation, and protection against ambiguous or contradictory requests.
+- Turn markdown content lines that start with `> ` into RemNote quote blocks (prefix stripped, `setIsQuote(true)`) in
+  every write path that creates Rems from markdown content.
 
 ### Changed
 

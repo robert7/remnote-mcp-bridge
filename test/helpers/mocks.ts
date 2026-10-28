@@ -110,6 +110,7 @@ export class MockRem {
   private _propertyType: string | undefined;
   private _tagPropertyValues = new Map<string, RichTextInterface>();
   private _isTable = false;
+  private _isQuote = false;
 
   constructor(id: string, text: string) {
     this._id = id;
@@ -272,6 +273,14 @@ export class MockRem {
 
   async setText(text: RichTextInterface): Promise<void> {
     this.text = text;
+  }
+
+  async setIsQuote(val: boolean): Promise<void> {
+    this._isQuote = val;
+  }
+
+  async isQuote(): Promise<boolean> {
+    return this._isQuote;
   }
 
   async setBackText(text: RichTextInterface): Promise<void> {
