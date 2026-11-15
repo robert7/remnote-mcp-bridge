@@ -28,7 +28,7 @@
   "dependencies": {
     "@remnote/plugin-sdk": "0.0.46",
     "react": "^17.0.2",
-    "react-dom": "^17.0.2"
+    "react-dom": "^19.2.9"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
